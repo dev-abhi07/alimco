@@ -1,13 +1,14 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../connection/conn");
+const aasra = require('./aasra');  
 
 const users = sequelize.define('user', {   
-    name:{
-        type:DataTypes.STRING,
-        allowNull:true
+    name: {
+        type: DataTypes.STRING,
+        allowNull: true
     },
-    user_type:{
-        type:DataTypes.STRING
+    user_type: {
+        type: DataTypes.STRING
     },
     email: {
         type: DataTypes.STRING,
@@ -16,7 +17,7 @@ const users = sequelize.define('user', {
     },
     password: {
         type: DataTypes.STRING,
-        allowNull:true
+        allowNull: true
     },
     mobile: {
         type: DataTypes.STRING,
@@ -27,28 +28,19 @@ const users = sequelize.define('user', {
         type: DataTypes.STRING,
         allowNull: true
     },
-    token:{
-        type:DataTypes.STRING,
-        allowNull:true
+    token: {
+        type: DataTypes.STRING,
+        allowNull: true
     },
-    status:{
-        type:DataTypes.BOOLEAN,
-        defaultValue:true
+    status: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: true
     },
-    user_id:{
-        type:DataTypes.BIGINT,
-
+    ref_id: {
+        type: DataTypes.BIGINT,
     }
+});
 
-}
-);
 
-// sequelize.sync({force:true})
-//     .then(() => {
-//         console.log('Database & tables created!');
-//     })
-//     .catch(error => {
-//         console.error('Error creating database & tables:', error);
-//     });
 
 module.exports = users;

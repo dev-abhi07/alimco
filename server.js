@@ -7,8 +7,8 @@ const { configDotenv } = require('dotenv').config()
 const cors = require('cors')
 const body = require('body-parser')
 const conn = require('./app/connection/conn')
-
-
+app.use(express.static('public'));
+const ticket = require('./app/model/ticket')
 //Allowing Cors
 app.use(
     cors({

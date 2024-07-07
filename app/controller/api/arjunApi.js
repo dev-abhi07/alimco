@@ -1,6 +1,6 @@
 const axios = require ('axios')
  
-exports.arjunApi = ()=>{
+exports.arjunApi = (req,res,next)=>{
 let config = {
   method: 'get',
   maxBodyLength: Infinity,
@@ -12,6 +12,7 @@ axios.request(config)
 .then((response) => {
   console.log(JSON.stringify(response.data));
 })
+
 .catch((error) => {
   console.log(error);
 });
