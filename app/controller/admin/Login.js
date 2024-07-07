@@ -25,6 +25,7 @@ exports.Login = async (req, res) => {
                 email: req.body.email
             }
         });
+       
         if (user) {
             if (req.body.password === Helper.decryptPassword(user.password)) {
                 let token = jwt.sign({ id: user.id }, process.env.SECRET_KEY, {
@@ -37,8 +38,10 @@ exports.Login = async (req, res) => {
                 Helper.response(
                     "Success",
                     "Login Successful",
-                    {
-                        user: user
+                    {   
+                        name: (user.name).match(/\b(\w)/g).join(''),
+                        user: user,
+                        base_url:process.env.BASE_URL
                     },
                     res,
                     200

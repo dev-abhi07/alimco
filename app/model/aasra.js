@@ -1,9 +1,10 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../connection/conn");
-
+const users = require('../model/users');
+const ticket = require("./ticket");
 const aasra = sequelize.define('aasra', {
     id: {
-        type: DataTypes.STRING,
+        type: DataTypes.INTEGER,
         primaryKey: true
     },
     name_of_org: {
@@ -71,7 +72,9 @@ const aasra = sequelize.define('aasra', {
     timestamps:false
 });
 
-// sequelize.sync({alter:true})
+users.belongsTo(aasra, { foreignKey: 'ref_id', as: 'aasra' });
+
+// sequelize.sync()
 //     .then(() => {
 //         console.log('Database & tables created!');
 //     })

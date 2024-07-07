@@ -11,7 +11,7 @@ const customer = async (req, res) => {
             }
         });
         if(user){
-            if(user.user_type == 'C'){
+            if(user.user_type == 'A' || user.user_type == 'AC'){
                 try {
                     const tokens = jwt.verify(string[1],process.env.SECRET_KEY);
                     next();
