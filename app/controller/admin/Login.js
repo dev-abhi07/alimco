@@ -29,7 +29,7 @@ exports.Login = async (req, res) => {
         if (user) {
             if (req.body.password === Helper.decryptPassword(user.password)) {
                 let token = jwt.sign({ id: user.id }, process.env.SECRET_KEY, {
-                    expiresIn: "6h",
+                    expiresIn: "365d",
                 });
                 await user.update(
                     { token: token },
