@@ -1,6 +1,8 @@
 const Helper = require('../../helper/helper')
 
 exports.Dashboard= (req,res)=>{
+
+  
     try {
        const data = [
             { id: 1, count: 50, type: "Total Tickets", imgSrc: 'tickets.png' },
@@ -14,8 +16,8 @@ exports.Dashboard= (req,res)=>{
         ]
 
           Helper.response(
-            "Success",
-            "Login Successful",
+            "success",
+            "Welcome to Dashboard",
             { 
                 cardData: data,
                 tableData:ticketData

@@ -1,6 +1,6 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../connection/conn");
-const aasra = require('./aasra');  
+// const aasra = require('./aasra');  
 
 const users = sequelize.define('user', {   
     name: {
@@ -38,6 +38,10 @@ const users = sequelize.define('user', {
     },
     ref_id: {
         type: DataTypes.BIGINT,
+    },
+    udid:{
+        type:DataTypes.STRING,
+        allowNull:false
     }
 });
 

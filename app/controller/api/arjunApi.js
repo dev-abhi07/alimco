@@ -1,20 +1,26 @@
-const axios = require ('axios')
- 
-exports.arjunApi = (req,res,next)=>{
-let config = {
-  method: 'get',
-  maxBodyLength: Infinity,
-  url: 'https://adip.depwd.gov.in/api/CRM/GetBeneficiaryDetail?SearchType=searchAadhaar&Udid=0&UdidEnroll=0&Aadhaar=************',
-  headers: { }
-};
+const axios = require('axios');
+const Helper = require('../../helper/helper');
 
-axios.request(config)
-.then((response) => {
-  console.log(JSON.stringify(response.data));
-})
+exports.arjunApi = (req, res, next) => {
+  const UDID = req.body.udid
 
-.catch((error) => {
-  console.log(error);
-});
+
+  let config = {
+    method: 'post',
+    maxBodyLength: Infinity,
+    url: `https://adip.depwd.gov.in/api/CRM/GetBeneficiaryDetail?SearchType=searchUDID&Udid=${UDID}&UdidEnroll=0&Aadhaar=************`,
+    headers: {}
+  };
+
+  axios.request(config)
+    .then((response) => {
+      res.data = response.data ? response.data : []
+      next()
+    })
+    .catch((error) => {
+      console.log(error)
+      Helper.response("Failed", "Internal Server Error", { error }, res, 200)
+    });
+
 
 }

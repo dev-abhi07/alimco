@@ -3,8 +3,7 @@ const validator = require('validator');
 const CryptoJS = require("crypto-js");
 const Helper = require("../../helper/helper");
 const jwt = require("jsonwebtoken");
-const { resolveTxt } = require("dns");
-const { where } = require("sequelize");
+
 
 
 exports.Login = async (req, res) => {
@@ -25,9 +24,10 @@ exports.Login = async (req, res) => {
                 email: req.body.email
             }
         });
-       
+               
         if (user) {
             if (req.body.password === Helper.decryptPassword(user.password)) {
+                
                 let token = jwt.sign({ id: user.id }, process.env.SECRET_KEY, {
                     expiresIn: "6h",
                 });
@@ -36,10 +36,10 @@ exports.Login = async (req, res) => {
                     { where: { email: req.body.email } }
                 )
                 Helper.response(
-                    "Success",
+                    "success",
                     "Login Successful",
                     {   
-                        name: (user.name).match(/\b(\w)/g).join(''),
+                        name: user.user_type == 'A' ? 'Admin':(user.name).match(/\b(\w)/g).join(''),
                         user: user,
                         base_url:process.env.BASE_URL
                     },
@@ -48,7 +48,7 @@ exports.Login = async (req, res) => {
                 );
             } else {
                 Helper.response(
-                    "Failed",
+                    "failed",
                     "Check password",
                     {
 
@@ -88,9 +88,9 @@ exports.logout = async (req, res) => {
 
             { where: { token: string[1] } }
         );
-        Helper.response("Success", "Logout Successfuly", {}, res, 200);
+        Helper.response("success", "Logout Successfully", {}, res, 200);
     } catch (error) {
-        console.log(error);
-        Helper.response("Failed", "Unable to Logout ", error, res, 200);
+        // console.log(error);
+        Helper.response("failed", "Unable to Logout ", error, res, 200);
     }
 };
