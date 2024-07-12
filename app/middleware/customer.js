@@ -1,7 +1,9 @@
 const Helper = require("../helper/helper");
 const users = require("../model/users");
 const jwt = require("jsonwebtoken");
-const customer = async (req, res) => {
+
+const customer = async (req, res,next) => {
+
     const token = req.headers['authorization'];
     try {
         const string = token.split(" ");
@@ -9,21 +11,18 @@ const customer = async (req, res) => {
             where: {
                 token: string[1]
             }
-        });
+      
+        if(user){
+            if(user.user_type == 'A'){
 
-        if (user) {
-            if (user.user_type == 'A' || user.user_type == 'AC') {
-                try {
-
+                try{
                     const tokens = jwt.verify(string[1], process.env.SECRET_KEY);
-                    next();
-                } catch (error) {
+                    next()
+                }catch(error){
                     Helper.response("Failed", "Your Token is Expired", {}, res, 200);
-                }
-            } else {
-                Helper.response("Failed", "Unauthorized Access", {}, res, 200);
+                }               
             }
-        } else {
+          else {
             Helper.response("Failed", "Unauthorized Access", {}, res, 200);
         }
     } catch (error) {

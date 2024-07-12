@@ -3,7 +3,9 @@ const aasra = require('../../model/aasra');
 const ticket = require('../../model/ticket');
 const users = require('../../model/users');
 
+
 exports.Dashboard= async(req,res)=>{
+
     try {
       const token = req.headers["authorization"];
         const string = token.split(" ");
@@ -27,6 +29,7 @@ exports.Dashboard= async(req,res)=>{
             { id: 3, count: 0, type: "Pending Tickets", imgSrc: 'tickets.png' },
             { id: 4, count: 0, type: "Register Grievance", imgSrc: 'griv.png' },
           ]
+
           const customer_name = user[0]?.name
           const ticketData = user[0]?.aasra?.aasra_ticket.map((f,index) => {
           const user = {

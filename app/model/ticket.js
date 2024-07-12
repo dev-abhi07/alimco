@@ -1,7 +1,7 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../connection/conn");
-const aasra = require("./aasra");
-const users = require("./users");
+const aasra = require("../model/aasra");
+const users = require("../model/users");
 
 const ticket = sequelize.define('ticket', {
     id: {
@@ -43,8 +43,10 @@ const ticket = sequelize.define('ticket', {
     
 });
 
+
 aasra.hasMany(ticket,{foreignKey:'aasra_id',as:'aasra_ticket'})
 // sequelize.sync()
+
 //     .then(() => {
 //         console.log('Database & tables created!');
 //     })

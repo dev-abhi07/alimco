@@ -8,11 +8,13 @@ const { ticketListDetails } = require("../controller/aasra/ticket");
 const router = express.Router();
 
 router.post('/register',register)
-router.post('/otp-verify',otpVerify)
+router.post('/otp-verify',arjunApi,otpVerify)
 router.post('/create-customer',saveUser)
 router.post('/testapi',arjunApi)
-router.post('/dashboard',Dashboard)
-router.post('/ticket-list',ticketListDetails)
+
+router.post('/dashboard',customer,Dashboard)
+router.post('/ticketListDetails',ticketListDetails)
+
 //Complaint
 
 module.exports = router;

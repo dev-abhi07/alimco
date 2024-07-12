@@ -1,5 +1,6 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../connection/conn");
+
 const users = require('../model/users');
 const ticket = require("./ticket");
 
@@ -55,6 +56,7 @@ const customer = sequelize.define('customer', {
 ticket.belongsTo(customer,{foreignKey:'customer_id',as:'customer'})
 
 // sequelize.sync()
+
 //     .then(() => {
 //         console.log('Database & tables created!');
 //     })

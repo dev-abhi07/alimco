@@ -72,8 +72,8 @@ const aasra = sequelize.define('aasra', {
     timestamps:false
 });
 
-users.belongsTo(aasra, { foreignKey: 'ref_id', as: 'aasra' });
 
+aasra.belongsTo(users,{foreignKey:'ref_id',as:'getAasra'})
 // sequelize.sync()
 //     .then(() => {
 //         console.log('Database & tables created!');
