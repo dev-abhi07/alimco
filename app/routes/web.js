@@ -5,7 +5,7 @@ const { create,list,update ,destroy} = require('../controller/admin/Category')
 const { createParts , sparePartsList , deleteSpareParts} = require('../controller/admin/SpareParts')
 
 const { Login, logout } = require('../controller/admin/Login');
-const { Dashboard , states} = require("../controller/admin/Dashboard");
+const { Dashboard , states , cities} = require("../controller/admin/Dashboard");
 
 
 router.post('/login', Login);
@@ -26,7 +26,8 @@ router.post('/delete-spare-part',deleteSpareParts)
 
 
 //State and City
-router.post('/states',states)
+router.post('/state-list',states)
+router.post('/district-list',cities)
 
 
 module.exports = router;
