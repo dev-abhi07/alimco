@@ -1,9 +1,13 @@
 const Helper = {};
 const CryptoJS = require("crypto-js");
+
 const Roles = require('../model/role');
 const UserPermissions = require('../model/user_permission');
 const Menus = require('../model/menu');
 const sequelize = require("../connection/conn");
+
+const users = require("../model/users");
+
 
 Helper.response = (status, message, data = [], res, statusCode) => {
     res.status(statusCode).json({
@@ -23,6 +27,7 @@ Helper.decryptPassword = (password) => {
     var originalPassword = bytes.toString(CryptoJS.enc.Utf8);
     return originalPassword;
 };
+
 Helper.formatDateTime = (time) => {
     const dateObject = new Date(time);
   
@@ -113,4 +118,20 @@ Helper.getSubMenuPermission = async (id, userid) => {
     });
     
   };
+
+Helper.checkToken = async (token,next ,res ) => {
+    const user = await users.findOne({
+        where:{
+            token:token
+        }
+    });  
+    try{
+        const tokens = jwt.verify(token, process.env.SECRET_KEY);
+        next()
+    }catch(error){
+        
+    }       
+}
+
+
 module.exports = Helper;

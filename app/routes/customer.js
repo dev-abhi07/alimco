@@ -13,7 +13,9 @@ router.post('/otp-verify',arjunApi,otpVerify)
 router.post('/create-customer',saveUser)
 router.post('/testapi',arjunApi)
 
+
 router.post('/dashboard',Admin,menuListUserPermission,Dashboard)
+
 router.post('/ticketListDetails',ticketListDetails)
 router.post('/user-list',getUserList)
 router.post('/create-user',userCreate)

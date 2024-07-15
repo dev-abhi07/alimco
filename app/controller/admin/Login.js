@@ -79,6 +79,7 @@ exports.Login = async (req, res) => {
     }
 }
 exports.logout = async (req, res) => {
+    
     try {
         const token = req.headers["authorization"];
         const string = token.split(" ");
