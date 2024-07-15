@@ -11,7 +11,7 @@ router.post('/register',register)
 router.post('/otp-verify',arjunApi,otpVerify)
 router.post('/create-customer',saveUser)
 router.post('/testapi',arjunApi)
-router.post('/dashboard',customer,Dashboard)
+router.post('/dashboard',Dashboard)
 router.post('/ticketListDetails',ticketListDetails)
 //Complaint
 

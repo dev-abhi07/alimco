@@ -1,5 +1,6 @@
 const Helper = {};
 const CryptoJS = require("crypto-js");
+const users = require("../model/users");
 
 Helper.response = (status, message, data = [], res, statusCode) => {
     res.status(statusCode).json({
@@ -19,5 +20,18 @@ Helper.decryptPassword = (password) => {
     var originalPassword = bytes.toString(CryptoJS.enc.Utf8);
     return originalPassword;
 };
+Helper.checkToken = async (token,next ,res ) => {
+    const user = await users.findOne({
+        where:{
+            token:token
+        }
+    });  
+    try{
+        const tokens = jwt.verify(token, process.env.SECRET_KEY);
+        next()
+    }catch(error){
+        
+    }       
+}
 
 module.exports = Helper;

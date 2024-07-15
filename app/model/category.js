@@ -1,5 +1,6 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../connection/conn");
+const spareParts = require("./spareParts");
 
 const category = sequelize.define('category', {
     category_name: {
@@ -16,7 +17,7 @@ const category = sequelize.define('category', {
         allowNull:false
     }
 });
-
+spareParts.belongsTo(category,{foreignKey:'category',as:'categories'})
 // sequelize.sync({alter:true})
 //     .then(() => {
 //         console.log('Database & tables created!');

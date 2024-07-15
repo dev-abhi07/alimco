@@ -1,5 +1,6 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../connection/conn");
+const category = require("./category");
 
 const spareParts = sequelize.define('spare_part', {
     part_number: {
@@ -36,7 +37,7 @@ const spareParts = sequelize.define('spare_part', {
         type: DataTypes.INTEGER,
         allowNull: false
     },
-    image_url: {
+    image: {
         type: DataTypes.STRING
     }
 })
