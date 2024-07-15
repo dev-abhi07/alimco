@@ -7,6 +7,7 @@ const users = require('../../model/users');
 exports.Dashboard= async(req,res)=>{
 
     try {
+        
       const token = req.headers["authorization"];
         const string = token.split(" ");
         const user = await users.findAll({
@@ -53,7 +54,8 @@ exports.Dashboard= async(req,res)=>{
             "Data found successfull",
             { 
                 cardData: data,
-                tableData:ticketData
+                tableData:ticketData??[],
+                sideBar:res.filteredMenu
             },
             res,
             200

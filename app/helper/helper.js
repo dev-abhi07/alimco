@@ -1,5 +1,9 @@
 const Helper = {};
 const CryptoJS = require("crypto-js");
+const Roles = require('../model/role');
+const UserPermissions = require('../model/user_permission');
+const Menus = require('../model/menu');
+const sequelize = require("../connection/conn");
 
 Helper.response = (status, message, data = [], res, statusCode) => {
     res.status(statusCode).json({
@@ -39,5 +43,74 @@ Helper.formatDateTime = (time) => {
   
     return formattedDate;
   };
-
+Helper.getMenuByRole = async (userid) => {
+    try {
+       
+        
+        const userId = userid  
+        
+        UserPermissions.findAll({
+            attributes: [
+                'menu_id',
+                [sequelize.col('menu.menu_name'), 'menu_name'],
+                'isView',
+                'isCreate',
+                'isUpdate'
+            ],
+            include: [
+                {
+                    model: Roles,
+                    attributes: []
+                },
+                {
+                    model: Menus,
+                    attributes: []
+                }
+            ],
+            where: {
+                userid: userId
+            },
+           
+        }).then(userpermissions => {
+           return userpermissions
+        }).catch(error => {
+            console.error('Error fetching data:', error);
+        });
+        
+    } catch (err) {
+     console.log(err)
+    }
+  };
+Helper.getSubMenuPermission = async (id, userid) => {
+    UserPermissions.findAll({
+        attributes: [
+            'menu_id',
+            [sequelize.col('menu.menu_name'), 'menu_name'],
+            'isView',
+            'isCreate',
+            'isUpdate'
+        ],
+        include: [
+            {
+                model: Roles,
+                attributes: []
+            },
+            {
+                model: Menus,
+                attributes: []
+            }
+        ],
+        where: {
+            userid: userid,
+            submenu_id:id
+        },
+       
+    }).then(userpermissions => {
+        console.log("ssss",userpermissions)
+       return userpermissions
+    }).catch(error => {
+        console.error('Error fetching data:', error);
+    });
+    
+  };
 module.exports = Helper;

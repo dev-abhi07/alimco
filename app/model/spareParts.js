@@ -41,7 +41,7 @@ const spareParts = sequelize.define('spare_part', {
     }
 })
 
-// sequelize.sync({alter:true})
+// sequelize.sync({force:true})
 // .then(() => {
 //     console.log('Database & tables created!');
 // })
