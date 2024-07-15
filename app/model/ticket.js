@@ -26,7 +26,7 @@ const ticket = sequelize.define('ticket', {
         type: DataTypes.STRING,
         allowNull: true,
     },
-    destrpction: {
+    description: {
         type: DataTypes.STRING,
         allowNull: true,
     },
@@ -38,14 +38,15 @@ const ticket = sequelize.define('ticket', {
     status:{
         type: DataTypes.STRING,
         allowNull:true
-    },
+    },  
     
     
-},{
-    timestamps: false,
 });
 
-// sequelize.sync({alter:true})
+
+aasra.hasMany(ticket,{foreignKey:'aasra_id',as:'aasra_ticket'})
+// sequelize.sync()
+
 //     .then(() => {
 //         console.log('Database & tables created!');
 //     })

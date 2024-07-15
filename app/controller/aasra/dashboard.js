@@ -1,4 +1,7 @@
-const Helper = require('../../helper/helper')
+const Helper = require('../../helper/helper');
+const aasra = require('../../model/aasra');
+const ticket = require('../../model/ticket');
+const users = require('../../model/users');
 
 exports.Dashboard = (req, res) => {
   try {
