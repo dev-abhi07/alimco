@@ -132,6 +132,9 @@ Helper.checkToken = async (token,next ,res ) => {
         
     }       
 }
-
+Helper.generateNumber = async (min, max) => {
+    total = Math.floor(Math.random() * (max - min) + min);
+    return total;
+  };
 
 module.exports = Helper;

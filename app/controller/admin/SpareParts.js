@@ -13,7 +13,7 @@ exports.createParts = async (req, res) => {
         const form = new formidable.IncomingForm();
         form.parse(req, function (err, fields, files) {
 
-            const checkPartNumber = fields?.part_number[0]
+            const checkPartNumber = fields?.part_number?.[0]
             const ext = files.image[0].mimetype;
             var oldpath = files.image[0].filepath
             const newpath = 'public/' + files.image[0].originalFilename + '.' + ext.split('/')[1]
@@ -60,7 +60,7 @@ exports.createParts = async (req, res) => {
             })
         });
     } catch (error) {
-
+        Helper.response("failed", "Unable to Create Spare Parts", error, res, 200);
     }
 }
 

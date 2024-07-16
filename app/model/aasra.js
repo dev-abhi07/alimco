@@ -5,11 +5,12 @@ const ticket = require("./ticket");
 const aasra = sequelize.define('aasra', {
     id: {
         type: DataTypes.INTEGER,
-        primaryKey: true
+        primaryKey: true,
+        autoIncrement:true
     },
     name_of_org: {
         type: DataTypes.STRING,
-        allowNull: false
+        allowNull: true,
     },
     address: {
         type: DataTypes.STRING,
@@ -24,37 +25,41 @@ const aasra = sequelize.define('aasra', {
         type: DataTypes.STRING,
         allowNull: true
     },
-    name_spoc:
+    name:
     {
         type: DataTypes.STRING,
-        allowNull: false
+        allowNull: false,
+        field:'name_spoc'
     },
     designation_spoc:{
         type: DataTypes.STRING,
-        allowNull: false
+        allowNull: true
     },
-    mobile_spoc:{
+    mobile_no:{
         type: DataTypes.BIGINT,
-        allowNull:false
+        allowNull:false,
+        field:'mobile_spoc'
     },
-    landline:{
+    telephone:{
         type: DataTypes.STRING,
+        field:'landline'
     },
     email:{
         type: DataTypes.STRING,
-        allowNull:false
+        allowNull:false,
+        
     },
     latitude:{
         type: DataTypes.STRING,
-        allowNull:false
+        allowNull:true
     },
     longitude:{
         type: DataTypes.STRING,
-        allowNull:false
+        allowNull:true
     },
     center_image:{
         type: DataTypes.STRING,
-        allowNull:false
+        allowNull:true
     },
     open_time:{
         type: DataTypes.STRING,
@@ -67,7 +72,90 @@ const aasra = sequelize.define('aasra', {
     pincode:{
         type: DataTypes.STRING,
         allowNull:true
-    }
+    },
+    state:{
+        type: DataTypes.STRING,
+        allowNull:true
+    },
+    district:{
+        type: DataTypes.STRING,
+        allowNull:true
+    },
+    dd_number:{
+        type: DataTypes.STRING,
+        allowNull:true
+    },
+     dd_bank:{
+        type: DataTypes.STRING,
+        allowNull:true
+    },
+    amount:{
+        type: DataTypes.STRING,
+        allowNull:true
+    },
+    regCertificate_no:{
+        type: DataTypes.STRING,
+        allowNull:true
+    },
+    pan_no:{
+        type: DataTypes.STRING,
+        allowNull:true
+    },
+    aadhaar_no:{
+        type: DataTypes.STRING,
+        allowNull:true
+    },
+    area_sqt:{
+        type: DataTypes.STRING,
+        allowNull:true
+    },
+    bank_name	:{
+        type: DataTypes.STRING,
+        allowNull:true
+    }, 
+    bank_address:{
+        type: DataTypes.STRING,
+        allowNull:true
+    },
+    branch_name	:{
+        type: DataTypes.STRING,
+        allowNull:true
+    },
+    ifsc_code:{
+        type: DataTypes.STRING,
+        allowNull:true
+    }, 
+    market_survey_no:{
+        type: DataTypes.STRING,
+        allowNull:true
+    },
+    annual_sales_potential:{
+        type: DataTypes.STRING,
+        allowNull:true
+    },
+    relative_in_alimco:{
+        type: DataTypes.STRING,
+        allowNull:true
+    },
+    additionalInfo:{
+        type: DataTypes.STRING,
+        allowNull:true
+    },
+    agreement_of_rupee:{
+        type: DataTypes.STRING,
+        allowNull:true
+    },
+    invest_agree:{
+        type: DataTypes.STRING,
+        allowNull:true
+    },
+    place:{
+        type: DataTypes.STRING,
+        allowNull:true
+    },
+   
+    
+
 },{
     timestamps:false
 });
