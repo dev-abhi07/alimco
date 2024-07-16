@@ -6,6 +6,7 @@ const { arjunApi } = require("../controller/api/arjunApi");
 const { Dashboard } = require("../controller/aasra/dashboard");
 const { ticketListDetails } = require("../controller/aasra/ticket");
 const { getUserList, userCreate, rolePermission, RoleList, getRolePermission, userPermission, getUserPermission } = require("../controller/admin/user");
+
 const router = express.Router();
 
 router.post('/register',register)
@@ -24,6 +25,7 @@ router.post('/role-list',RoleList)
 router.post('/get-role-permission',getRolePermission)
 router.post('/create-user-permission',userPermission)
 router.post('/get-user-permission',getUserPermission)
+// router.post('/update-spare-part',updateSpareParts)
 //Complaint
 
 module.exports = router;
