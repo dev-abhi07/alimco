@@ -1,7 +1,7 @@
 const express = require("express");
 const { register,otpVerify, saveUser } = require("../controller/customer/register");
 
-const {Admin,menuListUserPermission} = require("../middleware/middleware");
+
 const { arjunApi } = require("../controller/api/arjunApi");
 const { Dashboard } = require("../controller/aasra/dashboard");
 const { ticketListDetails } = require("../controller/aasra/ticket");
@@ -15,7 +15,7 @@ router.post('/create-customer',saveUser)
 router.post('/testapi',arjunApi)
 
 
-router.post('/dashboard',Admin,menuListUserPermission,Dashboard)
+
 
 router.post('/ticketListDetails',ticketListDetails)
 router.post('/user-list',getUserList)
