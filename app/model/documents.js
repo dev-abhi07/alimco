@@ -1,10 +1,12 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../connection/conn");
+const aasra = require("./aasra");
 
 const document = sequelize.define("documents",{
     id:{
         type:DataTypes.INTEGER,
-        primaryKey:true
+        primaryKey:true,
+        autoIncrement:true
     },
     aasra_id:{
         type:DataTypes.INTEGER,
