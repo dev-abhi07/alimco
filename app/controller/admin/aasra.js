@@ -18,8 +18,11 @@ exports.registerAasraCentre = async (req, res) => {
         const unique_code = `AC_${await Helper.generateNumber(10000, 99999)}`;
         const rootUploadDir = 'documents/';
         form.parse(req, async function (err, fields, files) {
+            if (!files.photoImg || !files.panImg || !files.adhaarImg || !files.areaImgs || !files.marketImg || !files.salesImg || !files.regImg || !files.signatureImg) {
+                return Helper.response("failed", "Upload all images", null, res, 200);
+            }
             if (err) {
-                Helper.response("failed", "Error parsing the form", err, res, 500);
+                Helper.response("failed", "Error parsing the form", err, res, 200);
                 return;
             }
 
@@ -46,11 +49,12 @@ exports.registerAasraCentre = async (req, res) => {
 
                     try {
                         const createUser = await users.create({
+                            name: createAasra.name,
                             ref_id: createAasra.id,
                             user_type: 'AC',
                             email: createAasra.email,
-                            password: Helper.decryptPassword(password),
-                            passcode: password,
+                            password: Helper.encryptPassword(password),
+                            pass_code: password,
                             mobile: createAasra.mobile_no,
                             status: 1,
                         });
@@ -65,7 +69,7 @@ exports.registerAasraCentre = async (req, res) => {
                             signatureImg: 'sign_images',
                             regImg: 'reg_images'
                         };
-
+                        //move file according to foldesr
                         const moveFile = async (file, folder, field) => {
                             const folderPath = path.join(rootUploadDir, folder);
                             if (!fs.existsSync(folderPath)) {
@@ -124,12 +128,12 @@ exports.aasraList = async (req, res) => {
             }, {
                 model: states,
                 as: 'stateData',
-                attributes: ['name','id'],
+                attributes: ['name', 'id'],
 
             }, {
                 model: city,
                 as: 'city',
-                attributes: ['city','id'],
+                attributes: ['city', 'id'],
             }]
         });
 
@@ -146,5 +150,106 @@ exports.aasraList = async (req, res) => {
     } catch (error) {
         console.log(error)
         Helper.response("failed", "Server error", error, res, 200);
+    }
+}
+
+exports.updateAasraCenter = async (req, res) => {
+    try {
+        const form = new formidable.IncomingForm();
+        const unique_code = `AC_${await Helper.generateNumber(10000, 99999)}`;
+        const rootUploadDir = 'documents/';
+        form.parse(req, async function (err, fields, files) {
+
+            if (Object.keys(files).length !== 0) {
+
+                if (err) {
+                    Helper.response("failed", "Error parsing the form", err, res, 200);
+                    return;
+                }
+
+                const transformedFields = {};
+                const transformedFieldsFile = {};
+
+                for (let key in fields) {
+                    transformedFields[key] = fields[key][0];
+                }
+
+                try {
+
+                    const createAasra = await aasra.update(transformedFields, { where: { id: transformedFields.id } });
+
+
+                    if (createAasra) {
+
+                        try {
+                            const imageFields = {
+                                photoImg: 'user_images',
+                                panImg: 'pan_images',
+                                adhaarImg: 'adhaar_images',
+                                areaImgs: 'area_images',
+                                marketImg: 'market_images',
+                                salesImg: 'sales_images',
+                                signatureImg: 'sign_images',
+                                regImg: 'reg_images'
+                            };
+                            //move file according to foldesr
+                            const moveFile = async (file, folder, field) => {
+                                const folderPath = path.join(rootUploadDir, folder);
+                                if (!fs.existsSync(folderPath)) {
+                                    fs.mkdirSync(folderPath, { recursive: true });
+                                }
+
+                                const fileName = `${unique_code}_${file.originalFilename}`;
+                                const filePath = path.join(folderPath, fileName);
+
+                                try {
+                                    await fs.promises.rename(file.filepath, filePath);
+                                    transformedFieldsFile[field] = path.join(folder, fileName);
+                                    console.log(`File moved to ${filePath}`);
+                                } catch (err) {
+                                    console.error(`Error moving the file (${file.originalFilename}):`, err);
+                                }
+                            };
+
+                            for (const [field, folder] of Object.entries(imageFields)) {
+                                if (files[field] && files[field][0]) {
+                                    await moveFile(files[field][0], folder, field);
+                                } else {
+                                    console.error(`No file found for field '${field}'.`);
+                                }
+                            }
+
+                            const updateFields = { ...transformedFieldsFile, unique_code: unique_code };
+
+                            const documentData = await document.update(
+                                updateFields,
+                                { where: { aasra_id: transformedFields.id } }
+                            );
+                            Helper.response("success", "User updated successfully", {}, res, 200);
+
+                        } catch (error) {
+                            console.log(error)
+                            Helper.response("failed", "Unable to register user", error, res, 200);
+                        }
+                    }
+
+                } catch (err) {
+                    console.log(err)
+                    Helper.response("failed", "Unable to update", err, res, 200);
+                }
+            } else {
+
+                const transformedFields = {};
+
+
+                for (let key in fields) {
+                    transformedFields[key] = fields[key][0];
+                }
+                const createAasra = await aasra.update(transformedFields, { where: { id: transformedFields.id } });
+                Helper.response("success", "User updated successfully", {}, res, 200);
+            }
+        });
+    } catch (error) {
+        Helper.response("failed", "Unable to update", err, res, 200);
     }
 }

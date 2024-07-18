@@ -10,7 +10,7 @@ const Admin = async (req, res, next) => {
     const string = token.split(" ");
     const user = await UserModel.findOne({ where: { token: string[1] } });
 
-    if (user.user_type == 'S' || user.user_type == 'A') {
+    if (user?.user_type == 'S' || user?.user_type == 'A') {
 
       try {
         const tokens = jwt.verify(string[1], process.env.SECRET_KEY);
@@ -208,4 +208,4 @@ module.exports = {
   customer: customer,
   aasra: aasra,
   menuListUserPermission: menuListUserPermission
-};
+}; 

@@ -43,7 +43,7 @@ const aasra = sequelize.define('aasra', {
         allowNull:false,
         field:'mobile_spoc'
     },
-    telephone:{
+    telephone_no:{
         type: DataTypes.STRING,
         field:'landline'
     },
@@ -72,9 +72,10 @@ const aasra = sequelize.define('aasra', {
         type: DataTypes.STRING,
         allowNull:true
     },
-    pincode:{
+    pin:{
         type: DataTypes.STRING,
-        allowNull:true
+        allowNull:true,
+        field:'pincode'
     },
     state:{
         type: DataTypes.STRING,
@@ -104,13 +105,15 @@ const aasra = sequelize.define('aasra', {
         type: DataTypes.STRING,
         allowNull:true
     },
-    aadhaar_no:{
+    adhaar_no:{
         type: DataTypes.STRING,
-        allowNull:true
+        allowNull:true,
+        field:"aadhaar_no"
     },
-    area_sqt:{
+    area_sqft:{
         type: DataTypes.STRING,
-        allowNull:true
+        allowNull:true,
+        field:"area_sqt"
     },
     bank_name	:{
         type: DataTypes.STRING,

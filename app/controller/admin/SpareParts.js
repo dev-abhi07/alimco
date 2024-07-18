@@ -14,8 +14,8 @@ exports.createParts = async (req, res) => {
         form.parse(req, function (err, fields, files) {
 
             const checkPartNumber = fields?.part_number?.[0]
-            const ext = files.image[0].mimetype;
-            var oldpath = files.image[0].filepath
+            const ext = files?.image?.length>0?files?.image[0]?.mimetype:'image/jpeg'
+            var oldpath = files?.image[0].filepath??''
             const newpath = 'public/' + files.image[0].originalFilename + '.' + ext.split('/')[1]
             fs.rename(oldpath, newpath, function (err) {
                 if (err) {
@@ -87,7 +87,7 @@ exports.sparePartsList = async (req, res) => {
                 quantity_in_stock: record.quantity_in_stock,
                 reorder_point: record.reorder_point,
                 max_stock_level: record.max_stock_level,
-                image: record.image.split("/")[1]
+                image: record?.image?.split("/")[1]
             }
 
             data.push(values)
@@ -103,7 +103,6 @@ exports.sparePartsList = async (req, res) => {
         console.log(error)
     }
 }
-
 
 exports.deleteSpareParts = async (req, res) => {
 
@@ -135,7 +134,7 @@ exports.updateSpareParts = async (req, res) => {
     try {
         const form = new formidable.IncomingForm();
         form.parse(req, function (err, fields, files) {
-            console.log(files.image)
+          
             if (files.image != undefined) {
                 const checkPartNumber = fields.part_number[0]
                 const ext = files.image[0].mimetype;
