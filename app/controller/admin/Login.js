@@ -24,8 +24,20 @@ exports.Login = async (req, res) => {
                 email: req.body.email
             }
         });
-               
+                
         if (user) {
+            console.log(user)
+            if (user.status == false) {
+                Helper.response(
+                    "failed",
+                    "User is inactive",
+                    {},
+                    res,
+                    200
+                );
+                return;
+            }
+          
             if (req.body.password === Helper.decryptPassword(user.password)) {
                 
                 let token = jwt.sign({ id: user.id }, process.env.SECRET_KEY, {
@@ -39,7 +51,7 @@ exports.Login = async (req, res) => {
                     "success",
                     "Login Successful",
                     {   
-                        name: user.user_type == 'A' ? 'Admin':(user.name).match(/\b(\w)/g).join(''),
+                        name: user.user_type == 'A' ? 'Admin':(user.name)?.match(/\b(\w)/g).join(''),
                         user: user,
                         base_url:process.env.BASE_URL
                     },
@@ -69,6 +81,7 @@ exports.Login = async (req, res) => {
             );
         }
     } catch (error) {
+        
         Helper.response(
             "Failed",
             "Internal server Error",

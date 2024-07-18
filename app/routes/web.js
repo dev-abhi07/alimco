@@ -7,7 +7,7 @@ const { getUserList, userCreate, rolePermission, RoleList, getRolePermission, us
 const { Login, logout } = require('../controller/admin/login');
 const { Dashboard , states , cities} = require("../controller/admin/dashboard");
 const {Admin,menuListUserPermission} = require("../middleware/middleware");
-const { registerAasraCentre, aasraList } = require("../controller/admin/aasra");
+const { registerAasraCentre, aasraList,ashraInactive } = require("../controller/admin/aasra");
 
 
 router.post('/login', Login);
@@ -45,5 +45,6 @@ router.post('/dashboard',Admin,menuListUserPermission,Dashboard)
 //Aasra Centre
 router.post('/register-aasra',registerAasraCentre)
 router.post('/aasra-list',aasraList)
+router.post('/status',ashraInactive)
 
 module.exports = router;
