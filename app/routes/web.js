@@ -1,11 +1,11 @@
 const express = require("express");
 const router = express.Router();
 
-const { create,list,update ,destroy} = require('../controller/admin/Category')
-const { createParts , sparePartsList , deleteSpareParts} = require('../controller/admin/SpareParts')
+const { create,list,update ,destroy} = require('../controller/admin/category')
+const { createParts , sparePartsList , deleteSpareParts} = require('../controller/admin/spareParts')
 const { getUserList, userCreate, rolePermission, RoleList, getRolePermission, userPermission, getUserPermission } = require("../controller/admin/user");
-const { Login, logout } = require('../controller/admin/Login');
-const { Dashboard , states , cities} = require("../controller/admin/Dashboard");
+const { Login, logout } = require('../controller/admin/login');
+const { Dashboard , states , cities} = require("../controller/admin/dashboard");
 const {Admin,menuListUserPermission} = require("../middleware/middleware");
 
 

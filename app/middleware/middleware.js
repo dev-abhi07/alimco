@@ -32,7 +32,7 @@ const customer = async (req, res, next) => {
   const token = req.headers['authorization'];
   try {
     const string = token.split(" ");
-    const user = await UserModel.getUser({ token: string[1] });
+    const user = await UserModel.findOne({ where: { token: string[1] } });
 
     if (user.user_type == 'C') {
 
@@ -55,7 +55,7 @@ const aasra = async (req, res, next) => {
   const token = req.headers['authorization'];
   try {
     const string = token.split(" ");
-    const user = await UserModel.getUser({ token: string[1] });
+    const user = await UserModel.findOne({ where: { token: string[1] } });
 
     if (user.user_type == 'AC') {
 
@@ -78,7 +78,7 @@ const menuListUserPermission = async (req, res, next) => {
     const token = req.headers["authorization"];
     const string = token.split(" ");
     const user = await UserModel.findOne({ where: { token: string[1] } });
-    console.log(user)
+    // console.log(user)
     var roleid = user.user_type;
     var userid = user.id;
     if (roleid == 'S') {
