@@ -23,7 +23,7 @@ exports.createCustomerTicket = async (req, res) => {
 
         aasraUniqueId = await Helper.getAasra(req.body.aasraId)
         const createRecord = await ticket.create({
-            ticket_id: ticketId+'-'+aasraUniqueId,
+            ticket_id: ticketId + '-' + aasraUniqueId,
             appointment_date: req.body.appointment_date,
             appointment_time: req.body.appointment_time,
             itemName: req.body.itemName,
@@ -46,41 +46,66 @@ exports.createCustomerTicket = async (req, res) => {
         Helper.response(
             "failed",
             "Something went wrong!",
-            {error},
+            { error },
             res,
             200
         );
     }
 }
 
-exports.ticketList = async (req ,res) => {
+exports.ticketList = async (req, res) => {
     // console.log(req)
     try {
         const userId = await Helper.getUserId(req)
         //console.log(userId)
         const tickets = await ticket.findAll({
-            where:{
-                userId:userId
+            where: {
+                userId: userId
             }
         })
         const ticketData = [];
-        tickets.map(async(record) => {
-            const getUser = await users.findByPk(record.userId)            
-            const data = {
-                aasraId:record.aasraId,
-                customerName:getUser.name,                                                                                                                                                                                                                                                                                                                            
-                itemName:record.itemName,
-                itemId:record.itemId,
-                description:record.description,
-                appointment_date:record.appointment_date,
-                appointment_time:record.appointment_time
-                
-            }
-            console.log(data)
-        })
-        
+        await Promise.all(
+            tickets.map(async (record) => {
+
+                const getUser = await users.findByPk(record.userId)
+
+                const getAasra = await aasra.findByPk(record.aasraId)
+                // console.log(getAasra)  ;
+                // return false ;  
+                const data = {
+                    aasraId: record.aasraId,
+                    customerName: getUser.name,
+                    itemName: record.itemName,
+                    itemId: record.itemId,
+                    description: record.description,
+                    appointment_date: record.appointment_date,
+                    appointment_time: record.appointment_time,
+                    aasraName: getAasra.name_of_org,
+                    ticketId: record.ticket_id
+
+                }
+                ticketData.push(data)
+                // console.log(data)
+            })
+        )
+        Helper.response(
+            "success",
+            "",
+            {
+                ticketData
+            },
+            res,
+            200
+        );
+
     } catch (error) {
-        
+        Helper.response(
+            "failed",
+            "Something went wrong!",
+            {},
+            res,
+            200
+        );
     }
 }
 
