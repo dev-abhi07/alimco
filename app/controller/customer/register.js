@@ -59,7 +59,7 @@ exports.otpVerify = async (req, res) => {
         }))
 
         await users.update({ token: token }, { where: { id: checkUser.id } });
-        Helper.response('success', 'Login Successfully', { user_data: { id: checkUser.id, name: checkUser.name, user_type: checkUser.user_type, token: checkUser.token } }, res, 200);
+        Helper.response('success', 'Login Successfully', { user_data: { id: checkUser.id, name: checkUser.name, user_type: checkUser.user_type, token: token } }, res, 200);
     }
 
     

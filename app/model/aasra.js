@@ -14,6 +14,7 @@ const aasra = sequelize.define('aasra', {
     name_of_org: {
         type: DataTypes.STRING,
         allowNull: true,
+
     },
     address: {
         type: DataTypes.STRING,
@@ -38,7 +39,7 @@ const aasra = sequelize.define('aasra', {
         type: DataTypes.STRING,
         allowNull: true
     },
-    mobile_no:{
+    mobile_no:{ 
         type: DataTypes.BIGINT,
         allowNull:false,
         field:'mobile_spoc'

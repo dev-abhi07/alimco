@@ -12,17 +12,20 @@ const ticket = sequelize.define('ticket', {
         type: DataTypes.STRING,
         allowNull: true
     },
-    customer_id: {
+    user_id: {
         type: DataTypes.INTEGER,
         allowNull: true,
 
     },
-
     aasra_id:{
         type: DataTypes.STRING,
         allowNull: true,
     },
-    product_name: {
+    item_name: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
+    item_id:{
         type: DataTypes.STRING,
         allowNull: true,
     },
@@ -31,6 +34,10 @@ const ticket = sequelize.define('ticket', {
         allowNull: true,
     },
     appointment_date:
+    {
+        type: DataTypes.STRING,
+        allowNull: true
+    },appointment_time:
     {
         type: DataTypes.STRING,
         allowNull: true
