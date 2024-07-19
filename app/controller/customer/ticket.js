@@ -2,6 +2,8 @@ const { where } = require("sequelize");
 const sequelize = require("../../connection/conn");
 const ticket = require("../../model/ticket");
 const Helper = require("../../helper/helper");
+const users = require("../../model/users");
+
 
 
 exports.createCustomerTicket = async (req, res) => {
@@ -48,6 +50,37 @@ exports.createCustomerTicket = async (req, res) => {
             res,
             200
         );
+    }
+}
+
+exports.ticketList = async (req ,res) => {
+    // console.log(req)
+    try {
+        const userId = await Helper.getUserId(req)
+        //console.log(userId)
+        const tickets = await ticket.findAll({
+            where:{
+                userId:userId
+            }
+        })
+        const ticketData = [];
+        tickets.map(async(record) => {
+            const getUser = await users.findByPk(record.userId)            
+            const data = {
+                aasraId:record.aasraId,
+                customerName:getUser.name,                                                                                                                                                                                                                                                                                                                            
+                itemName:record.itemName,
+                itemId:record.itemId,
+                description:record.description,
+                appointment_date:record.appointment_date,
+                appointment_time:record.appointment_time
+                
+            }
+            console.log(data)
+        })
+        
+    } catch (error) {
+        
     }
 }
 

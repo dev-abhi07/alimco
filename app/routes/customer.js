@@ -5,7 +5,7 @@ const { register,otpVerify, saveUser } = require("../controller/customer/registe
 const { arjunApi } = require("../controller/api/arjunApi");
 const { Dashboard } = require("../controller/aasra/dashboard");
 const { ticketListDetails } = require("../controller/aasra/ticket");
-const { createCustomerTicket }  = require('../controller/customer/ticket');
+const { createCustomerTicket , ticketList}  = require('../controller/customer/ticket');
 const { dashboard } = require("../controller/customer/dashboard");
 const { customer } = require("../middleware/middleware");
 
@@ -24,6 +24,8 @@ router.post('/ticketListDetails',ticketListDetails)
 router.post('/create-ticket',createCustomerTicket)
 router.post('/customer/dashboard',arjunApi,dashboard)
 router.post('/customer/createTicket',customer,createCustomerTicket)
+router.post('/customer/ticket-list',customer,ticketList)
+
 
 //Complaint
 
