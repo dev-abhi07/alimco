@@ -7,7 +7,7 @@ const { getUserList, userCreate, rolePermission, RoleList, getRolePermission, us
 const { Login, logout } = require('../controller/admin/login');
 const { Dashboard , states , cities} = require("../controller/admin/dashboard");
 const {Admin,menuListUserPermission} = require("../middleware/middleware");
-
+const {aasraMessage,aasraChatList} = require("../controller/aasra/ticket")
 
 router.post('/login', Login);
 router.post('/logout', logout)
@@ -41,5 +41,8 @@ router.post('/create-user-permission',userPermission)
 router.post('/get-user-permission',getUserPermission)
 router.post('/dashboard',Admin,menuListUserPermission,Dashboard)
 
+//chat
+router.post('/aasra-chat',aasraMessage)
+router.post('/aasra-chatlist',aasraChatList)
 
 module.exports = router;

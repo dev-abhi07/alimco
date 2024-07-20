@@ -69,6 +69,7 @@ exports.Login = async (req, res) => {
             );
         }
     } catch (error) {
+        console.log(error)
         Helper.response(
             "Failed",
             "Internal server Error",

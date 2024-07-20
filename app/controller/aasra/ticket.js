@@ -2,6 +2,7 @@ const Helper = require('../../helper/helper');
 const users = require('../../model/users');
 const ticket = require('../../model/ticket');
 const aasra = require('../../model/aasra');
+const grieance =  require('../../model/grievance');
 exports.ticketListDetails = async (req, res) => {
     try {
         const token = req.headers["authorization"];
@@ -43,4 +44,126 @@ exports.ticketListDetails = async (req, res) => {
     }
 }   
 
+exports.aasraMessage = async (req, res) => {
+    
+    try {
+       
+        const userId = await Helper.getUserId(req)
+     
+        const getTicket = await ticket.findOne({
+            where: {
+                ticket_id: req.body.ticket_id
+            }
+        })
+        if (!getTicket) {
+            // If no ticket is found, respond with an error
+            return Helper.response(
+                "failed",
+                "Ticket not found!",
+                {},
+                res,
+                200
+            );
+        }
+    
+        // console.log(getTicket.dataValues.ticket_id);
+        // return false ;
+        const data = {
+            descriptionAasra: req.body.descriptionAasra,
+            aasraId: userId,
+            ticket_id:getTicket.dataValues.ticket_id
+        }
+    
+        const create = grieance.create(data);
+        if (create) {
+            Helper.response(
+                "success",
+                "Record Created Successfully",
+                {},
+                res,
+                200
+            );
+        } else {
+            Helper.response(
+                "failed",
+                "Something went wrong!",
+                {},
+                res,
+                200
+            );
+        }
 
+    } catch (error) {
+        Helper.response(
+            "failed",
+            "Something went wrong!",
+            {},
+            res,
+            200
+        );
+    }
+}
+
+exports.aasraChatList = async (req, res) => {
+    
+    try {
+     
+        //console.log(userId)
+        const tickets = await grieance.findAll({
+            where: {
+                ticket_id: req.body.ticket_id
+            }
+        })
+        if (!tickets) {
+            // If no ticket is found, respond with an error
+            return Helper.response(
+                "failed",
+                "Ticket not found!",
+                {},
+                res,
+                200
+            );
+        }
+        const ticketData = [];
+        await Promise.all(
+            tickets.map(async (record) => {
+
+            if (record.descriptionUser) {
+                ticketData.push({
+                  id: record.ticket_id,
+                  sender: "admin",
+                  time: record.createdAt,
+                  message: record.descriptionUser
+                });
+              }
+          
+              if (record.descriptionAasra) {
+                ticketData.push({
+                  id: record.ticket_id,
+                  sender: "self",
+                  time: record.createdAt,
+                  message: record.descriptionAasra
+                });
+              }
+            })
+        )
+        Helper.response(
+            "success",
+            "Chat List",
+            {
+                ticketData
+            },
+            res,
+            200
+        );
+
+    } catch (error) {
+        Helper.response(
+            "failed",
+            "Something went wrong!",
+            {},
+            res,
+            200
+        );
+    }
+}
