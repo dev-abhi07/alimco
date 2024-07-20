@@ -7,6 +7,8 @@ const aasra = require('../../model/aasra');
 const grieance =  require('../../model/grievance');
 
 exports.createCustomerTicket = async (req, res) => {
+
+    
     try {
 
         // console.log(await Helper.getUserId(req))
@@ -17,17 +19,19 @@ exports.createCustomerTicket = async (req, res) => {
                 ticket_id: ticketId
             }
         });
+       
         if (checkTicketId == 0) {
             ticketId = await Helper.generateNumber(10000, 99999);
         }
 
-        aasraUniqueId = await Helper.getAasra(req.body.aasraId)
+        aasraUniqueId = await Helper.getAasra(req.body.aasraId)     
         const createRecord = await ticket.create({
             ticket_id: ticketId + '-' + aasraUniqueId,
             appointment_date: req.body.appointment_date,
             appointment_time: req.body.appointment_time,
             itemName: req.body.itemName,
             itemId: req.body.itemId,
+            itemExpiry: req.body.itemExpiry,
             description: req.body.description,
             userId: await Helper.getUserId(req),
             aasraId: req.body.aasraId
@@ -36,13 +40,13 @@ exports.createCustomerTicket = async (req, res) => {
         Helper.response(
             "success",
             "Ticket Created Successfully!",
-            {},
+            {createRecord},
             res,
             200
         );
 
     } catch (error) {
-        // console.log(error)
+       
         Helper.response(
             "failed",
             "Something went wrong!",
@@ -54,7 +58,13 @@ exports.createCustomerTicket = async (req, res) => {
 }
 
 exports.ticketList = async (req, res) => {
-    
+    // msg = "fssdfsdf" ;
+    // var content = {
+    //     title: "Order Status",
+    //     body: msg,
+    //   };
+    //   Helper.pushNotification(req.headers['authorization'],content)
+
     try {
         const userId = await Helper.getUserId(req)
         //console.log(userId)
@@ -202,6 +212,64 @@ exports.chatList = async (req, res) => {
         Helper.response(
             "success",
             "Chat List",
+            {
+                ticketData
+            },
+            res,
+            200
+        );
+
+    } catch (error) {
+        Helper.response(
+            "failed",
+            "Something went wrong!",
+            {},
+            res,
+            200
+        );
+    }
+}
+
+exports.chatHistory = async (req, res) => {
+    
+    try {
+     
+        //console.log(userId)
+        const userId = await Helper.getUserId(req)
+
+        const tickets = await ticket.findAll({
+            where: {
+                userId : userId
+            }
+        })
+        const ticketData = [];
+        await Promise.all(
+            tickets.map(async (record) => {
+
+                const getUser = await users.findByPk(record.userId)
+
+                const getAasra = await aasra.findByPk(record.aasraId)
+                
+                const data = {
+                    aasraId: record.aasraId,
+                    customerName: getUser.name,
+                    itemName: record.itemName,
+                    itemId: record.itemId,
+                    description: record.description,
+                    appointment_date: record.appointment_date,
+                    appointment_time: record.appointment_time,
+                    aasraName: getAasra.name_of_org,
+                    ticketId: record.ticket_id,
+                    status:record.status
+
+                }
+                ticketData.push(data)
+                
+            })
+        )
+        Helper.response(
+            "success",
+            "Chat Hisotry",
             {
                 ticketData
             },

@@ -7,6 +7,8 @@ const Menus = require('../model/menu');
 const sequelize = require("../connection/conn");
 
 const users = require("../model/users");
+const axios = require('axios');
+const aasra = require("../model/aasra");
 
 
 
@@ -190,12 +192,36 @@ Helper.getUserId = async (req) => {
     const string = token.split(" ");
     // console.log(string)
     const user = await users.findOne({ where: { token: string[1] } });
-    return user?.id
+    return user.id
 }
 
-Helper.getAasra = async (parameter) => {
-    const user = await users.findByPk(parameter)
-    aasraId = await aasra.findByPk(user.ref_id)
-    return aasraId.unique_code.split("_")[1]
+Helper.getAasra = async (parameter) => {  
+    aasraId = await aasra.findByPk(parameter)  
+    unique_code = aasraId.unique_code
+    id = unique_code.split('_')
+    return id[1]
 }
+
+
+Helper.pushNotification = async (token, notification) => {
+    try {
+      const headers = {
+        "Authorization": "key=AAAA8hkiK-A:APA91bFYUWKt1Atinxrxf6rZJyUzdyZCHLVz1PsjilDronRJL9XmjC4RP-wlWavsFo38E-AFQ1aEq3RRg3SfNYvMck-IbX_kN7cAWez5pyWG4dJrpetq5GQojX-D54_79KjtLlJsYq_S", // Replace with your FCM server key
+        "Content-Type": "application/json"
+      };
+  
+      const data = {
+        "to": token,
+        "notification": notification
+      };
+  
+      const response = await axios.post("https://fcm.googleapis.com/fcm/send", data, { headers });
+      const result = response.data;
+      console.log('Push notification sent successfully:', result);
+      // return result;
+    } catch (error) {
+      console.error('Error sending push notification:', error);
+      throw err
+    }
+  };
 module.exports = Helper;

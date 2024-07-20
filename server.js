@@ -8,6 +8,7 @@ const cors = require('cors')
 const body = require('body-parser')
 const conn = require('./app/connection/conn')
 
+
 //Allowing Cors
 app.use(
     cors({
@@ -16,7 +17,6 @@ app.use(
 )
 
 app.use(express.static('public'))
-app.use(express.static('documents'))
 const port = process.env.SERVER_PORT || 8000
 app.use(body.json({ limit: '5mb' }))
 app.use(body.urlencoded({ extended: true }))

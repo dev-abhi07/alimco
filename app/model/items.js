@@ -28,7 +28,7 @@ const items = sequelize.define('item', {
     }
 });
 
-// sequelize.sync({alter:true})
+// sequelize.sync()
 //     .then(() => {
 //         console.log('Database & tables created!');
 //     })

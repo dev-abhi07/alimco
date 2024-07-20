@@ -22,6 +22,8 @@ exports.dashboard = async (req ,res) => {
                 district:req.body.city_id
             }
         })
+        // console.log(aasraa);
+        // return false ;
         aasraData = [];
         await Promise.all(
             aasraa.map( async (record) => {
@@ -33,11 +35,11 @@ exports.dashboard = async (req ,res) => {
                 })  
                
                 const values = {
-                    centerName:record.name_of_org,
-                    address:record.address,
-                    pinCode:record.pincode ? record.pincode : '',
-                    id:user.id,
-                    centerImage:record.center_image ? process.env.BASE_URL : 'https://media.istockphoto.com/id/1147544807/vector/thumbnail-image-vector-graphic.jpg?s=612x612&w=0&k=20&c=rnCKVbdxqkjlcs3xH87-9gocETqpspHFXu5dIGB4wuM='
+                    centerName:record?.name_of_org,
+                    address:record?.address,
+                    pinCode:record?.pincode ? record.pincode : '',
+                    id:record.id,
+                    centerImage:record?.center_image ? process.env.BASE_URL : 'https://media.istockphoto.com/id/1147544807/vector/thumbnail-image-vector-graphic.jpg?s=612x612&w=0&k=20&c=rnCKVbdxqkjlcs3xH87-9gocETqpspHFXu5dIGB4wuM='
                 }
                 
                 aasraData.push(values)
