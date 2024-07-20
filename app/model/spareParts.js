@@ -6,7 +6,7 @@ const spareParts = sequelize.define('spare_part', {
     part_number: {
         type: DataTypes.STRING,
         allowNull: false,
-        unique: true,
+        unique: true
     },
     part_name: {
         type: DataTypes.STRING,

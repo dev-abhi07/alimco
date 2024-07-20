@@ -3,7 +3,7 @@ const sequelize = require("../connection/conn");
 const aasra = require("../model/aasra");
 const users = require("../model/users");
 
-const ticket = sequelize.define('ticket', {
+const grieance = sequelize.define('grieance', {
     id: {
         type: DataTypes.STRING,
         primaryKey: true
@@ -21,34 +21,17 @@ const ticket = sequelize.define('ticket', {
         type: DataTypes.STRING,
         allowNull: true,
     },
-    itemName: {
+    descriptionUser: {
         type: DataTypes.STRING,
         allowNull: true,
     },
-    itemId:{
-        type:DataTypes.STRING,
-        allowNull:true
-    },
-    description: {
+    descriptionAasra: {
         type: DataTypes.STRING,
         allowNull: true,
     },
-    appointment_date:
-    {
-        type: DataTypes.STRING,
-        allowNull: true
-    },
-    appointment_time:{
-        type:DataTypes.STRING,
-        allowNull:true
-    },
-    status:{
-        type: DataTypes.STRING,
-        allowNull:true
-    },  
 });
 
-// sequelize.sync()
+// sequelize.sync({alter: true})
 
 //     .then(() => {
 //         console.log('Database & tables created!');
@@ -57,4 +40,4 @@ const ticket = sequelize.define('ticket', {
 //         console.error('Error creating database & tables:', error);
 //     });
 
-module.exports = ticket;
+module.exports = grieance;

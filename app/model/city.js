@@ -11,6 +11,6 @@ const city = sequelize.define('citie',{
         allowNull:false
     }
 })
-
+// states.belongsTo(city,{foreignKey:'state_id',as:'statesData'})
 
 module.exports = city;
