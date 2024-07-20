@@ -42,7 +42,7 @@ router.post('/get-user-permission',getUserPermission)
 router.post('/dashboard',Admin,menuListUserPermission,Dashboard)
 
 //chat
-router.post('/aasra-chat',aasraMessage)
-router.post('/aasra-chatlist',aasraChatList)
+router.post('/create-aasra-chat',aasraMessage)
+router.post('/aasra-chat-list',aasraChatList)
 
 module.exports = router;

@@ -69,7 +69,7 @@ exports.aasraMessage = async (req, res) => {
         // console.log(getTicket.dataValues.ticket_id);
         // return false ;
         const data = {
-            descriptionAasra: req.body.descriptionAasra,
+            descriptionAasra: req.body.message,
             aasraId: userId,
             ticket_id:getTicket.dataValues.ticket_id
         }
