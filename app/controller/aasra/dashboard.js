@@ -12,7 +12,10 @@ exports.Dashboard = async(req, res) => {
     const user = await users.findOne({ where: { token: string[1] } });
     if(user.user_type=='S'){
       
-      var ticketData = await ticket.findAll()
+      var ticketData = [
+        { sr_no: 1, ticket_id: 1, customer_name: 'Test', product_name: 'Wheel chair', description: 'change in wheels', appointment_date: '7-7-24', status: 'Pending' },
+        { sr_no: 2, ticket_id: 2, customer_name: 'Test', product_name: 'Wheel chair', description: 'change in wheels', appointment_date: '8-7-24', status: 'Pending' }
+      ]
       
       var data = [
         { id: 1, count: 50, type: "Total Tickets", imgSrc: 'tickets.png' },

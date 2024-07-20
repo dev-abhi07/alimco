@@ -15,7 +15,7 @@ const ticket = sequelize.define('ticket', {
     user_id: {
         type: DataTypes.INTEGER,
         allowNull: true,
-
+        
     },
     aasra_id:{
         type: DataTypes.STRING,
