@@ -6,6 +6,7 @@ const jwt = require("jsonwebtoken");
 const otp = require("../../model/otp");
 const customer = require("../../model/customer");
 const items = require("../../model/items");
+const { error } = require("console");
 
 
 exports.register = async (req, res) => {
@@ -23,11 +24,7 @@ exports.register = async (req, res) => {
 
 exports.otpVerify = async (req, res) => {
 
-    // console.log("ssssssss",res.data.res[0])
 
-
-
-    //return false;
     const verify = otp.findOne({
         where: {
             mobile: req.body.mobile,
@@ -41,47 +38,43 @@ exports.otpVerify = async (req, res) => {
         }
     });
 
-    
+
     if (checkUser) {
         let token = jwt.sign({ id: checkUser.id }, process.env.SECRET_KEY, {
             expiresIn: "365d",
         });
 
-        await Promise.all(res.data.res.map(async (record) => {
-            await items.create({
-                item_name: record.itemName,
-                item_id: record.itemId,
-                quantity: record.quantity,
-                rate: record.rate,
-                amount: record.amount,
-                user_id: checkUser.id
-            })
-        }))
-
-        await users.update({ token: token }, { where: { id: checkUser.id } });
-        Helper.response('success', 'Login Successfully', { user_data: { id: checkUser.id, name: checkUser.name, user_type: checkUser.user_type, token: token } }, res, 200);
+        //console.log(token)
+        await users.update({ token: token }, { where: { id: checkUser.id } }).catch((error) => {
+            console.log(error)
+        });
+        Helper.response('success', 'Login Successfully', { user_data: { id: checkUser.id, name: checkUser.name, user_type: checkUser.user_type, token:token,udid:checkUser.udid } }, res, 200);
     }
 
-    
-    const beneficiaryId = res.data.res[0].beneficiaryName;
-    const beneficiary = beneficiaryId.split("-");
-    if (verify) {
-        const update = otp.update({
-            status: 0,
-        },
-            {
-                where: {
-                    mobile: req.body.mobile,
-                    otp: req.body.otp,
-                    status: 1
-                }
-            }
-        )
-        if (update) {
-            const userData = { beneficiary_id: beneficiary[1], name: beneficiary[0], father_name: res.data.res[0].fatherName, dob: res.data.res[0].dob, gender: res.data.res[0].gender, district: res.data.res[0].campVenueDistrict, state: res.data.res[0].campVenueState, aadhaar: res.data.res[0].aadhaar, udid: req.body.udid };
-            Helper.response('success', 'OTP Verified Successfully!', { mobile: req.body.mobile, userData: userData }, res, 200);
-        }
+    else {
+        const beneficiaryId = res.data.res[0].beneficiaryName;
+        const beneficiary = beneficiaryId.split("-");
 
+        if (verify) {
+            const update = await otp.update({
+                status: 0,
+            },
+                {
+                    where: {
+                        mobile: req.body.mobile,
+                        otp: req.body.otp,
+                        status: 1
+                    }
+                }
+            )
+            if (update) {
+                const userData = { beneficiary_id: beneficiary[1], name: beneficiary[0], father_name: res.data.res[0].fatherName, dob: res.data.res[0].dob, gender: res.data.res[0].gender, district: res.data.res[0].campVenueDistrict, state: res.data.res[0].campVenueState, aadhaar: res.data.res[0].aadhaar, udid: req.body.udid };
+                Helper.response('success', 'OTP Verified Successfully!', { mobile: req.body.mobile, userData: userData }, res, 200);
+            }
+
+        } else {
+            Helper.response('failed', 'Something went wrong!', { error }, res, 200);
+        }
     }
 }
 
@@ -120,4 +113,3 @@ exports.saveUser = async (req, res) => {
         Helper.response('failed', 'Something went wrong!', {}, res, 200);
     }
 }
-

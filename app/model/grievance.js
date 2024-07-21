@@ -3,7 +3,7 @@ const sequelize = require("../connection/conn");
 const aasra = require("../model/aasra");
 const users = require("../model/users");
 
-const ticket = sequelize.define('ticket', {
+const grievance = sequelize.define('grievance', {
     id: {
         type: DataTypes.STRING,
         primaryKey: true
@@ -12,53 +12,26 @@ const ticket = sequelize.define('ticket', {
         type: DataTypes.STRING,
         allowNull: true
     },
-    user_id: {
+    userId: {
         type: DataTypes.INTEGER,
         allowNull: true,
-        
+
     },
-    aasra_id:{
+    aasraId:{
         type: DataTypes.STRING,
         allowNull: true,
     },
-    item_name: {
+    descriptionUser: {
         type: DataTypes.STRING,
         allowNull: true,
     },
-    item_id:{
+    descriptionAasra: {
         type: DataTypes.STRING,
         allowNull: true,
     },
-    itemExpiry:{
-        type: DataTypes.STRING,
-        allowNull: true,
-    },
-    description: {
-        type: DataTypes.STRING,
-        allowNull: true,
-    },
-    appointment_date:
-    {
-        type: DataTypes.STRING,
-        allowNull: true
-    },appointment_time:
-    {
-        type: DataTypes.STRING,
-        allowNull: true
-    },
-    status:{
-        type: DataTypes.STRING,
-        allowNull:true
-    },  
-    
-    
-},{
-    timestamps:false
 });
 
-
-aasra.hasMany(ticket,{foreignKey:'aasra_id',as:'aasra_ticket'})
-// sequelize.sync()
+// sequelize.sync({alter: true})
 
 //     .then(() => {
 //         console.log('Database & tables created!');
@@ -67,4 +40,4 @@ aasra.hasMany(ticket,{foreignKey:'aasra_id',as:'aasra_ticket'})
 //         console.error('Error creating database & tables:', error);
 //     });
 
-module.exports = ticket;
+module.exports = grievance;
