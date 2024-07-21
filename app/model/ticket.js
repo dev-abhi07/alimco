@@ -29,6 +29,10 @@ const ticket = sequelize.define('ticket', {
         type: DataTypes.STRING,
         allowNull: true,
     },
+    itemExpiry:{
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
     description: {
         type: DataTypes.STRING,
         allowNull: true,
