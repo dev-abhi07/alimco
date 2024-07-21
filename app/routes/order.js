@@ -1,7 +1,12 @@
 const express = require("express");
 const router = express.Router();
-const { productApi } = require("../controller/aasra/order");
+const { createOrder, orderList, updateOrder, productApi, orderDetails, addStock, stockList } = require("../controller/aasra/order");
 
+router.post('/create-purchase-order',createOrder)
+router.post('/order-list',orderList)
+router.post('/update-order',updateOrder)
 router.post('/product-list',productApi)
-
-module.exports = router
+router.post('/order-details',orderDetails)
+router.post('/add-stock',addStock)
+router.post('/stock-list',stockList)
+module.exports = router;
