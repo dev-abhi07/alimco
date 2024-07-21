@@ -21,7 +21,7 @@ const Admin = async (req, res, next) => {
       }
 
     } else {
-      Helper.response("Expired   ", "Unauthorized Access", {}, res, 200);
+      Helper.response("Expired ", "Unauthorized Access", {}, res, 200);
     }
   } catch (error) {
     console.log(error)
