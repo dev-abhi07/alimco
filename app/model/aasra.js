@@ -3,8 +3,8 @@ const sequelize = require("../connection/conn");
 const users = require('../model/users');
 const ticket = require("./ticket");
 const document = require("./documents");
-const city = require("./city");
 const states = require("./state");
+const city = require("./city");
 const aasra = sequelize.define('aasra', {
     id: {
         type: DataTypes.INTEGER,
@@ -14,6 +14,7 @@ const aasra = sequelize.define('aasra', {
     name_of_org: {
         type: DataTypes.STRING,
         allowNull: true,
+
     },
     address: {
         type: DataTypes.STRING,
@@ -38,12 +39,12 @@ const aasra = sequelize.define('aasra', {
         type: DataTypes.STRING,
         allowNull: true
     },
-    mobile_no:{
+    mobile_no:{ 
         type: DataTypes.BIGINT,
         allowNull:false,
         field:'mobile_spoc'
     },
-    telephone:{
+    telephone_no:{
         type: DataTypes.STRING,
         field:'landline'
     },
@@ -72,9 +73,10 @@ const aasra = sequelize.define('aasra', {
         type: DataTypes.STRING,
         allowNull:true
     },
-    pincode:{
+    pin:{
         type: DataTypes.STRING,
-        allowNull:true
+        allowNull:true,
+        field:'pincode'
     },
     state:{
         type: DataTypes.STRING,
@@ -104,13 +106,15 @@ const aasra = sequelize.define('aasra', {
         type: DataTypes.STRING,
         allowNull:true
     },
-    aadhaar_no:{
+    adhaar_no:{
         type: DataTypes.STRING,
-        allowNull:true
+        allowNull:true,
+        field:"aadhaar_no"
     },
-    area_sqt:{
+    area_sqft:{
         type: DataTypes.STRING,
-        allowNull:true
+        allowNull:true,
+        field:"area_sqt"
     },
     bank_name	:{
         type: DataTypes.STRING,
@@ -156,9 +160,6 @@ const aasra = sequelize.define('aasra', {
         type: DataTypes.STRING,
         allowNull:true
     },
-   
-    
-
 },{
     timestamps:false
 });
@@ -168,6 +169,7 @@ users.belongsTo(aasra, { foreignKey: 'ref_id', as: 'aasra' });
 aasra.hasMany(document,{foreignKey:'aasra_id',as:'document'})
 aasra.belongsTo(city,{foreignKey:'district',as:'city'})
 aasra.belongsTo(states,{foreignKey:'state',as:'stateData'})
+// states.hasMany(aasra,{foreignKey:'state'})
 // sequelize.sync()
 //     .then(() => {
 //         console.log('Database & tables created!');
