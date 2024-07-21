@@ -49,4 +49,6 @@ router.post('/register-aasra',registerAasraCentre)
 router.post('/aasra-list',aasraList)
 router.post('/update-aasra',updateAasraCenter)
 
+
+
 module.exports = router;

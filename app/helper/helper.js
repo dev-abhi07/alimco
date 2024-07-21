@@ -5,6 +5,8 @@ const Roles = require('../model/role');
 const UserPermissions = require('../model/user_permission');
 const Menus = require('../model/menu');
 const sequelize = require("../connection/conn");
+const axios = require('axios');
+const aasra = require("../model/aasra");
 
 const users = require("../model/users");
 
@@ -30,30 +32,30 @@ Helper.decryptPassword = (password) => {
 
 Helper.formatDateTime = (time) => {
     const dateObject = new Date(time);
-  
+
     const day = dateObject.getDate();
-    const month = dateObject.getMonth() + 1; 
+    const month = dateObject.getMonth() + 1;
     const year = dateObject.getFullYear();
     const hours = dateObject.getHours();
     const minutes = dateObject.getMinutes();
     const ampm = hours >= 12 ? "PM" : "AM";
-  
-  
+
+
     const formattedDay = day < 10 ? `0${day}` : day;
     const formattedMonth = month < 10 ? `0${month}` : month;
     const formattedMinutes = minutes < 10 ? `0${minutes}` : minutes;
-  
-  
+
+
     const formattedDate = `${formattedDay}-${formattedMonth}-${year} ${hours}:${formattedMinutes} ${ampm}`;
-  
+
     return formattedDate;
-  };
+};
 Helper.getMenuByRole = async (userid) => {
     try {
-       
-        
-        const userId = userid  
-        
+
+
+        const userId = userid
+
         UserPermissions.findAll({
             attributes: [
                 'menu_id',
@@ -75,17 +77,17 @@ Helper.getMenuByRole = async (userid) => {
             where: {
                 userid: userId
             },
-           
+
         }).then(userpermissions => {
-           return userpermissions
+            return userpermissions
         }).catch(error => {
             console.error('Error fetching data:', error);
         });
-        
+
     } catch (err) {
-     console.log(err)
+        console.log(err)
     }
-  };
+};
 Helper.getSubMenuPermission = async (id, userid) => {
     UserPermissions.findAll({
         attributes: [
@@ -107,38 +109,38 @@ Helper.getSubMenuPermission = async (id, userid) => {
         ],
         where: {
             userid: userid,
-            submenu_id:id
+            submenu_id: id
         },
-       
+
     }).then(userpermissions => {
-        console.log("ssss",userpermissions)
-       return userpermissions
+        console.log("ssss", userpermissions)
+        return userpermissions
     }).catch(error => {
         console.error('Error fetching data:', error);
     });
-    
-  };
 
-Helper.checkToken = async (token,next ,res ) => {
+};
+
+Helper.checkToken = async (token, next, res) => {
     const user = await users.findOne({
-        where:{
-            token:token
+        where: {
+            token: token
         }
-    });  
-    try{
+    });
+    try {
         const tokens = jwt.verify(token, process.env.SECRET_KEY);
         next()
-    }catch(error){
-        
-    }       
+    } catch (error) {
+
+    }
 }
 Helper.generateNumber = async (min, max) => {
     total = Math.floor(Math.random() * (max - min) + min);
     return total;
-  };
+};
 
-  Helper.createTimeSlots = async (openTime, closeTime, breakStartTime, breakEndTime, difference) => {
-    
+Helper.createTimeSlots = async (openTime, closeTime, breakStartTime, breakEndTime, difference) => {
+
 
     const open = new Date(`1970-01-01T${openTime}:00`);
     const close = new Date(`1970-01-01T${closeTime}:00`);
@@ -168,7 +170,7 @@ Helper.generateNumber = async (min, max) => {
         }
     }
 
-   return slots;
+    return slots;
 
 
 }
@@ -189,10 +191,33 @@ Helper.getUserId = async (req) => {
     return user?.id
 }
 
-Helper.getAasra = async (parameter) => {
-    const user = await users.findByPk(parameter)
-    aasraId = await aasra.findByPk(user.ref_id)
-    return aasraId.unique_code.split("_")[1]
-}  
+Helper.getAasra = async (parameter) => {  
+    aasraId = await aasra.findByPk(parameter)  
+    unique_code = aasraId.unique_code
+    id = unique_code.split('_')
+    return id[1]
+}
+Helper.pushNotification = async (token, notification) => {
+    try {
+        const headers = {
+            "Authorization": "key=AAAA8hkiK-A:APA91bFYUWKt1Atinxrxf6rZJyUzdyZCHLVz1PsjilDronRJL9XmjC4RP-wlWavsFo38E-AFQ1aEq3RRg3SfNYvMck-IbX_kN7cAWez5pyWG4dJrpetq5GQojX-D54_79KjtLlJsYq_S", // Replace with your FCM server key
+            "Content-Type": "application/json"
+        };
+
+        const data = {
+            "to": token,
+            "notification": notification
+        };
+
+        const response = await axios.post("https://fcm.googleapis.com/fcm/send", data, { headers });
+        const result = response.data;
+        console.log('Push notification sent successfully:', result);
+        // return result;
+    } catch (error) {
+        console.error('Error sending push notification:', error);
+        throw err
+    }
+};
+module.exports = Helper;
 
 module.exports = Helper;

@@ -253,3 +253,48 @@ exports.updateAasraCenter = async (req, res) => {
         Helper.response("failed", "Unable to update", err, res, 200);
     }
 }
+
+exports.categoryWiseProduct = async (req, res) => {
+    try {
+        const getProduct = await spareParts.findAll({
+            where: {
+                category: req.body.category_id
+            }
+        })
+        const productData = [];
+        getProduct.map((record) => {
+            const data = {
+                value: record.id,
+                label: record.part_name               
+            }
+
+            productData.push(data)
+        })
+        //console.log(productData)
+        Helper.response("success", "Product Found Successfully!", { productData }, res, 200);
+    } catch (error) {
+
+    }
+}
+
+
+exports.productRepairList = async(req,res)=>{
+    try {
+        const {repair_id}= req.body
+        const product= await  labour_charges.findAll({where:{productId:repair_id}})
+        const data = product.map((f)=>{
+            const productData= {
+                value:f.slNo,
+                label:f.natureOfWork,
+                serviceCharge:f.labourCharges,
+                repair_time:f.repairTime,
+                price:45,
+                gst:0.18
+            }
+            return productData
+        })
+        Helper.response("success", "Product Found Successfully!", data , res, 200);
+    } catch (error) {
+        Helper.response("failed", "Server error", error, res, 200);
+    }
+}
