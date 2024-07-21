@@ -68,7 +68,6 @@ exports.userCreate = async (req, res) => {
       return Helper.response("Failed", "All fields are required", {}, res, 200);
     }
     if (user_type != 'S' && user_type != 'A') {
-      console.log(user_type)
       return Helper.response("Failed", "Enter correct user type", {}, res, 200);
     }
     const encryptPassword = await Helper.encryptPassword(password)

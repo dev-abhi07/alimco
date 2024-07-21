@@ -17,6 +17,7 @@ app.use(
 )
 
 app.use(express.static('public'))
+app.use(express.static('documents'))
 const port = process.env.SERVER_PORT || 8000
 app.use(body.json({ limit: '5mb' }))
 app.use(body.urlencoded({ extended: true }))

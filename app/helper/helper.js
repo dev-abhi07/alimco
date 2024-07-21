@@ -132,6 +132,67 @@ Helper.checkToken = async (token,next ,res ) => {
         
     }       
 }
+Helper.generateNumber = async (min, max) => {
+    total = Math.floor(Math.random() * (max - min) + min);
+    return total;
+  };
 
+  Helper.createTimeSlots = async (openTime, closeTime, breakStartTime, breakEndTime, difference) => {
+    
+
+    const open = new Date(`1970-01-01T${openTime}:00`);
+    const close = new Date(`1970-01-01T${closeTime}:00`);
+    const breakStart = new Date(`1970-01-01T${breakStartTime}:00`);
+    const breakEnd = new Date(`1970-01-01T${breakEndTime}:00`);
+    const slots = [];
+    const slotDuration = difference * 60 * 1000; // 45 minutes in milliseconds
+
+    let currentTime = open;
+
+    while (currentTime < close) {
+        const endTime = new Date(currentTime.getTime() + slotDuration);
+        if (endTime > close) break;
+
+        if (currentTime < breakStart || currentTime >= breakEnd) {
+            if (endTime <= breakStart || currentTime >= breakEnd) {
+                slots.push({
+                    start: currentTime.toTimeString().slice(0, 5),
+                    end: endTime.toTimeString().slice(0, 5),
+                });
+            }
+        }
+
+        currentTime = endTime;
+        if (currentTime >= breakStart && currentTime < breakEnd) {
+            currentTime = breakEnd;
+        }
+    }
+
+   return slots;
+
+
+}
+
+Helper.addYear = async (parameter) => {
+    const date = new Date(parameter);
+    const fullYear = date.getFullYear() + 1;
+    const newDate = date.getDate() - 1
+    const month = date.toLocaleString('default', { month: 'long' })
+    const dates = newDate + '-' + month + '-' + fullYear;
+    return dates
+}
+
+Helper.getUserId = async (req) => {
+    const token = req.headers['authorization'];
+    const string = token.split(" ");
+    const user = await users.findOne({ where: { token: string[1] } });
+    return user?.id
+}
+
+Helper.getAasra = async (parameter) => {
+    const user = await users.findByPk(parameter)
+    aasraId = await aasra.findByPk(user.ref_id)
+    return aasraId.unique_code.split("_")[1]
+}  
 
 module.exports = Helper;

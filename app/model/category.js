@@ -17,7 +17,7 @@ const category = sequelize.define('category', {
         allowNull:false
     }
 });
-spareParts.belongsTo(category,{foreignKey:'category',as:'categories'})
+
 // sequelize.sync({alter:true})
 //     .then(() => {
 //         console.log('Database & tables created!');
