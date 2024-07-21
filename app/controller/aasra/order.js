@@ -7,6 +7,8 @@ const orderModel = require("../../model/order");
 const Helper = require("../../helper/helper");
 const order = require("../../model/order");
 const stock = require("../../model/stock");
+const aasra = require("../../model/aasra");
+
 
 exports.productApi = async (req, res) => {
 
@@ -46,7 +48,7 @@ exports.createOrder = async (req, res) => {
         total_order['order_status'] = orderStatus.label
         total_order['supplier_name'] = supplier_name.label
         total_order['order_date'] = new Date().toISOString().slice(0, 10)
-
+        total_order['due_amount'] = grandTotal
         const creatOrder = await orderModel.create(total_order).catch((err) => {
             console.log(err)
             Helper.response("error", "Something went wrong", err, res, 200)
@@ -98,17 +100,35 @@ exports.updateOrder = async (req, res) => {
         const token = req.headers['authorization'];
         const string = token.split(" ");
         const user = await users.findOne({ where: { token: string[1] } });
-
+        
         const order = await orderModel.update(
-            { due_amount: req.body.grand_total - req.body.paid_amount },
-            { where: { aasra_id: user.ref_id, order_id: req.body.order_id } }
-        );
-
-        // if(order){
-        //     const orderDetail= await orderModel.findOne({where:{aasra_id:user.ref_id,order_id:req.body.order_id}})
-
-        // }
-        Helper.response("success", "Order updated", order, res, 200)
+            {
+              ...req.body,
+              due_amount: req.body.grand_total - req.body.paid_amount
+            },
+            {
+              where: {
+                aasra_id: user.ref_id,
+                id: req.body.order_id
+              }
+            }
+          );
+          
+        const orderUpdated = await orderModel.findOne( {
+            where: {
+              aasra_id: user.ref_id,
+              id: req.body.order_id
+            }
+          })
+       if(orderUpdated.due_amount==0){
+         await orderModel.update({payment_status:'paid'}, {
+            where: {
+              aasra_id: user.ref_id,
+              id: req.body.order_id
+            }
+          })
+       }  
+       Helper.response("success", "Order updated", order, res, 200)
     } catch (error) {
         console.log(error)
         Helper.response("error", "Something went wrong", error, res, 200)
@@ -159,8 +179,18 @@ exports.stockList = async (req, res) => {
         const token = req.headers['authorization'];
         const string = token.split(" ");
         const user = await users.findOne({ where: { token: string[1] } });
-
-        const stockList = await stock.findAll({ where: { aasra_id: user.ref_id } })
+        console.log(user)
+        if(user.user_type=='S'){
+            
+            var stockList = await stock.findAll({
+                include:aasra,
+            })
+        }
+        else{
+            var stockList = await stock.findAll({
+            },{ where: { aasra_id: user.ref_id } })
+        }   
+       
         Helper.response("success", "Stock List", stockList, res, 200)
     } catch (error) {
         console.log(error)
