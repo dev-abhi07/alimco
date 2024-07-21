@@ -4,6 +4,7 @@ const User = require("../../model/users")
 const Helper = require("../../helper/helper");
 
 exports.saveToken = async function (req, res, next) {
+
     try {
         const user_id = await Helper.getUserId(req)
 
