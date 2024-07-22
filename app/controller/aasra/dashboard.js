@@ -21,8 +21,8 @@ exports.Dashboard = async (req, res) => {
       const ticketData = [];
       await Promise.all(
         tickets.map(async (record, count = 1) => {
-          const getUser = await users.findByPk(record.userId)
-          const getAasra = await aasra.findByPk(record.aasraId)
+          const getUser = await users.findByPk(record.user_id)
+          const getAasra = await aasra.findByPk(record.aasra_id)
           const dataValue = {
             aasraId: record.aasraId,
             customer_name: getUser.name,
@@ -54,22 +54,22 @@ exports.Dashboard = async (req, res) => {
     if (user.user_type == 'AC') {
 
       var data = [
-        { id: 1, count: await ticket.count({ where: { status: 0, aasraId: user.ref_id } }), type: "Total Tickets", imgSrc: 'tickets.png' },
-        { id: 2, count: await ticket.count({ where: { status: 1, aasraId: user.ref_id } }), type: "Running Tickets", imgSrc: 'tickets.png' },
-        { id: 3, count: await ticket.count({ where: { status: 2, aasraId: user.ref_id } }), type: "Pending Tickets", imgSrc: 'tickets.png' },
+        { id: 1, count: await ticket.count({ where: { status: 0, aasra_id: user.ref_id } }), type: "Total Tickets", imgSrc: 'tickets.png' },
+        { id: 2, count: await ticket.count({ where: { status: 1, aasra_id: user.ref_id } }), type: "Running Tickets", imgSrc: 'tickets.png' },
+        { id: 3, count: await ticket.count({ where: { status: 2, aasra_id: user.ref_id } }), type: "Pending Tickets", imgSrc: 'tickets.png' },
         { id: 4, count: 0, type: "Register Grievance", imgSrc: 'griv.png' },
       ]
       var tickets = await ticket.findAll({
         where: {
-          aasraId: user.ref_id
+          aasra_id: user.ref_id
         }
       })
 
       const ticketData = [];
       await Promise.all(
         tickets.map(async (record, count = 1) => {
-          const getUser = await users.findByPk(record.userId)
-          const getAasra = await aasra.findByPk(record.aasraId)
+          const getUser = await users.findByPk(record.user_id)
+          const getAasra = await aasra.findByPk(record.aasra_id)
           const dataValue = {
             aasraId: record.aasraId,
             customer_name: getUser.name,

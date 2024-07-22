@@ -58,61 +58,78 @@ exports.createCustomerTicket = async (req, res) => {
 }
 
 exports.ticketList = async (req, res) => {
-    // msg = "fssdfsdf" ;
-    // var content = {
-    //     title: "Order Status",
-    //     body: msg,
-    //   };
-    //   Helper.pushNotification(req.headers['authorization'],content)
-
     try {
-        const userId = await Helper.getUserId(req)
-        //console.log(userId)
-        const tickets = await ticket.findAll({
+        const token = req.headers['authorization'];
+        const string = token.split(" ");
+        const user = await users.findOne({ where: { token: string[1] } });
+        if(user.user_type=='S'){
+            var tickets = await ticket.findAll()
+            var ticketData = [];
+            await Promise.all(
+                tickets.map(async (record, count = 1) => {
+                    const getUser = await users.findByPk(record.userId)
+                    const getAasra = await aasra.findByPk(record.aasraId)
+                    const dataValue = {
+                        aasraId: record.aasraId,
+                        customer_name: getUser.name,
+                        product_name: record.itemName,
+                        itemId: record.itemId,
+                        description: record.description,
+                        appointment_date: record.appointment_date,
+                        appointment_time: record.appointment_time,
+                        ticket_id: record.ticket_id,
+                        aasraName: getAasra.name_of_org,
+                        status: record.status == 0 ? 'Pending' : record.status == 1 ? 'Open' : 'Closed',
+                        sr_no: count + 1
+                    }
+                    ticketData.push(dataValue)
+                })
+            )
+        }else{
+        var tickets = await ticket.findAll({
             where: {
-                userId: userId
+                aasraId: user.ref_id
             }
         })
-        const ticketData = [];
+        console.log(tickets)
+        var ticketData = [];
         await Promise.all(
-            tickets.map(async (record) => {
-
+            tickets.map(async (record, count = 1) => {
                 const getUser = await users.findByPk(record.userId)
-
                 const getAasra = await aasra.findByPk(record.aasraId)
-
-                const data = {
+                const dataValue = {
                     aasraId: record.aasraId,
-                    customerName: getUser.name,
-                    itemName: record.itemName,
+                    customer_name: getUser.name,
+                    product_name: record.itemName,
                     itemId: record.itemId,
                     description: record.description,
                     appointment_date: record.appointment_date,
                     appointment_time: record.appointment_time,
+                    ticket_id: record.ticket_id,
                     aasraName: getAasra.name_of_org,
-                    ticketId: record.ticket_id,
-                    status: record.status
-
+                    status: record.status == 0 ? 'Pending' : record.status == 1 ? 'Open' : 'Closed',
+                    sr_no: count + 1
                 }
-                ticketData.push(data)
-
+                ticketData.push(dataValue)
             })
         )
+    }
         Helper.response(
             "success",
-            "",
+            "Welcome to Dashboard",
             {
-                ticketData
+                cardData: data,
+                tableData: ticketData,
+                sideBar: res.filteredMenu
             },
             res,
             200
         );
-
     } catch (error) {
         Helper.response(
-            "failed",
+            "success",
             "Something went wrong!",
-            {},
+            {error},
             res,
             200
         );

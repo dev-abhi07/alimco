@@ -11,7 +11,8 @@ const { default: test } = require("node:test");
 const city = require("../../model/city");
 const states = require("../../model/state");
 const { where } = require("sequelize");
-
+const spareParts = require("../../model/spareParts");
+const labout_charges = require('../../model/labour_charges')
 exports.registerAasraCentre = async (req, res) => {
     try {
         const form = new formidable.IncomingForm();
@@ -273,7 +274,7 @@ exports.categoryWiseProduct = async (req, res) => {
         //console.log(productData)
         Helper.response("success", "Product Found Successfully!", { productData }, res, 200);
     } catch (error) {
-
+        console.log(error)
     }
 }
 
@@ -281,7 +282,7 @@ exports.categoryWiseProduct = async (req, res) => {
 exports.productRepairList = async(req,res)=>{
     try {
         const {repair_id}= req.body
-        const product= await  labour_charges.findAll({where:{productId:repair_id}})
+        const product= await  labout_charges.findAll({where:{productId:repair_id}})
         const data = product.map((f)=>{
             const productData= {
                 value:f.slNo,
@@ -295,6 +296,7 @@ exports.productRepairList = async(req,res)=>{
         })
         Helper.response("success", "Product Found Successfully!", data , res, 200);
     } catch (error) {
+        console.log(error)
         Helper.response("failed", "Server error", error, res, 200);
     }
 }

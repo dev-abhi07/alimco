@@ -154,6 +154,7 @@ exports.addStock = async (req, res) => {
             const data = await Promise.all(itemsAddToStock.map(async (f) => {
                 await stock.create({
                     ...f.dataValues,
+                    stock_in:f.dataValues.quantity,
                     aasra_id: payment_status.aasra_id
                 }).catch((err) => {
                     console.log(err)
@@ -179,7 +180,7 @@ exports.stockList = async (req, res) => {
         const token = req.headers['authorization'];
         const string = token.split(" ");
         const user = await users.findOne({ where: { token: string[1] } });
-        console.log(user)
+        
         if(user.user_type=='S'){
             
             var stockList = await stock.findAll({
@@ -195,5 +196,26 @@ exports.stockList = async (req, res) => {
     } catch (error) {
         console.log(error)
         Helper.response("error", "Something went wrong", error, res, 200)
+    }
+}
+
+exports.transactionList = async(req,res)=>{
+    try {
+        const token = req.headers['authorization'];
+        const string = token.split(" ");
+        const user = await users.findOne({ where: { token: string[1] } });
+        const transactionList = await orderModel.findAll({where:{aasra_id:user.ref_id,payment_status:'paid'}})
+        Helper.response("success", "Transaction List", transactionList, res, 200)
+    } catch (error) {
+        console.log(error)
+        Helper.response("error", "Something went wrong", error, res, 200)
+    }
+}
+
+exports.removeStock=async(req,res)=>{
+    try {
+        
+    } catch (error) {
+        console.log(error)
     }
 }

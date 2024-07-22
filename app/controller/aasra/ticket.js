@@ -2,6 +2,10 @@ const Helper = require('../../helper/helper');
 const users = require('../../model/users');
 const ticket = require('../../model/ticket');
 const aasra = require('../../model/aasra');
+const repair = require('../../model/repair');
+const stock = require('../../model/stock');
+const spareParts = require('../../model/spareParts');
+
 exports.ticketListDetails = async (req, res) => {
     try {
         const token = req.headers["authorization"];
@@ -46,8 +50,9 @@ exports.ticketListDetails = async (req, res) => {
 
 exports.ticketList = async (req, res) => {
     try {
-        const token = req.headers["authorization"];
+        const token = req.headers['authorization'];
         const string = token.split(" ");
+        const user = await users.findOne({ where: { token: string[1] } });
         var tickets = await ticket.findAll({
             where: {
                 aasraId: user.ref_id
@@ -99,15 +104,28 @@ exports.ticketList = async (req, res) => {
 
 exports.createRepair = async(req ,res) => {
     try {
+        const token = req.headers['authorization'];
+        const string = token.split(" ");
+        const user = await users.findOne({ where: { token: string[1] } });
         const data = req.body;
-        // console.log(data)
-        // return false
+        
         const create = await Promise.all(
             data.map(async (record) => {
-                await repair.create(record)   
+                const item_id = await  spareParts.findByPk(record.productValue)
+                
+                await repair.create(record) 
+                await stock.create({
+                    item_id:record.productValue,
+                    item_name:record.productLabel,
+                    aasra_id:user.ref_id,
+                    quantity:0,
+                    price:item_id.unit_price,
+                    stock_out:record.qty
+                })
             }) 
         )
         if(create){
+       
             Helper.response(
                 "success",
                 "Repair Created Successfully!",
@@ -118,7 +136,7 @@ exports.createRepair = async(req ,res) => {
         }
     } catch (error) {
         Helper.response(
-            "success",
+            "failed",
             "Something went wrong!",
             {error},
             res,

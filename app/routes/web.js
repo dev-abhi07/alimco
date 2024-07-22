@@ -6,9 +6,10 @@ const { createParts , sparePartsList , deleteSpareParts, updateSpareParts} = req
 const { getUserList, userCreate, rolePermission, RoleList, getRolePermission, userPermission, getUserPermission } = require("../controller/admin/user");
 const { Login, logout } = require('../controller/admin/login');
 const {   states , cities} = require("../controller/admin/dashboard");
-const {Admin,menuListUserPermission} = require("../middleware/middleware");
-const { registerAasraCentre, aasraList, updateAasraCenter } = require("../controller/admin/aasra");
+const {Admin,menuListUserPermission, aasra} = require("../middleware/middleware");
+const { registerAasraCentre, aasraList, updateAasraCenter, categoryWiseProduct, productRepairList } = require("../controller/admin/aasra");
 const { Dashboard } = require("../controller/aasra/dashboard");
+const { createRepair } = require("../controller/aasra/ticket");
 
 
 
@@ -43,11 +44,13 @@ router.post('/get-role-permission',getRolePermission)
 router.post('/create-user-permission',userPermission)
 router.post('/get-user-permission',getUserPermission)
 router.post('/dashboard',Admin,menuListUserPermission,Dashboard)
-
+router.post('/category-product-list',aasra,categoryWiseProduct)
+router.post('/product-repair-list',productRepairList)
 //Aasra Centre
 router.post('/register-aasra',registerAasraCentre)
 router.post('/aasra-list',aasraList)
 router.post('/update-aasra',updateAasraCenter)
+router.post('/repair',createRepair)
 
 
 

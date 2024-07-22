@@ -1,5 +1,8 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../connection/conn");
+const aasra = require("./aasra");
+
+
 
 const stock = sequelize.define('stock', {
     id: {
@@ -21,13 +24,22 @@ const stock = sequelize.define('stock', {
     },
     quantity:{
         type: DataTypes.INTEGER,
-        allowNull:false
+        allowNull:true
     },
     price:{
         type: DataTypes.INTEGER,
         allowNull:false
     },
-
+    stock_in:{
+        type: DataTypes.INTEGER,
+        allowNull:true,
+        defaultValue:0
+    },
+    stock_out:{
+        type: DataTypes.INTEGER,
+        allowNull:true,
+        defaultValue:0
+    }
 
 })
 
