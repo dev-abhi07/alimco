@@ -6,7 +6,7 @@ const spareParts = sequelize.define('spare_part', {
     part_number: {
         type: DataTypes.STRING,
         allowNull: false,
-        unique: true
+        unique: true,
     },
     part_name: {
         type: DataTypes.STRING,
@@ -41,7 +41,7 @@ const spareParts = sequelize.define('spare_part', {
         type: DataTypes.STRING
     }
 })
-spareParts.belongsTo(category,{foreignKey:'category',as:'categories'})
+// spareParts.belongsTo(category,{foreignKey:'category',as:'categories'})
 // sequelize.sync({force:true})
 // .then(() => {
 //     console.log('Database & tables created!');

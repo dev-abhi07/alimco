@@ -57,6 +57,7 @@ exports.dashboard = async (req ,res) => {
         );
         
     } catch (error) {
+        console.log(error)
         Helper.response(
             "failed",
             "Something went wrong!",

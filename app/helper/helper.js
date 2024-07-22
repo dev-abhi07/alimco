@@ -5,9 +5,10 @@ const Roles = require('../model/role');
 const UserPermissions = require('../model/user_permission');
 const Menus = require('../model/menu');
 const sequelize = require("../connection/conn");
+const axios = require('axios');
+const aasra = require("../model/aasra");
 
 const users = require("../model/users");
-const aasra = require("../model/aasra");
 
 
 Helper.response = (status, message, data = [], res, statusCode) => {
@@ -133,14 +134,15 @@ Helper.checkToken = async (token, next, res) => {
 
     }
 }
-
 Helper.generateNumber = async (min, max) => {
     total = Math.floor(Math.random() * (max - min) + min);
     return total;
 };
 
+
+
 Helper.createTimeSlots = async (openTime, closeTime, breakStartTime, breakEndTime, difference) => {
-    
+
 
     const open = new Date(`1970-01-01T${openTime}:00`);
     const close = new Date(`1970-01-01T${closeTime}:00`);
@@ -170,7 +172,7 @@ Helper.createTimeSlots = async (openTime, closeTime, breakStartTime, breakEndTim
         }
     }
 
-   return slots;
+    return slots;
 
 
 }
@@ -187,14 +189,42 @@ Helper.addYear = async (parameter) => {
 Helper.getUserId = async (req) => {
     const token = req.headers['authorization'];
     const string = token.split(" ");
-    console.log(string)
     const user = await users.findOne({ where: { token: string[1] } });
     return user?.id
 }
 
-Helper.getAasra = async (parameter) => {
-    const user = await users.findByPk(parameter)
-    aasraId = await aasra.findByPk(user.ref_id)
-    return aasraId.unique_code.split("_")[1]
+Helper.getAasra = async (parameter) => {  
+    aasraId = await aasra.findByPk(parameter)  
+    unique_code = aasraId.unique_code
+    id = unique_code.split('_')
+    return id[1]
 }
-module.exports = Helper;
+Helper.pushNotification = async (token, notification) => {
+    try {
+        const headers = {
+            "Authorization": "key=AAAA8hkiK-A:APA91bFYUWKt1Atinxrxf6rZJyUzdyZCHLVz1PsjilDronRJL9XmjC4RP-wlWavsFo38E-AFQ1aEq3RRg3SfNYvMck-IbX_kN7cAWez5pyWG4dJrpetq5GQojX-D54_79KjtLlJsYq_S", // Replace with your FCM server key
+            "Content-Type": "application/json"
+        };
+
+        const data = {
+            "to": token,
+            "notification": notification
+        };
+
+        const response = await axios.post("https://fcm.googleapis.com/fcm/send", data, { headers });
+        const result = response.data;
+        console.log('Push notification sent successfully:', result);
+        // return result;
+    } catch (error) {
+        console.error('Error sending push notification:', error);
+        throw err
+    }
+};
+Helper.getUserDetails = async (req) => {
+    const token = req.headers['authorization'];
+    const string = token.split(" ");
+    // console.log(string)
+    const user = await users.findOne({ where: { token: string[1] } });
+    return user
+}
+module.exports = Helper

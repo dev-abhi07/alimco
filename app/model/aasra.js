@@ -5,6 +5,7 @@ const ticket = require("./ticket");
 const document = require("./documents");
 const states = require("./state");
 const city = require("./city");
+const stock = require("./stock");
 const aasra = sequelize.define('aasra', {
     id: {
         type: DataTypes.INTEGER,
@@ -160,6 +161,9 @@ const aasra = sequelize.define('aasra', {
         type: DataTypes.STRING,
         allowNull:true
     },
+   
+    
+
 },{
     timestamps:false
 });
@@ -169,6 +173,7 @@ users.belongsTo(aasra, { foreignKey: 'ref_id', as: 'aasra' });
 aasra.hasMany(document,{foreignKey:'aasra_id',as:'document'})
 aasra.belongsTo(city,{foreignKey:'district',as:'city'})
 aasra.belongsTo(states,{foreignKey:'state',as:'stateData'})
+stock.belongsTo(aasra,{foreignKey:'aasra_id'})
 // states.hasMany(aasra,{foreignKey:'state'})
 // sequelize.sync()
 //     .then(() => {

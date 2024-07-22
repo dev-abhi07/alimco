@@ -8,11 +8,7 @@ exports.Dashboard = (req, res) => {
 
 exports.states = async (req, res) => {
     try {
-        const state = await states.findAll({
-            order:[
-                ['name','ASC']
-            ]
-        })
+        const state = await states.findAll()
         const stateData = [];
         state.map( async (record) => {
             const values = {
@@ -44,10 +40,7 @@ exports.cities = async (req ,res) => {
         const cities = await city.findAll({
             where:{
                 state_id:req.body.id
-            },
-            order:[
-                ['city','ASC']
-            ]
+            }
         })
         const cityData = [];
         cities.map( async (record) => {

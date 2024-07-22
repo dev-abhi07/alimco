@@ -39,7 +39,7 @@ exports.Login = async (req, res) => {
                     "success",
                     "Login Successful",
                     {   
-                        name: user.user_type == 'A' ? 'Admin':(user.name).match(/\b(\w)/g).join('')??'',
+                        name: user.user_type == 'A' ? 'Admin':(user.name).match(/\b(\w)/g).join(''),
                         user: user,
                         base_url:process.env.BASE_URL
                     },
@@ -69,7 +69,6 @@ exports.Login = async (req, res) => {
             );
         }
     } catch (error) {
-        console.log(error)
         Helper.response(
             "Failed",
             "Internal server Error",

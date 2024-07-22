@@ -1,42 +1,40 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../connection/conn");
 
-const orderDetails = sequelize.define("orderDetail",{
-    id: {
+const labour_charges = sequelize.define('labour_charges', {
+    slNo: {
         type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true
-        },
-    item_id:{
-        type: DataTypes.INTEGER,
-        allowNull: false
+        allowNull: false,
+        primaryKey: true
     },
-    item_name:{
+    codeNo: {
         type: DataTypes.STRING,
         allowNull: false
     },
-    quantity:{
+    natureOfWork: {
+        type: DataTypes.STRING,
+        allowNull: false
+    },
+    repairTime: {
         type: DataTypes.INTEGER,
         allowNull: false
     },
-    price:{
+    labourCharges: {
         type: DataTypes.INTEGER,
         allowNull: false
     },
-    order_id:{
-        type: DataTypes.BIGINT,
-        allowNull:false
+    finalLabourCharges: {
+        type: DataTypes.INTEGER,
+        allowNull: false
     }
-   
+});  
 
-
-})
-// sequelize.sync({alter:true})
+// sequelize.sync()
 //     .then(() => {
 //         console.log('Database & tables created!');
 //     })
 //     .catch(error => {
 //         console.error('Error creating database & tables:', error);
 //     });
- 
-module.exports = orderDetails
+
+ module.exports = labour_charges   

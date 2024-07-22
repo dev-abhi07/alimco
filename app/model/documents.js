@@ -1,5 +1,6 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../connection/conn");
+const aasra = require("./aasra");
 
 const document = sequelize.define("documents",{
     id:{

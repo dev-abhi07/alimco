@@ -11,6 +11,9 @@ const { default: test } = require("node:test");
 const city = require("../../model/city");
 const states = require("../../model/state");
 const { where } = require("sequelize");
+const spareParts = require("../../model/spareParts");
+const labour_charges = require('../../model/labour_charges')
+
 
 exports.registerAasraCentre = async (req, res) => {
     try {
@@ -136,8 +139,6 @@ exports.aasraList = async (req, res) => {
                 attributes: ['city', 'id'],
             }]
         });
-
-
 
         if (data) {
             Helper.response("success", "Aasra list", { data }, res, 200);
@@ -265,7 +266,7 @@ exports.categoryWiseProduct = async (req, res) => {
         getProduct.map((record) => {
             const data = {
                 value: record.id,
-                label: record.part_name               
+                label: record.part_name
             }
 
             productData.push(data)
@@ -273,27 +274,28 @@ exports.categoryWiseProduct = async (req, res) => {
         //console.log(productData)
         Helper.response("success", "Product Found Successfully!", { productData }, res, 200);
     } catch (error) {
-
+        console.log(error)
+        Helper.response("success", "Product Found Successfully!", { productData }, res, 200);
     }
 }
 
 
-exports.productRepairList = async(req,res)=>{
+exports.productRepairList = async (req, res) => {
     try {
-        const {repair_id}= req.body
-        const product= await  labour_charges.findAll({where:{productId:repair_id}})
-        const data = product.map((f)=>{
-            const productData= {
-                value:f.slNo,
-                label:f.natureOfWork,
-                serviceCharge:f.labourCharges,
-                repair_time:f.repairTime,
-                price:45,
-                gst:0.18
+        const { repair_id } = req.body
+        const product = await labour_charges.findAll({ where: { productId: repair_id } })
+        const data = product.map((f) => {
+            const productData = {
+                value: f.slNo,
+                label: f.natureOfWork,
+                serviceCharge: f.labourCharges,
+                repair_time: f.repairTime,
+                price: 45,
+                gst: 0.18
             }
             return productData
         })
-        Helper.response("success", "Product Found Successfully!", data , res, 200);
+        Helper.response("success", "Product Found Successfully!", data, res, 200);
     } catch (error) {
         Helper.response("failed", "Server error", error, res, 200);
     }

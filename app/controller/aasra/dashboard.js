@@ -1,5 +1,6 @@
 const Helper = require('../../helper/helper');
 const aasra = require('../../model/aasra');
+const repair = require('../../model/repair');
 const ticket = require('../../model/ticket');
 const users = require('../../model/users');
 
@@ -21,10 +22,17 @@ exports.Dashboard = async (req, res) => {
       const ticketData = [];
       await Promise.all(
         tickets.map(async (record, count = 1) => {
-          const getUser = await users.findByPk(record.userId)
-          const getAasra = await aasra.findByPk(record.aasraId)
+          const getUser = await users.findByPk(record.user_id)
+          const getAasra = await aasra.findByPk(record.aasra_id)
+
+          const repairData = await repair.findAll({
+            where: {
+              ticket_id: record.ticket_id
+            }
+          })
+
           const dataValue = {
-            aasraId: record.aasraId,
+            aasraId: record.aasra_id,
             customer_name: getUser.name,
             product_name: record.itemName,
             itemId: record.itemId,
@@ -34,7 +42,8 @@ exports.Dashboard = async (req, res) => {
             ticket_id: record.ticket_id,
             aasraName: getAasra.name_of_org,
             status: record.status == 0 ? 'Pending' : record.status == 1 ? 'Open' : 'Closed',
-            sr_no: count + 1
+            sr_no: count + 1,
+            ticketDetail: record.status == 2 ? repairData : null
           }
           ticketData.push(dataValue)
         })
@@ -54,22 +63,31 @@ exports.Dashboard = async (req, res) => {
     if (user.user_type == 'AC') {
 
       var data = [
-        { id: 1, count: await ticket.count({ where: { status: 0, aasraId: user.ref_id } }), type: "Total Tickets", imgSrc: 'tickets.png' },
-        { id: 2, count: await ticket.count({ where: { status: 1, aasraId: user.ref_id } }), type: "Running Tickets", imgSrc: 'tickets.png' },
-        { id: 3, count: await ticket.count({ where: { status: 2, aasraId: user.ref_id } }), type: "Pending Tickets", imgSrc: 'tickets.png' },
-        { id: 4, count: 0, type: "Register Grievance", imgSrc: 'griv.png' },
+        { id: 1, count: await ticket.count({ where: { aasra_id: user.ref_id } }), type: "Total Tickets", imgSrc: 'tickets.png' },
+        { id: 2, count: await ticket.count({ where: { status: 1, aasra_id: user.ref_id } }), type: "Running Tickets", imgSrc: 'tickets.png' },
+        { id: 3, count: await ticket.count({ where: { status: 0, aasra_id: user.ref_id } }), type: "Pending Tickets", imgSrc: 'tickets.png' },
+        { id: 4, count: await ticket.count({ where: { status: 2, aasra_id: user.ref_id } }), type: "Closed Tickets", imgSrc: 'tickets.png' },
       ]
       var tickets = await ticket.findAll({
         where: {
-          aasraId: user.ref_id
+          aasra_id: user.ref_id
         }
       })
 
       const ticketData = [];
       await Promise.all(
         tickets.map(async (record, count = 1) => {
-          const getUser = await users.findByPk(record.userId)
-          const getAasra = await aasra.findByPk(record.aasraId)
+          const getUser = await users.findByPk(record.user_id)
+          const getAasra = await aasra.findByPk(record.aasra_id)
+
+          const repairData = await repair.findAll({
+            where: {
+              ticket_id: record.ticket_id
+            }
+          })
+
+
+
           const dataValue = {
             aasraId: record.aasraId,
             customer_name: getUser.name,
@@ -81,7 +99,8 @@ exports.Dashboard = async (req, res) => {
             ticket_id: record.ticket_id,
             aasraName: getAasra.name_of_org,
             status: record.status == 0 ? 'Pending' : record.status == 1 ? 'Open' : 'Closed',
-            sr_no: count + 1
+            sr_no: count + 1,
+            ticketDetail: record.status == 2 ? repairData : null
           }
           ticketData.push(dataValue)
         })
@@ -104,7 +123,6 @@ exports.Dashboard = async (req, res) => {
   }
 
 }
-
 
 
 exports.test = async (req, res) => {
@@ -169,32 +187,75 @@ exports.ticketList = async (req, res) => {
     const token = req.headers["authorization"];
     const string = token.split(" ");
     const user = await users.findOne({ where: { token: string[1] } });
-    var tickets = await ticket.findAll({
-      where: {
-        aasraId: user.ref_id
-      }
-    })
     const ticketData = [];
-    await Promise.all(
-      tickets.map(async (record, count = 1) => {
-        const getUser = await users.findByPk(record.userId)
-        const getAasra = await aasra.findByPk(record.aasraId)
-        const dataValue = {
-          aasraId: record.aasraId,
-          customer_name: getUser.name,
-          product_name: record.itemName,
-          itemId: record.itemId,
-          description: record.description,
-          appointment_date: record.appointment_date,
-          appointment_time: record.appointment_time,
-          ticket_id: record.ticket_id,
-          aasraName: getAasra.name_of_org,
-          status: record.status == 0 ? 'Pending' : record.status == 1 ? 'Open' : 'Closed',
-          sr_no: count + 1
-        }
-        ticketData.push(dataValue)
+    if (user.user_type == 'S') {
+      var tickets = await ticket.findAll({
+        order: [
+          ['id', 'DESC']
+        ]
       })
-    )
+      await Promise.all(
+        tickets.map(async (record, count = 1) => {
+          const getUser = await users.findByPk(record.user_id)
+          const getAasra = await aasra.findByPk(record.aasra_id)
+          const repairData = await repair.findAll({
+            where: {
+              ticket_id: record.ticket_id
+            }
+          })
+          const dataValue = {
+            aasraId: record.aasraId,
+            customer_name: getUser.name,
+            product_name: record.itemName,
+            itemId: record.itemId,
+            description: record.description,
+            appointment_date: record.appointment_date,
+            appointment_time: record.appointment_time,
+            ticket_id: record.ticket_id,
+            aasraName: getAasra.name_of_org,
+            status: record.status == 0 ? 'Pending' : record.status == 1 ? 'Open' : 'Closed',
+            sr_no: count + 1,
+            ticketDetail: record.status == 2 ? repairData : null
+          }
+          ticketData.push(dataValue)
+        })
+      )
+    } else {
+      var tickets = await ticket.findAll({
+        where: {
+          aasra_id: user.ref_id
+        },
+        order: [
+          ['id', 'DESC']
+        ]
+      })
+      await Promise.all(
+        tickets.map(async (record, count = 1) => {
+          const getUser = await users.findByPk(record.user_id)
+          const getAasra = await aasra.findByPk(record.aasra_id)
+          const repairData = await repair.findAll({
+            where: {
+              ticket_id: record.ticket_id
+            }
+          })
+          const dataValue = {
+            aasraId: record.aasraId,
+            customer_name: getUser.name,
+            product_name: record.itemName,
+            itemId: record.itemId,
+            description: record.description,
+            appointment_date: record.appointment_date,
+            appointment_time: record.appointment_time,
+            ticket_id: record.ticket_id,
+            aasraName: getAasra.name_of_org,
+            status: record.status == 0 ? 'Pending' : record.status == 1 ? 'Open' : 'Closed',
+            sr_no: count + 1,
+            ticketDetail: record.status == 2 ? repairData : null
+          }
+          ticketData.push(dataValue)
+        })
+      )
+    }
     Helper.response(
       "success",
       "Record Found Successfully!",
@@ -205,14 +266,13 @@ exports.ticketList = async (req, res) => {
       200
     );
   } catch (error) {
+    console.log(error)
     Helper.response(
-      "success",
-      "Record Found Successfully!",
+      "failed",
+      "Something went wrong!",
       { error },
       res,
       200
     );
   }
 }
-
-

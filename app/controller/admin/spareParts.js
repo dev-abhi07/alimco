@@ -5,21 +5,22 @@ const spareParts = require("../../model/spareParts");
 const body = require('body-parser')
 const fs = require('fs');
 const category = require("../../model/category");
-
+const { where } = require("sequelize");
+const { kMaxLength } = require("buffer");
 
 exports.createParts = async (req, res) => {
     try {
         const form = new formidable.IncomingForm();
         form.parse(req, function (err, fields, files) {
 
-            const checkPartNumber = fields.part_number[0]
-            const ext = files.image[0].mimetype;
-            var oldpath = files.image[0].filepath
-            const newpath = 'public/' + files.image[0].newFilename + '.' + ext.split('/')[1]
+            const checkPartNumber = fields?.part_number?.[0]
+            const ext = files?.image?.length>0?files?.image[0]?.mimetype:'image/jpeg'
+            var oldpath = files?.image[0].filepath??''
+            const newpath = 'public/' + files.image[0].originalFilename + '.' + ext.split('/')[1]
             fs.rename(oldpath, newpath, function (err) {
                 if (err) {
                     Helper.response(
-                        "failed",
+                        "failed",   
                         "",
                         { err },
                         res,
@@ -48,8 +49,8 @@ exports.createParts = async (req, res) => {
                     }).catch((err) => {
                         Helper.response(
                             "failed",
-                            "",
-                            { err },
+                            `${err?.errors?.[0]?.message}`,
+                            err.errors[0].message,
                             res,
                             200
                         );
@@ -59,7 +60,7 @@ exports.createParts = async (req, res) => {
             })
         });
     } catch (error) {
-
+        Helper.response("failed", "Unable to Create Spare Parts", error, res, 200);
     }
 }
 
@@ -86,7 +87,7 @@ exports.sparePartsList = async (req, res) => {
                 quantity_in_stock: record.quantity_in_stock,
                 reorder_point: record.reorder_point,
                 max_stock_level: record.max_stock_level,
-                image: record.image.split("/")[1]
+                image: record?.image?.split("/")[1]
             }
 
             data.push(values)
@@ -102,7 +103,6 @@ exports.sparePartsList = async (req, res) => {
         console.log(error)
     }
 }
-
 
 exports.deleteSpareParts = async (req, res) => {
 
@@ -129,11 +129,12 @@ exports.deleteSpareParts = async (req, res) => {
         );
     }
 }
+
 exports.updateSpareParts = async (req, res) => {
     try {
         const form = new formidable.IncomingForm();
         form.parse(req, function (err, fields, files) {
-
+          
             if (files.image != undefined) {
                 const checkPartNumber = fields.part_number[0]
                 const ext = files.image[0].mimetype;
@@ -167,13 +168,12 @@ exports.updateSpareParts = async (req, res) => {
                         ).then(() => {
                             Helper.response(
                                 "success",
-                                "Record Updated Successfully",
+                                "Record Created Successfully",
                                 {},
                                 res,
                                 200
                             );
                         }).catch((err) => {
-                            console.log(err)
                             Helper.response(
                                 "failed",
                                 `${err?.errors?.[0]?.message}`,
@@ -202,7 +202,7 @@ exports.updateSpareParts = async (req, res) => {
                 ).then(() => {
                     Helper.response(
                         "success",
-                        "Record Updated Successfully",
+                        "Record Created Successfully",
                         {},
                         res,
                         200

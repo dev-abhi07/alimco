@@ -53,7 +53,7 @@ const customer = sequelize.define('customer', {
     timestamps: true,
   });
 
-ticket.belongsTo(customer,{foreignKey:'userId',as:'customer'})
+// ticket.belongsTo(customer,{foreignKey:'user_id',as:'customer'})
 
 // sequelize.sync()
 
