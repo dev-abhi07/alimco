@@ -25,7 +25,7 @@ exports.Dashboard = async (req, res) => {
           const getAasra = await aasra.findByPk(record.aasra_id)
           const dataValue = {
             aasraId: record.aasraId,
-            customer_name: getUser.name,
+            customer_name: getUser?.name??'Admin',
             product_name: record.itemName,
             itemId: record.itemId,
             description: record.description,
@@ -205,7 +205,7 @@ exports.ticketList = async (req, res) => {
     );
   } catch (error) {
     Helper.response(
-      "success",
+      "failed",
       "Record Found Successfully!",
       { error },
       res,

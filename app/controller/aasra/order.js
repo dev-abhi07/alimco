@@ -180,7 +180,7 @@ exports.stockList = async (req, res) => {
         const token = req.headers['authorization'];
         const string = token.split(" ");
         const user = await users.findOne({ where: { token: string[1] } });
-        
+         
         if(user.user_type=='S'){
             
             var stockList = await stock.findAll({

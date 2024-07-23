@@ -8,7 +8,7 @@ const { Login, logout } = require('../controller/admin/login');
 const {   states , cities} = require("../controller/admin/dashboard");
 const {Admin,menuListUserPermission, aasra} = require("../middleware/middleware");
 const { registerAasraCentre, aasraList, updateAasraCenter, categoryWiseProduct, productRepairList } = require("../controller/admin/aasra");
-const { Dashboard } = require("../controller/aasra/dashboard");
+const { Dashboard, ticketList } = require("../controller/aasra/dashboard");
 const { createRepair } = require("../controller/aasra/ticket");
 
 
@@ -46,6 +46,7 @@ router.post('/get-user-permission',getUserPermission)
 router.post('/dashboard',Admin,menuListUserPermission,Dashboard)
 router.post('/category-product-list',aasra,categoryWiseProduct)
 router.post('/product-repair-list',productRepairList)
+router.post('/ticket-list',ticketList)
 //Aasra Centre
 router.post('/register-aasra',registerAasraCentre)
 router.post('/aasra-list',aasraList)
