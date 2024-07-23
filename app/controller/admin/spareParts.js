@@ -12,7 +12,10 @@ exports.createParts = async (req, res) => {
     try {
         const form = new formidable.IncomingForm();
         form.parse(req, function (err, fields, files) {
-
+            if (!files.image ) {
+                return Helper.response("failed", "Upload all images", null, res, 200);
+            }
+           
             const checkPartNumber = fields?.part_number?.[0]
             const ext = files?.image?.length>0?files?.image[0]?.mimetype:'image/jpeg'
             var oldpath = files?.image[0].filepath??''
@@ -28,29 +31,21 @@ exports.createParts = async (req, res) => {
                     );
                 } else {
                     const create = spareParts.create({
-                        part_number: fields.part_number[0],
-                        part_name: fields.part_name[0],
-                        description: fields.description[0],
-                        category: fields.category[0],
-                        manufacturer: fields.manufacturer[0],
-                        unit_price: fields.unit_price[0],
-                        quantity_in_stock: fields.quantity_in_stock[0],
-                        reorder_point: fields.reorder_point[0],
-                        max_stock_level: fields.max_stock_level[0],
+                        part_number: fields?.part_number[0],
+                        part_name: fields?.part_name[0],
+                        description: fields?.description[0],
+                        category: fields?.category[0],
+                        manufacturer: fields?.manufacturer[0],
+                        unit_price: fields?.unit_price[0],
+                        quantity_in_stock: fields?.quantity_in_stock[0],
+                        reorder_point: fields?.reorder_point[0],
+                        max_stock_level: fields?.max_stock_level[0],
                         image: newpath,
                     }).then(() => {
                         Helper.response(
                             "success",
                             "Record Created Successfully",
                             {},
-                            res,
-                            200
-                        );
-                    }).catch((err) => {
-                        Helper.response(
-                            "failed",
-                            `${err?.errors?.[0]?.message}`,
-                            err.errors[0].message,
                             res,
                             200
                         );

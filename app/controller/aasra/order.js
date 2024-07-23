@@ -7,6 +7,7 @@ const orderModel = require("../../model/order");
 const Helper = require("../../helper/helper");
 const order = require("../../model/order");
 const stock = require("../../model/stock");
+const payment = require("../../model/payment");
 
 exports.productApi = async (req, res) => {
 
@@ -60,8 +61,11 @@ exports.createOrder = async (req, res) => {
                 products['quantity'] = f.qty
                 products['price'] = f.itemPrice
 
-                const data = await orderDetails.create(products).then(() => {
+                const data = await orderDetails.create(products).then(async() => {
                     Helper.response("success", "Order created successfully", total_order, res, 200)
+                    const purchase_order= await payment.create({
+                        order_id:creatOrder.id,
+                    })
                 }).catch((err) => {
                     console.log(err)
                 })
@@ -162,6 +166,48 @@ exports.stockList = async (req, res) => {
 
         const stockList = await stock.findAll({ where: { aasra_id: user.ref_id } })
         Helper.response("success", "Stock List", stockList, res, 200)
+    } catch (error) {
+        console.log(error)
+        Helper.response("failed", "Something went wrong", error, res, 200)
+    }
+}
+
+exports.generatePurchaseOrder= async(req,res)=>{
+    try {
+        const {order_id}= req.body
+        const purchase_order= await payment.create({
+            order_id:order_id,
+            purchase_order:true,
+            
+        })
+        Helper.response("success", "Purchase Order Generated", purchase_order, res, 200)
+    } catch (error) {
+        Helper.response("failed", "Something went wrong", error, res, 200)
+    }
+}
+
+exports.purchaseOrderStatus= async(req,res)=>{
+    try {
+        const {order_id} = req.body
+        const purchase_order= await payment.findOne({where:{order_id:order_id}})
+        if(purchase_order.purchase_order==false){
+            Helper.response("failed", "Purchase Order Not Generated", purchase_order, res, 200)
+        }
+        else{
+            Helper.response("success", "Purchase Order Generated", purchase_order, res, 200)
+        }
+    } catch (error) {
+        Helper.response("failed", "Something went wrong", error, res, 200)
+    }
+}
+
+exports.transactionList = async(req,res)=>{
+    try {
+        const token = req.headers['authorization'];
+        const string = token.split(" ");
+        const user = await users.findOne({ where: { token: string[1] } });
+        const transactionList = await orderModel.findAll({where:{aasra_id:user.ref_id,payment_status:'paid'}})
+        Helper.response("success", "Transaction List", transactionList, res, 200)
     } catch (error) {
         console.log(error)
         Helper.response("error", "Something went wrong", error, res, 200)
