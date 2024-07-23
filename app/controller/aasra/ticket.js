@@ -111,15 +111,28 @@ exports.ticketList = async (req, res) => {
 
 exports.createRepair = async(req ,res) => {
     try {
+        const token = req.headers['authorization'];
+        const string = token.split(" ");
+        const user = await users.findOne({ where: { token: string[1] } });
         const data = req.body;
-        // console.log(data)
-        // return false
+        
         const create = await Promise.all(
             data.map(async (record) => {
-                await repair.create(record)   
+                const item_id = await  spareParts.findByPk(record.productValue)
+                
+                await repair.create(record) 
+                await stock.create({
+                    item_id:record.productValue,
+                    item_name:record.productLabel,
+                    aasra_id:user.ref_id,
+                    quantity:0,
+                    price:item_id.unit_price,
+                    stock_out:record.qty
+                })
             }) 
         )
         if(create){
+       
             Helper.response(
                 "success",
                 "Repair Created Successfully!",
@@ -129,7 +142,6 @@ exports.createRepair = async(req ,res) => {
             );
         }
     } catch (error) {
-        console.log(error)
         Helper.response(
             "failed",
             "Something went wrong!",

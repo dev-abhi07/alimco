@@ -9,7 +9,7 @@ const {   states , cities} = require("../controller/admin/dashboard");
 const {Admin,menuListUserPermission, aasra} = require("../middleware/middleware");
 const { registerAasraCentre, aasraList, updateAasraCenter } = require("../controller/admin/aasra");
 const { Dashboard , ticketList } = require("../controller/aasra/dashboard");
-const { categoryWiseProduct, productRepairList } = require("../controller/admin/aasra");
+const { categoryWiseProduct, productRepairList , AarsaDropDown } = require("../controller/admin/aasra");
 const { createRepair , ticketOtpVerify , ticketSendOtp ,aasraChatList ,aasraMessage} = require("../controller/aasra/ticket");
 
 
@@ -62,6 +62,8 @@ router.post('/close-ticket',ticketOtpVerify)
 router.post('/create-aasra-chat',aasraMessage)
 router.post('/aasra-chat-list',aasraChatList)
 
+
+router.post('/aasra-dd-list',AarsaDropDown)
 
 
 module.exports = router;

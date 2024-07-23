@@ -168,7 +168,7 @@ exports.updateSpareParts = async (req, res) => {
                         ).then(() => {
                             Helper.response(
                                 "success",
-                                "Record Created Successfully",
+                                "Record Updated Successfully",
                                 {},
                                 res,
                                 200
@@ -202,7 +202,7 @@ exports.updateSpareParts = async (req, res) => {
                 ).then(() => {
                     Helper.response(
                         "success",
-                        "Record Created Successfully",
+                        "Record Updated Successfully",
                         {},
                         res,
                         200

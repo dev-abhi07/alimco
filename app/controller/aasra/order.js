@@ -8,6 +8,7 @@ const Helper = require("../../helper/helper");
 const order = require("../../model/order");
 const stock = require("../../model/stock");
 const aasra = require("../../model/aasra");
+const { where } = require("sequelize");
 
 
 exports.productApi = async (req, res) => {
@@ -100,35 +101,35 @@ exports.updateOrder = async (req, res) => {
         const token = req.headers['authorization'];
         const string = token.split(" ");
         const user = await users.findOne({ where: { token: string[1] } });
-        
+
         const order = await orderModel.update(
             {
-              ...req.body,
-              due_amount: req.body.grand_total - req.body.paid_amount
+                ...req.body,
+                due_amount: req.body.grand_total - req.body.paid_amount
             },
             {
-              where: {
+                where: {
+                    aasra_id: user.ref_id,
+                    id: req.body.order_id
+                }
+            }
+        );
+
+        const orderUpdated = await orderModel.findOne({
+            where: {
                 aasra_id: user.ref_id,
                 id: req.body.order_id
-              }
             }
-          );
-          
-        const orderUpdated = await orderModel.findOne( {
-            where: {
-              aasra_id: user.ref_id,
-              id: req.body.order_id
-            }
-          })
-       if(orderUpdated.due_amount==0){
-         await orderModel.update({payment_status:'paid'}, {
-            where: {
-              aasra_id: user.ref_id,
-              id: req.body.order_id
-            }
-          })
-       }  
-       Helper.response("success", "Order updated", order, res, 200)
+        })
+        if (orderUpdated.due_amount == 0) {
+            await orderModel.update({ payment_status: 'paid' }, {
+                where: {
+                    aasra_id: user.ref_id,
+                    id: req.body.order_id
+                }
+            })
+        }
+        Helper.response("success", "Order updated", order, res, 200)
     } catch (error) {
         console.log(error)
         Helper.response("error", "Something went wrong", error, res, 200)
@@ -179,30 +180,35 @@ exports.stockList = async (req, res) => {
         const token = req.headers['authorization'];
         const string = token.split(" ");
         const user = await users.findOne({ where: { token: string[1] } });
-        console.log(user)
-        if(user.user_type=='S'){
-            
-            var stockList = await stock.findAll({
-                include:aasra,
-            })
+        // console.log(user)
+        if (user.user_type == 'S') {
+
+            var stockList = await stock.findAll(
+                {
+                    include: aasra,
+                    where:{
+                        aasra_id:req.body.aasra_id
+                    }
+                },                
+            )
         }
-        else{
+        else {
             var stockList = await stock.findAll({
-            },{ where: { aasra_id: user.ref_id } })
-        }   
-       
+            }, { where: { aasra_id: user.ref_id } })
+        }
+
         Helper.response("success", "Stock List", stockList, res, 200)
     } catch (error) {
         console.log(error)
         Helper.response("error", "Something went wrong", error, res, 200)
     }
 }
-exports.transactionList = async(req,res)=>{
+exports.transactionList = async (req, res) => {
     try {
         const token = req.headers['authorization'];
         const string = token.split(" ");
         const user = await users.findOne({ where: { token: string[1] } });
-        const transactionList = await orderModel.findAll({where:{aasra_id:user.ref_id,payment_status:'paid'}})
+        const transactionList = await orderModel.findAll({ where: { aasra_id: user.ref_id, payment_status: 'paid' } })
         Helper.response("success", "Transaction List", transactionList, res, 200)
     } catch (error) {
         console.log(error)

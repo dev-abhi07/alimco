@@ -27,6 +27,16 @@ const stock = sequelize.define('stock', {
         type: DataTypes.INTEGER,
         allowNull:false
     },
+    stock_in:{
+        type:DataTypes.INTEGER,
+        allowNull:false,
+        defaultValue:0
+    },
+    stock_out:{
+        type:DataTypes.INTEGER,
+        allowNull:false,
+        defaultValue:0
+    }
 
 
 })

@@ -300,3 +300,22 @@ exports.productRepairList = async (req, res) => {
         Helper.response("failed", "Server error", error, res, 200);
     }
 }
+
+exports.AarsaDropDown = async(req, res) => {
+    try {
+        const aasras = await aasra.findAll()
+        const dataset = []
+       
+        aasras.map((record) => {
+            const values = {
+                value:record.id,
+                label:record.name_of_org
+            }
+            dataset.push(values)
+        })
+        Helper.response("success", "", dataset, res, 200);
+
+    } catch (error) {
+        Helper.response("failed", "Server error", error, res, 200);
+    }
+}
