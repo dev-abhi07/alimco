@@ -1,5 +1,6 @@
 const { DataTypes, Transaction } = require("sequelize");
 const sequelize = require("../connection/conn");
+const payment = require("./payment");
 
 const order = sequelize.define('order',{
     id: {
@@ -71,6 +72,7 @@ const order = sequelize.define('order',{
         allowNull:true
     }    
 })
+// order.hasMany(payment,{foreignKey:'order_id'})
 // sequelize.sync()
 //     .then(() => {
 //         console.log('Database & tables created!');

@@ -24,10 +24,10 @@ router.post('/update-category',update)
 router.post('/delete-category',destroy)
 
 //Spare Parts
-// router.post('/create-spare-part',createParts)
-router.post('/spare-part-list',sparePartsList)
-router.post('/delete-spare-part',deleteSpareParts)
-router.post('/update-spare-part',updateSpareParts)
+router.post('/create-spare-part',Admin,createParts)
+router.post('/spare-part-list',Admin,sparePartsList)
+router.post('/delete-spare-part',Admin,deleteSpareParts)
+router.post('/update-spare-part',Admin,updateSpareParts)
 
 //State and City
 router.post('/state-list',states)

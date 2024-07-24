@@ -49,6 +49,8 @@ exports.createParts = async (req, res) => {
                             res,
                             200
                         );
+                    }).catch((err)=>{
+                        Helper.response("failed", "Unable to Create Spare Parts", err, res, 200);
                     })
 
                 }
@@ -203,6 +205,7 @@ exports.updateSpareParts = async (req, res) => {
                         200
                     );
                 }).catch((err) => {
+                    console.log(err)
                     Helper.response(
                         "failed",
                         `Unable to update Data`,

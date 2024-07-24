@@ -1,6 +1,8 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../connection/conn");
 
+const order = require("./order");
+
 const payment = sequelize.define('payment',{
     id: {
         type: DataTypes.INTEGER,
@@ -20,12 +22,16 @@ const payment = sequelize.define('payment',{
         type: DataTypes.BOOLEAN,
         allowNull: false,
         defaultValue:false
+    },
+    PO_number:{
+        type: DataTypes.STRING,
+        allowNull:true,
+        defaultValue:0
     }
 
 })
-
-
-// sequelize.sync()
+order.belongsTo(payment,{foreignKey:'id'})
+// sequelize.sync({alter:true})
 //     .then(() => {
 //         console.log('Database & tables created!');
 //     })
