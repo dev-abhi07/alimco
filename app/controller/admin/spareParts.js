@@ -7,6 +7,7 @@ const fs = require('fs');
 const category = require("../../model/category");
 const { where } = require("sequelize");
 const { kMaxLength } = require("buffer");
+const labour_charges = require("../../model/labour_charges");
 
 exports.createParts = async (req, res) => {
     try {
@@ -14,13 +15,13 @@ exports.createParts = async (req, res) => {
         form.parse(req, function (err, fields, files) {
 
             const checkPartNumber = fields?.part_number?.[0]
-            const ext = files?.image?.length>0?files?.image[0]?.mimetype:'image/jpeg'
-            var oldpath = files?.image[0].filepath??''
-            const newpath = 'public/' + files.image[0].originalFilename + '.' + ext.split('/')[1]
+            const ext = files?.image?.length > 0 ? files?.image[0]?.mimetype : 'image/jpeg'
+            var oldpath = files?.image[0].filepath ?? ''
+            const newpath = 'public/' + files.image[0].originalFilename
             fs.rename(oldpath, newpath, function (err) {
                 if (err) {
                     Helper.response(
-                        "failed",   
+                        "failed",
                         "",
                         { err },
                         res,
@@ -134,7 +135,7 @@ exports.updateSpareParts = async (req, res) => {
     try {
         const form = new formidable.IncomingForm();
         form.parse(req, function (err, fields, files) {
-          
+
             if (files.image != undefined) {
                 const checkPartNumber = fields.part_number[0]
                 const ext = files.image[0].mimetype;
@@ -221,5 +222,26 @@ exports.updateSpareParts = async (req, res) => {
 
     } catch (error) {
         console.log(error)
+    }
+}
+
+exports.labourCharges = async (req, res) => {
+    try {
+        const labourData = await labour_charges.findAll()
+        Helper.response(
+            "success",
+            "Record Found Successfully",
+            {labourData},
+            res,
+            200
+        );
+    } catch (error) {
+        Helper.response(
+            "failed",
+            `Something went wrong!`,
+            err,
+            res,
+            200
+        );
     }
 }

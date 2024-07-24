@@ -20,6 +20,7 @@ exports.Dashboard = async (req, res) => {
       ]
       var tickets = await ticket.findAll()
       const ticketData = [];
+      var subtotal = 0
       await Promise.all(
         tickets.map(async (record, count = 1) => {
           const getUser = await users.findByPk(record.user_id)
@@ -30,9 +31,20 @@ exports.Dashboard = async (req, res) => {
               ticket_id: record.ticket_id
             }
           })
+          var subtotal = 0
+          var serviceCharge = 0
+          var gst = 0
+          var discount = 0
+          repairData.map((t) => {
+            subtotal += t.price * t.qty
+            serviceCharge += t.repairPrice
+            gst = subtotal * 18 / 100
+            discount = t.record == 1 ? 100 : 0
+          })
+
 
           const dataValue = {
-            aasraId: record.aasra_id,
+            aasraId: record.aasraId,
             customer_name: getUser.name,
             product_name: record.itemName,
             itemId: record.itemId,
@@ -43,7 +55,14 @@ exports.Dashboard = async (req, res) => {
             aasraName: getAasra.name_of_org,
             status: record.status == 0 ? 'Pending' : record.status == 1 ? 'Open' : 'Closed',
             sr_no: count + 1,
-            ticketDetail: record.status == 2 ? repairData : null
+            ticketDetail: record.status == 2 ? repairData : null,
+            subtotal: subtotal,
+            serviceCharge: serviceCharge,
+            gst: gst,
+            totalAmount: subtotal + serviceCharge + gst,
+            discount: 0,
+            createdDate:record.createdAt
+            
           }
           ticketData.push(dataValue)
         })
@@ -74,6 +93,8 @@ exports.Dashboard = async (req, res) => {
         }
       })
 
+
+
       const ticketData = [];
       await Promise.all(
         tickets.map(async (record, count = 1) => {
@@ -85,7 +106,16 @@ exports.Dashboard = async (req, res) => {
               ticket_id: record.ticket_id
             }
           })
-
+          var subtotal = 0
+          var serviceCharge = 0
+          var gst = 0
+          var discount = 0
+          repairData.map((t) => {
+            subtotal += t.price * t.qty
+            serviceCharge += t.repairPrice
+            gst = subtotal * 18 / 100
+            discount = t.record == 1 ? 100 : 0
+          })
 
 
           const dataValue = {
@@ -100,7 +130,13 @@ exports.Dashboard = async (req, res) => {
             aasraName: getAasra.name_of_org,
             status: record.status == 0 ? 'Pending' : record.status == 1 ? 'Open' : 'Closed',
             sr_no: count + 1,
-            ticketDetail: record.status == 2 ? repairData : null
+            ticketDetail: record.status == 2 ? repairData : null,
+            subtotal: subtotal,
+            serviceCharge: serviceCharge,
+            gst: gst,
+            totalAmount: subtotal + serviceCharge + gst,
+            discount: 0,
+            createdDate:record.createdAt
           }
           ticketData.push(dataValue)
         })
@@ -203,6 +239,8 @@ exports.ticketList = async (req, res) => {
               ticket_id: record.ticket_id
             }
           })
+
+
           const dataValue = {
             aasraId: record.aasraId,
             customer_name: getUser.name,
@@ -238,6 +276,9 @@ exports.ticketList = async (req, res) => {
               ticket_id: record.ticket_id
             }
           })
+
+
+
           const dataValue = {
             aasraId: record.aasraId,
             customer_name: getUser.name,
@@ -266,7 +307,7 @@ exports.ticketList = async (req, res) => {
       200
     );
   } catch (error) {
-    console.log(error)
+    // console.log(error)
     Helper.response(
       "failed",
       "Something went wrong!",
