@@ -194,7 +194,13 @@ Helper.getUserId = async (req) => {
     const user = await users.findOne({ where: { token: string[1] } });
     return user.id
 }
-
+Helper.getUserDetails = async (req) => {
+    const token = req.headers['authorization'];
+    const string = token.split(" ");
+    // console.log(string)
+    const user = await users.findOne({ where: { token: string[1] } });
+    return user
+}
 Helper.getAasra = async (parameter) => {  
     aasraId = await aasra.findByPk(parameter)  
     unique_code = aasraId.unique_code

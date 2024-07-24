@@ -9,12 +9,12 @@ const body = require('body-parser')
 const conn = require('./app/connection/conn')
 
 
-
+/const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
-// Add this line
+const cors = require('cors'); // Add this line
 
-
+const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
     cors: {
@@ -22,29 +22,6 @@ const io = socketIo(server, {
         methods: ['GET', 'POST']
     }
 });
-
-
-//Allowing Cors
-app.use(
-    cors({
-        origin: '*',
-    }),
-)
-
-app.use(express.static('public'))
-const port = process.env.SERVER_PORT || 8000
-app.use(body.json({ limit: '5mb' }))
-app.use(body.urlencoded({ extended: true }))
-
-readdirSync('./app/routes').map((route) =>
-
-    app.use('/api', require('./app/routes/' + route))
-)
-
-
-app.listen(port, () => console.log(`listening to port:${port} `))
-
-
 
 // Store users and their sockets
 const users = {};
@@ -60,7 +37,6 @@ io.on('connection', (socket) => {
     });
 
     socket.on('private_message', ({ sender, recipient, message }) => {
-        console.log(message)
         const recipientSocketId = users[recipient];
         if (recipientSocketId) {
             io.to(recipientSocketId).emit('private_message', { sender, message });
@@ -82,3 +58,5 @@ const PORT = 3000;
 server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
+
+

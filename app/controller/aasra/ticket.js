@@ -3,6 +3,7 @@ const users = require('../../model/users');
 const ticket = require('../../model/ticket');
 const aasra = require('../../model/aasra');
 const grieance =  require('../../model/grievance');
+const otp = require("../../model/otp");
 exports.ticketListDetails = async (req, res) => {
     try {
         const token = req.headers["authorization"];
@@ -166,4 +167,87 @@ exports.aasraChatList = async (req, res) => {
             200
         );
     }
+}
+
+
+exports.ticketSendOtp = async (req, res) => {
+    
+    try {
+        const userId = await Helper.getUserDetails(req)
+       
+        const getTicket = await ticket.findOne({
+            where: {
+                ticket_id: req.body.ticket_id
+            }
+        })
+        if (!getTicket) {
+            return Helper.response(
+                "failed",
+                "Ticket not found!",
+                {},
+                res,
+                200
+            );
+        }
+  
+        if (getTicket) {
+            const data = otp.create({
+                mobile: userId.mobile,
+                otp: 1234
+            })
+            Helper.response('success', 'OTP Sent Successfully', {}, res, 200);
+        }  
+    } catch (error) {
+        Helper.response(
+            "failed",
+            "Something went wrong!",
+            {},
+            res,
+            200
+        );
+    }
+}
+
+exports.ticketOtpVerify = async (req, res) => {
+    try {
+        const userId = await Helper.getUserDetails(req)
+
+    const verify = otp.findOne({
+        where: {
+            mobile: userId.mobile,
+            status: 1
+        }
+       })
+    
+        if (verify) {
+            const update = await otp.update({
+                status: 0,
+            },
+                {
+                    where: {
+                        mobile: userId.mobile,
+                        otp: req.body.otp,
+                        status: 1
+                    }
+                }
+            )
+            if (update) {
+                const update = await ticket.update({
+                    status:2
+                }, {
+                    where: {
+                        ticket_id: req.body.ticket_id,
+                    }
+                })
+                Helper.response('success', 'Ticket Closed!', {  }, res, 200);
+            }
+
+        } else {
+            Helper.response('failed', 'OTP does not match!', { error }, res, 200);
+        }
+    } catch (error) {
+        Helper.response('failed', 'Something went wrong!', { error }, res, 200);
+    }
+    
+
 }
