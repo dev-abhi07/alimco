@@ -13,6 +13,7 @@ const payment = require("../../model/payment");
 
 
 
+
 exports.productApi = async (req, res) => {
 
     try {
@@ -51,12 +52,16 @@ exports.createOrder = async (req, res) => {
         total_order['order_status'] = orderStatus.label
         total_order['supplier_name'] = supplier_name.label
         total_order['order_date'] = new Date().toISOString().slice(0, 10)
-        total_order['due_amount'] = grandTotal
+
         const creatOrder = await orderModel.create(total_order).catch((err) => {
             console.log(err)
             Helper.response("error", "Something went wrong", err, res, 200)
         })
         if (creatOrder) {
+            const purchase_order = await payment.create({
+                order_id: creatOrder.id,
+            })
+
             const order = await Promise.all(products.map(async (f) => {
                 const products = {}
                 products['order_id'] = creatOrder.id
@@ -65,13 +70,14 @@ exports.createOrder = async (req, res) => {
                 products['quantity'] = f.qty
                 products['price'] = f.itemPrice
 
-                const data = await orderDetails.create(products).then(() => {
-                    Helper.response("success", "Order created successfully", total_order, res, 200)
+                const data = await orderDetails.create(products).then(async () => {
+
                 }).catch((err) => {
                     console.log(err)
                 })
                 return data
             }))
+            Helper.response("success", "Order created successfully", total_order, res, 200)
         }
 
     } catch (error) {
@@ -141,9 +147,32 @@ exports.updateOrder = async (req, res) => {
 exports.orderDetails = async (req, res) => {
     try {
         const { order_id } = req.body
-        const itemPerOrder = await orderDetails.findAll({ where: { order_id: order_id } })
-        Helper.response("success", "Order details", itemPerOrder, res, 200)
+        const itemPerOrder = await order.findOne({
+            where: { id: order_id },
+        });
+
+
+
+        const getOrders = await order.findOne({
+            where: {
+                aasra_id: itemPerOrder.aasra_id
+            }
+        })
+        const aasras = await aasra.findByPk(getOrders.aasra_id)
+        const orderDetail = await orderDetails.findAll({
+            where: {
+                order_id: getOrders.id
+            }
+        })
+        const value = {
+            assraData: aasras,
+            orderData: orderDetail,
+            payment: await payment.findOne({ where: { order_id: getOrders.id } }),
+            total: getOrders.grand_total
+        }
+        Helper.response("success", "Order details", value, res, 200)
     } catch (error) {
+        console.log(error)
         Helper.response("error", "Something went wrong", error, res, 200)
     }
 }
@@ -182,17 +211,17 @@ exports.stockList = async (req, res) => {
         const token = req.headers['authorization'];
         const string = token.split(" ");
         const user = await users.findOne({ where: { token: string[1] } });
-        
+
         if (user.user_type == 'S') {
 
             var stockList = await stock.findAll(
                 {
-                    include: aasra, 
+                    include: aasra,
                     where: {
                         aasra_id: req.body.aasra_id
                     }
                 },
-            )            
+            )
         }
         else {
             var stockList = await stock.findAll({
@@ -208,13 +237,23 @@ exports.stockList = async (req, res) => {
 exports.generatePurchaseOrder = async (req, res) => {
     try {
         const { order_id } = req.body
-        const purchase_order = await payment.create({
+        const date = new Date()
+
+        const year = `${date.getFullYear()}`
+        const PO_number = (date.getFullYear() + '-' + `${parseInt((year)?.split('0')[1]) + 1}`) + '/' + await Helper.generateNumber(10000000, 99999999)
+
+        const purchase_order = await payment.update({
             order_id: order_id,
             purchase_order: true,
-
+            PO_number: PO_number
+        }, {
+            where: {
+                order_id: order_id
+            }
         })
         Helper.response("success", "Purchase Order Generated", purchase_order, res, 200)
     } catch (error) {
+        console.log(error)
         Helper.response("failed", "Something went wrong", error, res, 200)
     }
 }
@@ -240,6 +279,55 @@ exports.transactionList = async (req, res) => {
         const user = await users.findOne({ where: { token: string[1] } });
         const transactionList = await orderModel.findAll({ where: { aasra_id: user.ref_id, payment_status: 'paid' } })
         Helper.response("success", "Transaction List", transactionList, res, 200)
+    } catch (error) {
+        console.log(error)
+        Helper.response("error", "Something went wrong", error, res, 200)
+    }
+}
+exports.updateOrderDetails = async (req, res) => {
+    try {
+        const token = req.headers['authorization'];
+        const string = token.split(" ");
+        const user = await users.findOne({ where: { token: string[1] } });
+
+        const { products, gst, discount, shipping, orderStatus, supplier_name, subtotal, orderTaxAmount, grandTotal, order_id } = req.body
+
+        const total_order = {}
+
+        total_order['aasra_id'] = user.ref_id
+        total_order['total_bill'] = subtotal
+        total_order['total_tax'] = orderTaxAmount
+        total_order['grand_total'] = grandTotal
+        total_order['gst'] = gst
+        total_order['discount'] = discount
+        total_order['shipping_charges'] = shipping
+        total_order['order_status'] = orderStatus.label
+        total_order['supplier_name'] = supplier_name.label
+        total_order['order_date'] = new Date().toISOString().slice(0, 10)
+
+        const deleteOrder = await orderModel.destroy({ where: { id: order_id } })
+        const createOrder = await orderModel.create(total_order).catch((err) => {
+            console.log(err)
+            Helper.response("error", "Something went wrong", err, res, 200)
+        })
+        if (createOrder) {
+            const deleteOrder = await orderDetails.destroy({ where: { order_id: order_id } })
+            const order = await Promise.all(products.map(async (f) => {
+                const products = {}
+                products['order_id'] = createOrder.id
+                products['item_id'] = f.value
+                products['item_name'] = f.label
+                products['quantity'] = f.qty
+                products['price'] = f.itemPrice
+
+                const data = await orderDetails.create(products).catch((err) => {
+                    console.log(err)
+                })
+                return data
+            }))
+            Helper.response("success", "Order Updated successfully", total_order, res, 200)
+        }
+
     } catch (error) {
         console.log(error)
         Helper.response("error", "Something went wrong", error, res, 200)
