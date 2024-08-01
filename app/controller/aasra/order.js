@@ -10,6 +10,7 @@ const stock = require("../../model/stock");
 const aasra = require("../../model/aasra");
 const { where } = require("sequelize");
 const payment = require("../../model/payment");
+const { READUNCOMMITTED } = require("sequelize/lib/table-hints");
 
 
 
@@ -103,13 +104,15 @@ exports.orderList = async (req, res) => {
     }
 }
 
-exports.updateOrder = async (req, res) => {
+exports.updateOrderPayment = async (req, res) => {
     try {
-
+        const {order_id} = req.body
         const token = req.headers['authorization'];
         const string = token.split(" ");
+        const date = new Date();
+        const year = `${date.getFullYear()}`
         const user = await users.findOne({ where: { token: string[1] } });
-
+        const invoice_number = (date.getFullYear() + '-' + `${parseInt((year)?.split('0')[1]) + 1}`) + '/' + await Helper.generateNumber(10000000, 99999999)
         const order = await orderModel.update(
             {
                 ...req.body,
@@ -136,6 +139,7 @@ exports.updateOrder = async (req, res) => {
                     id: req.body.order_id
                 }
             })
+            await payment.update({ invoice: 1, invoice_number: invoice_number }, { where: { order_id: order_id } })
         }
         Helper.response("success", "Order updated", order, res, 200)
     } catch (error) {
@@ -182,11 +186,12 @@ exports.addStock = async (req, res) => {
         const { order_id, payment } = req.body;
         const payment_status = (await order.findOne({ where: { id: order_id } }))
         if (payment_status.payment_status == 'paid') {
-            const itemsAddToStock = await orderDetails.findAll({ where: { order_id: order_id } })
+            const itemsAddToStock = await orderDetails.findAll({ where: { order_id: order_id } })            
             const data = await Promise.all(itemsAddToStock.map(async (f) => {
                 await stock.create({
                     ...f.dataValues,
-                    aasra_id: payment_status.aasra_id
+                    aasra_id: payment_status.aasra_id,
+                    stock_in:f.quantity
                 }).catch((err) => {
                     console.log(err)
                 })
@@ -290,11 +295,12 @@ exports.updateOrderDetails = async (req, res) => {
         const string = token.split(" ");
         const user = await users.findOne({ where: { token: string[1] } });
 
-        const { products, gst, discount, shipping, orderStatus, supplier_name, subtotal, orderTaxAmount, grandTotal, order_id } = req.body
+        
+        const { products, gst, discount, shipping, orderStatus, supplier_name, subtotal, orderTaxAmount, grandTotal, order_id , aasra_id,dpsValue,dpsDate,dpsNo} = req.body
 
         const total_order = {}
 
-        total_order['aasra_id'] = user.ref_id
+        total_order['aasra_id'] = aasra_id
         total_order['total_bill'] = subtotal
         total_order['total_tax'] = orderTaxAmount
         total_order['grand_total'] = grandTotal
@@ -305,31 +311,58 @@ exports.updateOrderDetails = async (req, res) => {
         total_order['supplier_name'] = supplier_name.label
         total_order['order_date'] = new Date().toISOString().slice(0, 10)
 
-        const deleteOrder = await orderModel.destroy({ where: { id: order_id } })
-        const createOrder = await orderModel.create(total_order).catch((err) => {
+        total_order['dps_value'] = dpsValue
+        total_order['dps_date'] = dpsDate
+        total_order['dps_no'] = dpsNo
+        
+
+
+        //const deleteOrder = await orderModel.destroy({ where: { id: order_id } })
+        
+        const createOrder = await orderModel.update(total_order,{where:{id:order_id}}).catch((err) => {
             console.log(err)
             Helper.response("error", "Something went wrong", err, res, 200)
         })
         if (createOrder) {
+            
             const deleteOrder = await orderDetails.destroy({ where: { order_id: order_id } })
             const order = await Promise.all(products.map(async (f) => {
+                
                 const products = {}
-                products['order_id'] = createOrder.id
-                products['item_id'] = f.value
+                products['order_id'] = order_id
+                products['item_id'] = f.id
                 products['item_name'] = f.label
                 products['quantity'] = f.qty
                 products['price'] = f.itemPrice
-
+              
                 const data = await orderDetails.create(products).catch((err) => {
                     console.log(err)
                 })
                 return data
             }))
+           
             Helper.response("success", "Order Updated successfully", total_order, res, 200)
         }
 
     } catch (error) {
         console.log(error)
+        Helper.response("error", "Something went wrong", error, res, 200)
+    }
+}
+exports.paymentStatus= async(req,res)=>{
+    try {
+        const {order_id}= req.body
+        const token = req.headers['authorization'];
+        const string = token.split(" ");
+        const user = await users.findOne({ where: { token: string[1] } });
+        const transactionList = await orderModel.findAll({where:{aasra_id:user.ref_id,order_id:order_id}})
+        if(transactionList.payment_status=='paid'){
+            Helper.response("success", "Payment is done", transactionList, res, 200)
+        }else{
+            Helper.response("error", "Payment is pending", transactionList, res, 200)
+        }
+        Helper.response("success", "Transaction List", transactionList, res, 200)
+    } catch (error) {
         Helper.response("error", "Something went wrong", error, res, 200)
     }
 }

@@ -1,6 +1,7 @@
 const sequelize = require("../../connection/conn");
 const Helper = require("../../helper/helper");
 const aasra = require("../../model/aasra");
+const stock = require("../../model/stock");
 const users = require("../../model/users");
 
 exports.dashboard = async (req ,res) => {
@@ -43,6 +44,47 @@ exports.dashboard = async (req ,res) => {
                 aasraData.push(values)
             })
         )
+        productData = [] ;
+        await Promise.all(
+            aasraa.map(async (record) => {
+                const stocks = await stock.findAll({
+                    where: {
+                        aasra_id: record?.id
+                    }
+                });
+        
+                if (!stocks) {
+                    Helper.response(
+                        "failed",
+                        "product not found!",
+                        {
+                           
+                        },
+                        res,
+                        200
+                    );
+                    return; 
+                }
+        
+                stocks.forEach((stock) => {
+                    const gstPercentage = 18;
+                    const gstAmount = (stock.price * gstPercentage) / 100;
+                    const totalPriceIncludingGST = stock.price + gstAmount;
+        
+                    const values = {
+                        productId: stock.id,
+                        productName: stock.item_name,
+                        stockIn:stock.stock_in,
+                        price: stock.price,
+                        gstAmount: gstAmount,
+                        totalPriceIncludingGST: totalPriceIncludingGST,
+                        centerImage: record?.center_image ? process.env.BASE_URL : 'https://media.istockphoto.com/id/1147544807/vector/thumbnail-image-vector-graphic.jpg?s=612x612&w=0&k=20&c=rnCKVbdxqkjlcs3xH87-9gocETqpspHFXu5dIGB4wuM='
+                    };
+        
+                    productData.push(values);
+                });
+            })
+        );
         const slots = await Helper.createTimeSlots('09:00','18:00','13:00','14:00','40')
         Helper.response(
             "success",
@@ -50,7 +92,8 @@ exports.dashboard = async (req ,res) => {
             {
                 itemData:userItem,
                 aasraData:aasraData,
-                slots:slots
+                slots:slots,
+                productData:productData
             },
             res,
             200

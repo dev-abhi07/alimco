@@ -65,7 +65,17 @@ const repair = sequelize.define('repair', {
     ticket_id: {
         type: DataTypes.STRING,
         allowNull: false,
-    }
+    },
+    old_serial_number:{
+        type:DataTypes.STRING,
+        allowNull:true,
+        defaultValue:0
+    },
+    new_serial_number:{
+        type:DataTypes.STRING,
+        allowNull:true,
+        defaultValue:0
+    }   
 })
 
 // sequelize.sync()

@@ -284,7 +284,7 @@ exports.categoryWiseProduct = async (req, res) => {
 exports.productRepairList = async (req, res) => {
     try {
         const { repair_id } = req.body
-        const product = await labour_charges.findAll({ where: { productId: repair_id } })
+        const product = await labour_charges.findAll()
         const data = product.map((f) => {
             const productData = {
                 value: f.slNo,

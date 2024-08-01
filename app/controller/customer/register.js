@@ -10,6 +10,7 @@ const { error } = require("console");
 
 
 exports.register = async (req, res) => {
+
     try {
         const checkUdid = await users.count({
             where: {
@@ -35,14 +36,23 @@ exports.register = async (req, res) => {
                     Helper.response('success', 'OTP Sent Successfully', {}, res, 200);
                 }
             }
+        }else{
+            const mobile = validator.isMobilePhone(req.body.mobile, 'en-IN');
+            const udid = validator.isAlphanumeric(req.body.udid, 'en-IN');
+            if (mobile === true && udid === true) {
+                const data = otp.create({
+                    mobile: req.body.mobile,
+                    otp: 1234
+                })
+                Helper.response('success', 'OTP Sent Successfully', {}, res, 200);
+            }
         }
     } catch (error) {
-        Helper.response('failed', 'Something went wrong!', {error}, res, 200);
+        Helper.response('failed', 'Something went wrong!', { error }, res, 200);
     }
 }
 
 exports.otpVerify = async (req, res) => {
-
 
     try {
 
@@ -60,8 +70,8 @@ exports.otpVerify = async (req, res) => {
             }
         });
 
-
-        if (checkUser) {
+        
+        if (checkUser!=null) {
             let token = jwt.sign({ id: checkUser.id }, process.env.SECRET_KEY, {
                 expiresIn: "365d",
             });
@@ -74,6 +84,7 @@ exports.otpVerify = async (req, res) => {
         }
 
         else {
+            
             const beneficiaryId = res.data.res[0].beneficiaryName;
             const beneficiary = beneficiaryId.split("-");
 

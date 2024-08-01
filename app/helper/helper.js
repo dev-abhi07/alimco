@@ -193,8 +193,8 @@ Helper.getUserId = async (req) => {
     return user?.id
 }
 
-Helper.getAasra = async (parameter) => {  
-    aasraId = await aasra.findByPk(parameter)  
+Helper.getAasra = async (parameter) => {
+    aasraId = await aasra.findByPk(parameter)
     unique_code = aasraId.unique_code
     id = unique_code.split('_')
     return id[1]
@@ -226,5 +226,32 @@ Helper.getUserDetails = async (req) => {
     // console.log(string)
     const user = await users.findOne({ where: { token: string[1] } });
     return user
+}
+Helper.getMonth = (date) => {
+    const dates = new Date(date);
+    const monthIndex = dates.getMonth();
+    const monthNames = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+    ];
+
+    const monthName = monthNames[monthIndex];
+    return monthName;
+}
+Helper.formatDate = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
+Helper.getAasraId = async (req) => {
+    const token = req.headers['authorization'];
+    const string = token.split(" ");
+    const user = await users.findOne({ where: { token: string[1] } });
+  
+    return user?.ref_id
 }
 module.exports = Helper

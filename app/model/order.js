@@ -70,7 +70,22 @@ const order = sequelize.define('order',{
     payment_date:{
         type: DataTypes.STRING,
         allowNull:true
-    }    
+    } ,   
+    dps_value:{
+        type: DataTypes.STRING,
+        allowNull: true,
+        defaultValue:0
+    },
+    dps_date:{
+        type: DataTypes.STRING,
+        allowNull:true,
+        defaultValue:0
+    },
+    dps_no:{
+        type: DataTypes.STRING,
+        allowNull:true,
+        defaultValue:0
+    }
 })
 order.belongsTo(aasra,{foreignKey:'aasra_id'})
 // sequelize.sync()

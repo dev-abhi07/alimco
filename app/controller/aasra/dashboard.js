@@ -3,6 +3,8 @@ const aasra = require('../../model/aasra');
 const repair = require('../../model/repair');
 const ticket = require('../../model/ticket');
 const users = require('../../model/users');
+const { Op } = require('sequelize')
+const aasras = require('../../model/aasra');
 
 exports.Dashboard = async (req, res) => {
   try {
@@ -46,6 +48,7 @@ exports.Dashboard = async (req, res) => {
           const dataValue = {
             aasraId: record.aasraId,
             customer_name: getUser.name,
+            mobile: getUser.mobile,
             product_name: record.itemName,
             itemId: record.itemId,
             description: record.description,
@@ -61,8 +64,8 @@ exports.Dashboard = async (req, res) => {
             gst: gst,
             totalAmount: subtotal + serviceCharge + gst,
             discount: 0,
-            createdDate:record.createdAt
-            
+            createdDate: record.createdAt
+
           }
           ticketData.push(dataValue)
         })
@@ -93,13 +96,12 @@ exports.Dashboard = async (req, res) => {
         }
       })
 
-
-
       const ticketData = [];
       await Promise.all(
         tickets.map(async (record, count = 1) => {
           const getUser = await users.findByPk(record.user_id)
           const getAasra = await aasra.findByPk(record.aasra_id)
+
 
           const repairData = await repair.findAll({
             where: {
@@ -121,6 +123,7 @@ exports.Dashboard = async (req, res) => {
           const dataValue = {
             aasraId: record.aasraId,
             customer_name: getUser.name,
+            mobile: getUser.mobile,
             product_name: record.itemName,
             itemId: record.itemId,
             description: record.description,
@@ -136,7 +139,7 @@ exports.Dashboard = async (req, res) => {
             gst: gst,
             totalAmount: subtotal + serviceCharge + gst,
             discount: 0,
-            createdDate:record.createdAt
+            createdDate: record.createdAt
           }
           ticketData.push(dataValue)
         })
@@ -316,4 +319,150 @@ exports.ticketList = async (req, res) => {
       200
     );
   }
+}
+
+exports.getAasraRevenue = async (req, res) => {
+ 
+
+  try {
+    const aasra = await Helper.getAasraId(req)  
+    if (req.body.type == 2) {
+        const startDate = await Helper.formatDate(new Date(req.body.startDate));
+        const endDate = await Helper.formatDate(new Date(req.body.endDate));
+        const start = await Helper.getMonth(req.body.startDate);
+        const end = await Helper.getMonth(req.body.endDate);
+       
+
+        const ticketDetails = await ticket.findAll({
+            where: {
+                aasra_id: aasra,
+                status: 2
+            }
+        })
+
+        if (ticketDetails.length === 0) {
+            Helper.response(
+                "failed",
+                "Record Not Found!",
+                {},
+                res,
+                200
+            );
+            return;
+        }
+
+        const ticketIds = ticketDetails.map(ticket => ticket.ticket_id);
+
+        var repairs = await repair.findAll({
+            where: {
+                ticket_id: ticketIds,
+                createdAt: {
+                    [Op.between]: [startDate, endDate]
+                },
+            }
+        });
+        if (repairs.length === 0) {
+            Helper.response(
+                "failed",
+                "Record Not Found!",
+                {},
+                res,
+                200
+            );
+            return;
+        }
+        const getAasra = await aasras.findByPk(aasra)
+        const dates = `${start} - ${end}`;
+        const totalAmount = repairs.reduce((sum, record) => sum + record.amount, 0);
+        const labourDetails = {
+            total_amount: totalAmount,
+            aasra_name: getAasra.name_of_org,
+            month: dates,
+            type: 2
+        };
+
+        Helper.response(
+            "success",
+            "Record Found Successfully",
+            [labourDetails],
+            res,
+            200
+        );
+    }
+    else if (req.body.type == 1) {
+        const startDate = await Helper.formatDate(new Date(req.body.startDate));
+        const endDate = await Helper.formatDate(new Date(req.body.endDate));
+        const start = await Helper.getMonth(req.body.startDate);
+        const end = await Helper.getMonth(req.body.endDate);
+       
+
+        const ticketDetails = await ticket.findAll({
+            where: {
+                aasra_id: aasra,
+                status: 2
+            }
+        })
+
+        if (ticketDetails.length === 0) {
+            Helper.response(
+                "failed",
+                "Record Not Found!",
+                {},
+                res,
+                200
+            );
+            return;
+        }
+
+        const ticketIds = ticketDetails.map(ticket => ticket.ticket_id);
+
+        var repairs = await repair.findAll({
+            where: {
+                ticket_id: ticketIds,
+                createdAt: {
+                    [Op.between]: [startDate, endDate]
+                },
+            }
+        });
+
+        if (repairs.length === 0) {
+            Helper.response(
+                "failed",
+                "Record Not Found!",
+                {},
+                res,
+                200
+            );
+            return;
+        }
+        const getAasra = await aasras.findByPk(aasra)
+        const dates = `${start} - ${end}`;
+        const totalAmount = repairs.reduce((sum, record) => sum + (record.qty * record.price), 0);
+        const sellDetails = {
+            total_amount: totalAmount,
+            aasra_name: getAasra.name_of_org,
+            month: dates,
+            type: 1
+        };
+
+        Helper.response(
+            "success",
+            "Record Found Successfully",
+            [sellDetails],
+            res,
+            200
+        );
+    }
+
+
+} catch (error) {
+    console.log(error)
+    Helper.response(
+        "failed",
+        "Something went wrong!",
+        { error },
+        res,
+        200
+    );
+}
 }

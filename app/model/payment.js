@@ -27,11 +27,16 @@ const payment = sequelize.define('payment',{
         type: DataTypes.STRING,
         allowNull:true,
         defaultValue:0
+    },
+    invoice_number:{
+        type:DataTypes.STRING,
+        allowNull:false,
+        defaultValue:0
     }
 
 })
 order.belongsTo(payment,{foreignKey:'id'})
-// sequelize.sync({alter:true})
+// sequelize.sync()
 //     .then(() => {
 //         console.log('Database & tables created!');
 //     })

@@ -20,7 +20,7 @@ exports.arjunApi = (req, res, next) => {
 
   axios.request(config)
     .then((response) => {
-      //console.log(response.data)
+      console.log(response.data)
       res.data = response.data ? response.data : []
       next()
     })

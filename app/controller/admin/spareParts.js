@@ -12,8 +12,11 @@ const labour_charges = require("../../model/labour_charges");
 exports.createParts = async (req, res) => {
     try {
         const form = new formidable.IncomingForm();
-        form.parse(req, function (err, fields, files) {
 
+
+        form.parse(req, function (err, fields, files) {
+            // console.log(fields)
+            // return false
             const checkPartNumber = fields?.part_number?.[0]
             const ext = files?.image?.length > 0 ? files?.image[0]?.mimetype : 'image/jpeg'
             var oldpath = files?.image[0].filepath ?? ''
@@ -28,6 +31,7 @@ exports.createParts = async (req, res) => {
                         200
                     );
                 } else {
+                    
                     const create = spareParts.create({
                         part_number: fields.part_number[0],
                         part_name: fields.part_name[0],
@@ -38,6 +42,11 @@ exports.createParts = async (req, res) => {
                         quantity_in_stock: fields.quantity_in_stock[0],
                         reorder_point: fields.reorder_point[0],
                         max_stock_level: fields.max_stock_level[0],
+                        serial_no: fields.serial_no[0],
+                        base_price: fields.base_price[0],
+                        gst: fields.gst[0],
+                        made_by: fields.made_by[0],
+                        hsn_code: fields.hsn_code[0],
                         image: newpath,
                     }).then(() => {
                         Helper.response(
@@ -88,7 +97,12 @@ exports.sparePartsList = async (req, res) => {
                 quantity_in_stock: record.quantity_in_stock,
                 reorder_point: record.reorder_point,
                 max_stock_level: record.max_stock_level,
-                image: record?.image?.split("/")[1]
+                image: record?.image?.split("/")[1],
+                serial_no: record.serial_no,
+                base_price: record.base_price,
+                gst: record.gst,
+                made_by: record.made_by,
+                hsn_code: record.hsn_code,
             }
 
             data.push(values)
@@ -161,6 +175,11 @@ exports.updateSpareParts = async (req, res) => {
                                 quantity_in_stock: fields.quantity_in_stock[0],
                                 reorder_point: fields.reorder_point[0],
                                 max_stock_level: fields.max_stock_level[0],
+                                serial_no: fields.serial_no[0],
+                                base_price: fields.base_price[0],
+                                gst: fields.gst[0],
+                                made_by: fields.made_by[0],
+                                hsn_code: fields.hsn_code[0],
                                 image: newpath,
                             },
                             {
@@ -196,6 +215,11 @@ exports.updateSpareParts = async (req, res) => {
                         quantity_in_stock: fields.quantity_in_stock[0],
                         reorder_point: fields.reorder_point[0],
                         max_stock_level: fields.max_stock_level[0],
+                        serial_no: fields.serial_no[0],
+                        base_price: fields.base_price[0],
+                        gst: fields.gst[0],
+                        made_by: fields.made_by[0],
+                        hsn_code: fields.hsn_code[0],
                     },
                     {
                         where: { id: fields.id?.[0] }
@@ -231,7 +255,7 @@ exports.labourCharges = async (req, res) => {
         Helper.response(
             "success",
             "Record Found Successfully",
-            {labourData},
+            { labourData },
             res,
             200
         );

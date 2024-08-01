@@ -69,6 +69,7 @@ exports.Login = async (req, res) => {
             );
         }
     } catch (error) {
+        console.log(error)
         Helper.response(
             "Failed",
             "Internal server Error",
@@ -95,3 +96,30 @@ exports.logout = async (req, res) => {
         Helper.response("failed", "Unable to Logout ", error, res, 200);
     }
 };
+
+exports.validateToken = async (req, res, next) => {
+    const token = req.headers["authorization"];
+  
+    try {
+      const string = token.split(" ");
+      const user = await UserModel.findOne({ where: { token: string[1] } });
+  
+      if (user) {
+  
+        try {
+          const tokens = jwt.verify(string[1], process.env.SECRET_KEY);
+          var data = true;
+          Helper.response("Success", "Your Token is Valid", data, res, 200);
+          next();
+        } catch (error) {
+          var data = false;
+          Helper.response("Failed", "Your Token is Expired", false, res, 200);
+        }
+  
+      } else {
+        Helper.response("Failed", "Token Expired due to another login,Login Again!!", {}, res, 200);
+      }
+    } catch (error) {
+      Helper.response("Failed", "Unauthorized Access", {}, res, 200);
+    }
+  };
