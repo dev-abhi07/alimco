@@ -5,6 +5,7 @@ const ticket = require('../../model/ticket');
 const users = require('../../model/users');
 const { Op } = require('sequelize')
 const aasras = require('../../model/aasra');
+const repairPayment = require('../../model/repairPayment')
 
 exports.Dashboard = async (req, res) => {
   try {
@@ -28,11 +29,19 @@ exports.Dashboard = async (req, res) => {
           const getUser = await users.findByPk(record.user_id)
           const getAasra = await aasra.findByPk(record.aasra_id)
 
+          //console.log(record)
           const repairData = await repair.findAll({
             where: {
               ticket_id: record.ticket_id
             }
           })
+
+          const repairPayments = await repairPayment.count({
+            where: {
+              ticket_id: record.ticket_id
+            }
+          })
+
           var subtotal = 0
           var serviceCharge = 0
           var gst = 0
@@ -61,10 +70,11 @@ exports.Dashboard = async (req, res) => {
             ticketDetail: record.status == 2 ? repairData : null,
             subtotal: subtotal,
             serviceCharge: serviceCharge,
-            gst: gst,
+            gst: process.env.SERVICE_GST,
             totalAmount: subtotal + serviceCharge + gst,
             discount: 0,
-            createdDate: record.createdAt
+            createdDate: record.createdAt,
+            payment_status: repairPayments == 0 ? false : true
 
           }
           ticketData.push(dataValue)
@@ -108,6 +118,13 @@ exports.Dashboard = async (req, res) => {
               ticket_id: record.ticket_id
             }
           })
+          const repairPayments = await repairPayment.count({
+            where: {
+              ticket_id: record.ticket_id
+            }
+          })
+
+
           var subtotal = 0
           var serviceCharge = 0
           var gst = 0
@@ -119,7 +136,7 @@ exports.Dashboard = async (req, res) => {
             discount = t.record == 1 ? 100 : 0
           })
 
-
+          console.log(serviceCharge)
           const dataValue = {
             aasraId: record.aasraId,
             customer_name: getUser.name,
@@ -136,10 +153,11 @@ exports.Dashboard = async (req, res) => {
             ticketDetail: record.status == 2 ? repairData : null,
             subtotal: subtotal,
             serviceCharge: serviceCharge,
-            gst: gst,
+            gst: process.env.SERVICE_GST,
             totalAmount: subtotal + serviceCharge + gst,
             discount: 0,
-            createdDate: record.createdAt
+            createdDate: record.createdAt,
+            payment_status: repairPayments == 0 ? false : true
           }
           ticketData.push(dataValue)
         })
@@ -243,6 +261,22 @@ exports.ticketList = async (req, res) => {
             }
           })
 
+          const repairPayments = await repairPayment.count({
+            where: {
+              ticket_id: record.ticket_id
+            }
+          })
+
+          var subtotal = 0
+          var serviceCharge = 0
+          var gst = 0
+          var discount = 0
+          repairData.map((t) => {
+            subtotal += t.price * t.qty
+            serviceCharge += t.repairPrice
+            gst = subtotal * 18 / 100
+            discount = t.record == 1 ? 100 : 0
+          })
 
           const dataValue = {
             aasraId: record.aasraId,
@@ -256,7 +290,14 @@ exports.ticketList = async (req, res) => {
             aasraName: getAasra.name_of_org,
             status: record.status == 0 ? 'Pending' : record.status == 1 ? 'Open' : 'Closed',
             sr_no: count + 1,
-            ticketDetail: record.status == 2 ? repairData : null
+            ticketDetail: record.status == 2 ? repairData : null,
+            payment_status: repairPayments == 0 ? false : true,
+            subtotal: subtotal,
+            serviceCharge: serviceCharge,
+            gst: process.env.SERVICE_GST,
+            totalAmount: subtotal + serviceCharge + gst,
+            discount: 0
+
           }
           ticketData.push(dataValue)
         })
@@ -280,7 +321,11 @@ exports.ticketList = async (req, res) => {
             }
           })
 
-
+          const repairPayments = await repairPayment.count({
+            where: {
+              ticket_id: record.ticket_id
+            }
+          })
 
           const dataValue = {
             aasraId: record.aasraId,
@@ -294,7 +339,8 @@ exports.ticketList = async (req, res) => {
             aasraName: getAasra.name_of_org,
             status: record.status == 0 ? 'Pending' : record.status == 1 ? 'Open' : 'Closed',
             sr_no: count + 1,
-            ticketDetail: record.status == 2 ? repairData : null
+            ticketDetail: record.status == 2 ? repairData : null,
+            payment_status: repairPayments == 0 ? false : true
           }
           ticketData.push(dataValue)
         })
@@ -322,147 +368,147 @@ exports.ticketList = async (req, res) => {
 }
 
 exports.getAasraRevenue = async (req, res) => {
- 
+
 
   try {
-    const aasra = await Helper.getAasraId(req)  
+    const aasra = await Helper.getAasraId(req)
     if (req.body.type == 2) {
-        const startDate = await Helper.formatDate(new Date(req.body.startDate));
-        const endDate = await Helper.formatDate(new Date(req.body.endDate));
-        const start = await Helper.getMonth(req.body.startDate);
-        const end = await Helper.getMonth(req.body.endDate);
-       
+      const startDate = await Helper.formatDate(new Date(req.body.startDate));
+      const endDate = await Helper.formatDate(new Date(req.body.endDate));
+      const start = await Helper.getMonth(req.body.startDate);
+      const end = await Helper.getMonth(req.body.endDate);
 
-        const ticketDetails = await ticket.findAll({
-            where: {
-                aasra_id: aasra,
-                status: 2
-            }
-        })
 
-        if (ticketDetails.length === 0) {
-            Helper.response(
-                "failed",
-                "Record Not Found!",
-                {},
-                res,
-                200
-            );
-            return;
+      const ticketDetails = await ticket.findAll({
+        where: {
+          aasra_id: aasra,
+          status: 2
         }
+      })
 
-        const ticketIds = ticketDetails.map(ticket => ticket.ticket_id);
-
-        var repairs = await repair.findAll({
-            where: {
-                ticket_id: ticketIds,
-                createdAt: {
-                    [Op.between]: [startDate, endDate]
-                },
-            }
-        });
-        if (repairs.length === 0) {
-            Helper.response(
-                "failed",
-                "Record Not Found!",
-                {},
-                res,
-                200
-            );
-            return;
-        }
-        const getAasra = await aasras.findByPk(aasra)
-        const dates = `${start} - ${end}`;
-        const totalAmount = repairs.reduce((sum, record) => sum + record.amount, 0);
-        const labourDetails = {
-            total_amount: totalAmount,
-            aasra_name: getAasra.name_of_org,
-            month: dates,
-            type: 2
-        };
-
+      if (ticketDetails.length === 0) {
         Helper.response(
-            "success",
-            "Record Found Successfully",
-            [labourDetails],
-            res,
-            200
+          "failed",
+          "Record Not Found!",
+          {},
+          res,
+          200
         );
-    }
-    else if (req.body.type == 1) {
-        const startDate = await Helper.formatDate(new Date(req.body.startDate));
-        const endDate = await Helper.formatDate(new Date(req.body.endDate));
-        const start = await Helper.getMonth(req.body.startDate);
-        const end = await Helper.getMonth(req.body.endDate);
-       
+        return;
+      }
 
-        const ticketDetails = await ticket.findAll({
-            where: {
-                aasra_id: aasra,
-                status: 2
-            }
-        })
+      const ticketIds = ticketDetails.map(ticket => ticket.ticket_id);
 
-        if (ticketDetails.length === 0) {
-            Helper.response(
-                "failed",
-                "Record Not Found!",
-                {},
-                res,
-                200
-            );
-            return;
+      var repairs = await repair.findAll({
+        where: {
+          ticket_id: ticketIds,
+          createdAt: {
+            [Op.between]: [startDate, endDate]
+          },
         }
-
-        const ticketIds = ticketDetails.map(ticket => ticket.ticket_id);
-
-        var repairs = await repair.findAll({
-            where: {
-                ticket_id: ticketIds,
-                createdAt: {
-                    [Op.between]: [startDate, endDate]
-                },
-            }
-        });
-
-        if (repairs.length === 0) {
-            Helper.response(
-                "failed",
-                "Record Not Found!",
-                {},
-                res,
-                200
-            );
-            return;
-        }
-        const getAasra = await aasras.findByPk(aasra)
-        const dates = `${start} - ${end}`;
-        const totalAmount = repairs.reduce((sum, record) => sum + (record.qty * record.price), 0);
-        const sellDetails = {
-            total_amount: totalAmount,
-            aasra_name: getAasra.name_of_org,
-            month: dates,
-            type: 1
-        };
-
+      });
+      if (repairs.length === 0) {
         Helper.response(
-            "success",
-            "Record Found Successfully",
-            [sellDetails],
-            res,
-            200
+          "failed",
+          "Record Not Found!",
+          {},
+          res,
+          200
         );
-    }
+        return;
+      }
+      const getAasra = await aasras.findByPk(aasra)
+      const dates = `${start} - ${end}`;
+      const totalAmount = repairs.reduce((sum, record) => sum + record.amount, 0);
+      const labourDetails = {
+        total_amount: totalAmount,
+        aasra_name: getAasra.name_of_org,
+        month: dates,
+        type: 2
+      };
 
-
-} catch (error) {
-    console.log(error)
-    Helper.response(
-        "failed",
-        "Something went wrong!",
-        { error },
+      Helper.response(
+        "success",
+        "Record Found Successfully",
+        [labourDetails],
         res,
         200
+      );
+    }
+    else if (req.body.type == 1) {
+      const startDate = await Helper.formatDate(new Date(req.body.startDate));
+      const endDate = await Helper.formatDate(new Date(req.body.endDate));
+      const start = await Helper.getMonth(req.body.startDate);
+      const end = await Helper.getMonth(req.body.endDate);
+
+
+      const ticketDetails = await ticket.findAll({
+        where: {
+          aasra_id: aasra,
+          status: 2
+        }
+      })
+
+      if (ticketDetails.length === 0) {
+        Helper.response(
+          "failed",
+          "Record Not Found!",
+          {},
+          res,
+          200
+        );
+        return;
+      }
+
+      const ticketIds = ticketDetails.map(ticket => ticket.ticket_id);
+
+      var repairs = await repair.findAll({
+        where: {
+          ticket_id: ticketIds,
+          createdAt: {
+            [Op.between]: [startDate, endDate]
+          },
+        }
+      });
+
+      if (repairs.length === 0) {
+        Helper.response(
+          "failed",
+          "Record Not Found!",
+          {},
+          res,
+          200
+        );
+        return;
+      }
+      const getAasra = await aasras.findByPk(aasra)
+      const dates = `${start} - ${end}`;
+      const totalAmount = repairs.reduce((sum, record) => sum + (record.qty * record.price), 0);
+      const sellDetails = {
+        total_amount: totalAmount,
+        aasra_name: getAasra.name_of_org,
+        month: dates,
+        type: 1
+      };
+
+      Helper.response(
+        "success",
+        "Record Found Successfully",
+        [sellDetails],
+        res,
+        200
+      );
+    }
+
+
+  } catch (error) {
+    console.log(error)
+    Helper.response(
+      "failed",
+      "Something went wrong!",
+      { error },
+      res,
+      200
     );
-}
+  }
 }

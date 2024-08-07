@@ -7,7 +7,7 @@ const grievance = require('../../model/grievance');
 const repair = require('../../model/repair');
 const stock = require('../../model/stock');
 const spareParts = require('../../model/spareParts');
-const repairPayments = require('../../model/repairPayment');
+const repairPayment = require('../../model/repairPayment');
 const { error } = require('console');
 const validator = require('validator');
 const customer = require('../../model/customer');
@@ -77,6 +77,12 @@ exports.ticketList = async (req, res) => {
                     }
                 })
 
+                const repairPayments = await repairPayment.count({
+                    where: {
+                        ticket_id: record.ticket_id
+                    }
+                })
+
                 const dataValue = {
                     aasraId: record.aasraId,
                     customer_name: getUser.name,
@@ -89,7 +95,8 @@ exports.ticketList = async (req, res) => {
                     aasraName: getAasra.name_of_org,
                     status: record.status == 0 ? 'Pending' : record.status == 1 ? 'Open' : 'Closed',
                     sr_no: count + 1,
-                    ticketDetail: record.status == 2 ? repairData : null
+                    ticketDetail: record.status == 2 ? repairData : null,
+                    payment_status:repairPayments == 0 ? false : true
                 }
                 ticketData.push(dataValue)
             })
@@ -162,8 +169,8 @@ exports.createRepair = async (req, res) => {
                                 amount: record.amount,
                                 ticket_id: record.ticket_id,
                                 discount: discount,
-                                old_serial_number:record.old_sr_no,
-                                new_serial_number:record.new_sr_no
+                                old_serial_number: record.old_sr_no,
+                                new_serial_number: record.new_sr_no
                             }
                             repairsCreate = await repair.create(values)
 
@@ -187,8 +194,8 @@ exports.createRepair = async (req, res) => {
                                 gst: record.gst,
                                 amount: record.amount,
                                 ticket_id: record.ticket_id,
-                                old_serial_number:record.old_sr_no,
-                                new_serial_number:record.new_sr_no
+                                old_serial_number: record.old_sr_no,
+                                new_serial_number: record.new_sr_no
                             }
                             repairsCreate = await repair.create(values)
 
@@ -213,7 +220,7 @@ exports.createRepair = async (req, res) => {
 
         if (create[0] != false) {
 
-            await repairPayments.create({
+            await repairPayment.create({
                 ticket_id: ticketId,
                 discount: totalAmount + serviceCharge,
                 total_amount: totalAmount,
@@ -293,15 +300,14 @@ exports.ticketSendOtp = async (req, res) => {
 exports.ticketOtpVerify = async (req, res) => {
     try {
         const userId = await Helper.getUserDetails(req)
-
-        const verify = otp.findOne({
+        const verify = await otp.findOne({
             where: {
                 mobile: userId.mobile,
                 status: 1
             }
         })
-
-        if (verify) {
+        
+        if (verify!=null && verify.otp == req.body.otp) {
             const update = await otp.update({
                 status: 0,
             },
@@ -531,18 +537,36 @@ exports.sentOtpWeb = async (req, res) => {
 }
 
 exports.getUser = async (req, res) => {
+
     try {
+
+        if (res.data.length === 0) {
+            return Helper.response('failed', 'Invalid Udid!', {}, res, 200);
+        }
+
         const verify = await otp.findOne({
             where: {
                 mobile: req.body.mobile,
+                otp:req.body.otp,
                 status: 1
             }
         })
         const beneficiaryId = res.data.res[0].beneficiaryName;
         const beneficiary = beneficiaryId.split("-");
 
-        if (verify) {
+        const userItem = [];
+        res.data.res.map(async (record) => {
+            const dataItem = {
+                itemName: record.itemName,
+                itemId: record.itemId,
+                expiryDate: await Helper.addYear(record.dstDate)
+            }
 
+            userItem.push(dataItem)
+        })
+        
+        if (verify!=null) {
+            console.log("sssssssssss",verify)
             const update = await otp.update({
                 status: 0,
             },
@@ -555,29 +579,29 @@ exports.getUser = async (req, res) => {
                 }
             )
             if (update) {
-                const slots = await Helper.createTimeSlots('09:00','18:00','13:00','14:00','40')
-                const userData = { beneficiary_id: beneficiary[1], name: beneficiary[0], father_name: res.data.res[0].fatherName, dob: res.data.res[0].dob, gender: res.data.res[0].gender, district: res.data.res[0].campVenueDistrict, state: res.data.res[0].campVenueState, aadhaar: res.data.res[0].aadhaar, udid: req.body.udid };
-                Helper.response('success', 'OTP Verified Successfully!', { mobile: req.body.mobile, userData: [userData],slots:slots }, res, 200);
+                const slots = await Helper.createTimeSlots('09:00', '18:00', '13:00', '14:00', '40')
+                const userData = { beneficiary_id: beneficiary[1], name: beneficiary[0], father_name: res.data.res[0].fatherName, dob: res.data.res[0].dob, gender: res.data.res[0].gender, district: res.data.res[0].campVenueDistrict, state: res.data.res[0].campVenueState, aadhaar: res.data.res[0].aadhaar, udid: req.body.udid, userItem: userItem };
+                Helper.response('success', 'OTP Verified Successfully!', { mobile: req.body.mobile, userData: [userData], slots: slots }, res, 200);
             }
 
         } else {
-            Helper.response('failed', 'Something went wrong!', {}, res, 200);
+            Helper.response('failed', 'Invalid  OTP', {}, res, 200);
         }
     } catch (error) {
         console.log(error)
         Helper.response('failed', 'Something went wrong!', { error }, res, 200);
     }
 }
-exports.getRegisteredData = async (req ,res) => {
-    
+exports.getRegisteredData = async (req, res) => {
+
 }
 
 exports.createCustomerTicketAasraAndSaveUser = async (req, res) => {
-        try {
-            // console.log(req.body.userData[0].beneficiary_id)
-        const checkUser = await customer.findOne({where:{beneficiary_id:req.body.userData[0].beneficiary_id}})
+    try {
+        // console.log(req.body.userData[0].beneficiary_id)
+        const checkUser = await customer.findOne({ where: { beneficiary_id: req.body.userData[0].beneficiary_id } })
         const AasraId = await Helper.getAasraId(req)
-        if(!checkUser){
+        if (!checkUser) {
             const user = await users.create({
                 name: req.body.userData[0].name,
                 mobile: req.body.mobile,
@@ -586,23 +610,23 @@ exports.createCustomerTicketAasraAndSaveUser = async (req, res) => {
             })
             if (user) {
 
-            const createCustomer = await customer.create({
-                beneficiary_id: req.body.userData[0].beneficiary_id,
-                father_name: req.body.userData[0].father_name,
-                dob: req.body.userData[0].dob,
-                gender: req.body.userData[0].gender,
-                district: req.body.userData[0].district,
-                state: req.body.userData[0].state,
-                aadhaar: req.body.userData[0].aadhaar,
-                udid: req.body.userData[0].udid,
-            })
-            if (createCustomer) {
-                let token = jwt.sign({ id: user.id }, process.env.SECRET_KEY, {
-                    expiresIn: "365d",
-                });
-                await users.update({ token: token, ref_id: createCustomer.id }, { where: { id: user.id } });
+                const createCustomer = await customer.create({
+                    beneficiary_id: req.body.userData[0].beneficiary_id,
+                    father_name: req.body.userData[0].father_name,
+                    dob: req.body.userData[0].dob,
+                    gender: req.body.userData[0].gender,
+                    district: req.body.userData[0].district,
+                    state: req.body.userData[0].state,
+                    aadhaar: req.body.userData[0].aadhaar,
+                    udid: req.body.userData[0].udid,
+                })
+                if (createCustomer) {
+                    let token = jwt.sign({ id: user.id }, process.env.SECRET_KEY, {
+                        expiresIn: "365d",
+                    });
+                    await users.update({ token: token, ref_id: createCustomer.id }, { where: { id: user.id } });
+                }
             }
-        }
         }
         // console.log(await Helper.getUserId(req))
         // return false
@@ -622,10 +646,10 @@ exports.createCustomerTicketAasraAndSaveUser = async (req, res) => {
             ticket_id: ticketId + '-' + aasraUniqueId,
             appointment_date: req.body.appointment_date,
             appointment_time: req.body.userData.appointment_time.split('-')[1].trim(),
-            itemName: req.body.product.label,
-            itemId: req.body.product.value,
-            itemExpiry: '-',
-            description: req.body.description??'-',
+            itemName: req.body.product.name,
+            itemId: req.body.product.label,
+            itemExpiry: req.body.product.value,
+            description: req.body.description ?? '-',
             user_id: await Helper.getUserId(req),
             aasra_id: await Helper.getAasraId(req)
 

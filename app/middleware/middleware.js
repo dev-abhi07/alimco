@@ -10,22 +10,22 @@ const Admin = async (req, res, next) => {
   try {
     const string = token.split(" ");
     const user = await UserModel.findOne({ where: { token: string[1] } });
-   
-    if (user.user_type == 'S' || user.user_type == 'A' || user.user_type=='AC') {
+
+    if (user.user_type == 'S' || user.user_type == 'A' || user.user_type == 'AC') {
 
       try {
         const tokens = jwt.verify(string[1], process.env.SECRET_KEY);
         next();
       } catch (error) {
-        Helper.response("Expired", "Your Token is Expired", {}, res, 200);
+        Helper.response("expired", "Your Token is Expired", {}, res, 200);
       }
 
     } else {
-      Helper.response("Expired ", "Unauthorized Access", {}, res, 200);
+      Helper.response("expired", "Unauthorized Access", {}, res, 200);
     }
   } catch (error) {
     console.log(error)
-    Helper.response("Failed", "Unauthorized Access", {}, res, 200);
+    Helper.response("expired", "Unauthorized Access", {}, res, 200);
   }
 }
 const customer = async (req, res, next) => {
@@ -41,14 +41,14 @@ const customer = async (req, res, next) => {
         const tokens = jwt.verify(string[1], process.env.SECRET_KEY);
         next();
       } catch (error) {
-        Helper.response("Expired", "Your Token is Expired", {}, res, 200);
+        Helper.response("expired", "Your Token is Expired", {}, res, 200);
       }
 
     } else {
-      Helper.response("Expired   ", "Token Expired due to another login,Login Again!!", {}, res, 200);
+      Helper.response("expired", "Token expireddue to another login,Login Again!!", {}, res, 200);
     }
   } catch (error) {
-    Helper.response("Failed", "Unauthorized Access", {}, res, 200);
+    Helper.response("failed", "Unauthorized Access", {}, res, 200);
   }
 }
 const aasra = async (req, res, next) => {
@@ -57,21 +57,20 @@ const aasra = async (req, res, next) => {
   try {
     const string = token.split(" ");
     const user = await UserModel.findOne({ where: { token: string[1] } });
-
-    if (user.user_type == 'AC') {
+     if (user.user_type == 'AC') {
 
       try {
         const tokens = jwt.verify(string[1], process.env.SECRET_KEY);
         next();
       } catch (error) {
-        Helper.response("Expired", "Your Token is Expired", {}, res, 200);
+        Helper.response("expired", "Your Token is Expired", {}, res, 200);
       }
 
     } else {
-      Helper.response("Expired   ", "Token Expired due to another login,Login Again!!", {}, res, 200);
+      Helper.response("expired", "Invalid user", {}, res, 200);
     }
   } catch (error) {
-    Helper.response("Failed", "Unauthorized Access", {}, res, 200);
+    Helper.response("failed", "Unauthorized Access", {}, res, 200);
   }
 }
 const menuListUserPermission = async (req, res, next) => {
@@ -106,27 +105,27 @@ const menuListUserPermission = async (req, res, next) => {
             const submenu = await Helper.getSubMenuPermission(key?.dataValues?.id, userid);
 
             return {
-              active:false,
+              active: false,
               title: key.dataValues.sub_menu,
               path: key.dataValues.page_url,
-              
-              type:'link'
+
+              type: 'link'
             };
           })
         );
 
         if (subMenuArray.length > 0) {
           return {
-            
+
             icon: menuItem.dataValues.icon_class,
             title: menuItem.dataValues.menu_name,
             type: "sub",
-            
+
             children: subMenuArray.filter(Boolean),
           };
         } else {
           return {
-            
+
             icon: menuItem.dataValues.icon_class,
             title: menuItem.dataValues.menu_name,
             type: "link",
@@ -144,9 +143,9 @@ const menuListUserPermission = async (req, res, next) => {
 
       await getMenuData();
 
-      res.filteredMenu = [{ Items:main_menu}];
+      res.filteredMenu = [{ Items: main_menu }];
       next();
-    } else if(user_type=='A') {
+    } else if (user_type == 'A') {
       const menuId = await Helper.getMenuByRole(userid);
       // console.log(roleid);
 
@@ -176,7 +175,7 @@ const menuListUserPermission = async (req, res, next) => {
 
         if (subMenuArray.length > 0) {
           return {
-            
+
             icon: menuItem.dataValues.icon_class,
             title: menuItem.dataValues.menu_name,
             path: menuItem.dataValues.page_url,
@@ -185,7 +184,7 @@ const menuListUserPermission = async (req, res, next) => {
           };
         } else {
           return {
-            
+
             icon: menuItem.dataValues.icon_class,
             title: menuItem.dataValues.menu_name,
             type: "link",
@@ -206,36 +205,80 @@ const menuListUserPermission = async (req, res, next) => {
       res.filteredMenu = filteredMenu ? filteredMenu : main_menu;
 
       next();
-    } else if( user_type=='AC'){
-      
-      res.filteredMenu= [
+    } else if (user_type == 'AC') {
+
+      res.filteredMenu = [
         {
           Items: [
             {
-              title: 'Dashboards',
-              icon: 'home',
+              title: "Dashboards",
+              icon: "home",
               type: "link",
-              path: "dashboard"
+              path: "dashboard",
             },
             {
-              title: 'Tickets',
-              icon: 'task',
+              title: "Tickets",
+              icon: "task",
               type: "link",
-              path: "tickets"
-            },       
-            {
-              title: 'Inventory Reports',
-              icon: 'home',
-              type: "link",
-              path: "inventory-reports"
+              path: "tickets",
             },
             {
-              title: 'Revenue Reports',
-              icon: 'home',
+              title: "Inventory Reports",
+              icon: "home",
               type: "link",
-              path: "revenue-reports"
-            },          
-          ]
+              path: "inventory-reports",
+            },
+            {
+              title: "Revenue Reports",
+              icon: "home",
+              type: "link",
+              path: "revenue-reports",
+            },
+            {
+              title: "Payment Reports",
+              icon: "home",
+              type: "link",
+              path: "payment-reports",
+            },
+            {
+              title: "Replacement Reports",
+              icon: "home",
+              type: "link",
+              path: "parts-replacement-report",
+            },
+            {
+              title: "Stock Reports",
+              icon: "home",
+              type: "link",
+              path: "as-a-whole-stock-report",
+            },
+            {
+              title: "Transaction",
+              icon: "home",
+              type: "link",
+              path: "payment-list",
+            },
+
+            {
+              title: "Purchase",
+              icon: "home",
+              type: "sub",
+              children: [
+                {
+                  active: false,
+                  path: `purchase/create-purchase`,
+                  title: "Create Purchase",
+                  type: "link",
+                },
+                {
+                  active: false,
+                  path: `purchase/all-purchase`,
+                  title: "All Purchase",
+                  type: "link",
+                },
+              ],
+            },
+          ],
         }
       ]
       next()

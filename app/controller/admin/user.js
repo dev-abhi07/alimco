@@ -53,11 +53,11 @@ exports.getUserList = async (req, res) => {
           email: e.email
         });
       });
-      Helper.response("Success", "Record Found Successfully", data, res, 200);
+      Helper.response("success", "Record Found Successfully", data, res, 200);
     });
   } catch (error) {
     console.log(error)
-    Helper.response("Failed", "No Record Found", { error }, res, 200);
+    Helper.response("failed", "No Record Found", { error }, res, 200);
   }
 };
 
@@ -74,10 +74,10 @@ exports.userCreate = async (req, res) => {
 
     const user = await UserModel.create({ email, user_type, name, mobile, status, pass_code: password, password: encryptPassword })
 
-    Helper.response("Success", "Record Created Successfully", user, res, 200);
+    Helper.response("success", "Record Created Successfully", user, res, 200);
   } catch (error) {
     console.log(error)
-    Helper.response("Failed", "Unable to create User", error?.errors[0].message, res, 200)
+    Helper.response("failed", "Unable to create User", error?.errors[0].message, res, 200)
   }
 }
 
@@ -88,7 +88,7 @@ exports.getUserPermission = async (req, res) => {
     const isUpdate = false;
     const User = req.body.user_id;
     if (!User) {
-      return Helper.response("Failed", "User Id is required", {}, res, 200);
+      return Helper.response("failed", "User Id is required", {}, res, 200);
     }
     const data = await user_permission.findAll({
       where: { userid: User },
@@ -152,10 +152,10 @@ exports.getUserPermission = async (req, res) => {
       }
     }
 
-    Helper.response("Success", "Record Found Successfully", totaldata, res, 200);
+    Helper.response("success", "Record Found Successfully", totaldata, res, 200);
   } catch (error) {
     console.log(error)
-    Helper.response("Failed", "Record Not Found", { error }, res, 200);
+    Helper.response("failed", "Record Not Found", { error }, res, 200);
   }
 };
 exports.rolePermission = async (req, res) => {
@@ -215,10 +215,10 @@ exports.rolePermission = async (req, res) => {
       }
     }
 
-    Helper.response("Success", "Record Updated Successfully", {}, res, 200);
+    Helper.response("success", "Record Updated Successfully", {}, res, 200);
   } catch (err) {
     console.error("Error:", err);
-    Helper.response("Error", "Internal Server Error", {}, res, 500);
+    Helper.response("failed", "Internal Server Error", {}, res, 500);
   }
 };
 exports.RoleList = async (req, res) => {
@@ -232,9 +232,9 @@ exports.RoleList = async (req, res) => {
         created_at: Helper.getDateTime(element.dataValues.createdAt),
       });
     });
-    Helper.response("Success", "Record Feteched Successfully", { list: list }, res, 200);
+    Helper.response("success", "Record Feteched Successfully", { list: list }, res, 200);
   } catch (error) {
-    Helper.response("Failed", "Record Not Found", { error }, res, 200);
+    Helper.response("failed", "Record Not Found", { error }, res, 200);
   }
 };
 exports.getRolePermission = async (req, res) => {
@@ -244,7 +244,7 @@ exports.getRolePermission = async (req, res) => {
     const isUpdate = false;
     const role = req.body.value;
     if (!role) {
-      Helper.response("Failed", "Role is required", {}, res, 200);
+      Helper.response("failed", "Role is required", {}, res, 200);
     }
     const data = await role_permission.findAll({
       where: { roleId: role },
@@ -308,10 +308,10 @@ exports.getRolePermission = async (req, res) => {
       }
     }
 
-    Helper.response("Success", "Record Updated Successfully", totaldata, res, 200);
+    Helper.response("success", "Record Updated Successfully", totaldata, res, 200);
   } catch (error) {
     console.log(error)
-    Helper.response("Failed", "Record Not Found", { error }, res, 200);
+    Helper.response("failed", "Record Not Found", { error }, res, 200);
   }
 };
 exports.userPermission = async (req, res) => {
@@ -382,9 +382,9 @@ exports.userPermission = async (req, res) => {
       }
     }
 
-    Helper.response("Success", "Record Updated Successfully", {}, res, 200);
+    Helper.response("success", "Record Updated Successfully", {}, res, 200);
   } catch (err) {
     console.error("Error:", err);
-    Helper.response("Error", "Internal Server Error", {}, res, 200);
+    Helper.response("failed", "Internal Server Error", {}, res, 200);
   }
 };

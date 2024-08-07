@@ -28,44 +28,48 @@ const spareParts = sequelize.define('spare_part', {
     quantity_in_stock: {
         type: DataTypes.INTEGER,
         allowNull: false,
-        defaultValue:0
+        defaultValue: 0
     },
     reorder_point: {
         type: DataTypes.INTEGER,
         allowNull: false,
-        defaultValue:0
+        defaultValue: 0
     },
     max_stock_level: {
         type: DataTypes.INTEGER,
         allowNull: false,
-        defaultValue:0
+        defaultValue: 0
     },
-    base_price:{
-        type:DataTypes.DECIMAL(10,2),
-        defaultValue:0.00
+    base_price: {
+        type: DataTypes.DECIMAL(10, 2),
+        defaultValue: 0.00
     },
-    serial_no:{
-        type:DataTypes.STRING,
-        allowNull:true
+    serial_no: {
+        type: DataTypes.STRING,
+        allowNull: true
     },
-    gst:{
-        type:DataTypes.INTEGER,
-        allowNull:false,
-        defaultValue:0
+    gst: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 0
     },
-    hsn_code:{
-        type:DataTypes.STRING,
-        allowNull:true
+    hsn_code: {
+        type: DataTypes.STRING,
+        allowNull: true
     },
-    made_by:{
-        type:DataTypes.STRING,
-        allowNull:false
+    made_by: {
+        type: DataTypes.STRING,
+        allowNull: false
     },
     image: {
         type: DataTypes.STRING
+    },
+    uom_id: {
+        type: DataTypes.INTEGER,
+        allowNull:true
     }
 })
-spareParts.belongsTo(category,{foreignKey:'category',as:'categories'})
+spareParts.belongsTo(category, { foreignKey: 'category', as: 'categories' })
 // sequelize.sync()
 // .then(() => {
 //     console.log('Database & tables created!');

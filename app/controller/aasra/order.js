@@ -20,7 +20,7 @@ exports.productApi = async (req, res) => {
     try {
         const parts = await spareParts.findAll()
         const partsData = [];
-        //console.log(parts)
+        
         parts.map((record) => {
             const values = {
                 value: record.id,
@@ -157,22 +157,22 @@ exports.orderDetails = async (req, res) => {
 
 
 
-        const getOrders = await order.findOne({
-            where: {
-                aasra_id: itemPerOrder.aasra_id
-            }
-        })
-        const aasras = await aasra.findByPk(getOrders.aasra_id)
+        // const getOrders = await order.findOne({
+        //     where: {
+        //         aasra_id: itemPerOrder.aasra_id
+        //     }
+        // })
+        const aasras = await aasra.findByPk(itemPerOrder.aasra_id)
         const orderDetail = await orderDetails.findAll({
             where: {
-                order_id: getOrders.id
+                order_id: itemPerOrder.id
             }
         })
         const value = {
             assraData: aasras,
             orderData: orderDetail,
-            payment: await payment.findOne({ where: { order_id: getOrders.id } }),
-            total: getOrders.grand_total
+            payment: await payment.findOne({ where: { order_id: itemPerOrder.id } }),
+            total: itemPerOrder.grand_total
         }
         Helper.response("success", "Order details", value, res, 200)
     } catch (error) {
@@ -182,11 +182,16 @@ exports.orderDetails = async (req, res) => {
 }
 
 exports.addStock = async (req, res) => {
+
+    
     try {
         const { order_id, payment } = req.body;
         const payment_status = (await order.findOne({ where: { id: order_id } }))
         if (payment_status.payment_status == 'paid') {
-            const itemsAddToStock = await orderDetails.findAll({ where: { order_id: order_id } })            
+
+           
+            const itemsAddToStock = await orderDetails.findAll({ where: { order_id: order_id } })     
+             
             const data = await Promise.all(itemsAddToStock.map(async (f) => {
                 await stock.create({
                     ...f.dataValues,
