@@ -50,6 +50,10 @@ const ticket = sequelize.define('ticket', {
         type: DataTypes.STRING,
         allowNull:true
     },  
+    problem: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    }
     
     
 },{

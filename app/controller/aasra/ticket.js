@@ -11,7 +11,9 @@ const repairPayment = require('../../model/repairPayment');
 const { error } = require('console');
 const validator = require('validator');
 const customer = require('../../model/customer');
-
+const jwt = require("jsonwebtoken");
+const items = require('../../model/items');
+const problem = require('../../model/problem');
 
 
 exports.ticketListDetails = async (req, res) => {
@@ -96,7 +98,7 @@ exports.ticketList = async (req, res) => {
                     status: record.status == 0 ? 'Pending' : record.status == 1 ? 'Open' : 'Closed',
                     sr_no: count + 1,
                     ticketDetail: record.status == 2 ? repairData : null,
-                    payment_status:repairPayments == 0 ? false : true
+                    payment_status: repairPayments == 0 ? false : true
                 }
                 ticketData.push(dataValue)
             })
@@ -170,7 +172,9 @@ exports.createRepair = async (req, res) => {
                                 ticket_id: record.ticket_id,
                                 discount: discount,
                                 old_serial_number: record.old_sr_no,
-                                new_serial_number: record.new_sr_no
+                                new_serial_number: record.new_sr_no,
+                                old_manufacturer_id: record.old_manufacturer_id,
+                                new_manufacturer_id: record.new_manufacturer_id
                             }
                             repairsCreate = await repair.create(values)
 
@@ -195,20 +199,44 @@ exports.createRepair = async (req, res) => {
                                 amount: record.amount,
                                 ticket_id: record.ticket_id,
                                 old_serial_number: record.old_sr_no,
-                                new_serial_number: record.new_sr_no
+                                new_serial_number: record.new_sr_no,
+                                old_manufacturer_id: record.old_manufacturer_id,
+                                new_manufacturer_id: record.new_manufacturer_id
                             }
                             repairsCreate = await repair.create(values)
 
                         }
                         //return false
-                        await stock.create({
-                            item_id: record.productValue,
-                            item_name: record.productLabel,
-                            aasra_id: user.ref_id,
-                            quantity: 0,
-                            price: item_id.unit_price,
-                            stock_out: record.qty
+                        const stockDetails = await stock.findAll({
+                            where: {
+                                item_id: record.productValue,
+                                aasra_id: user.ref_id
+                            }
+
                         })
+                        if (stockDetails.length > 0) {
+                            // await stock.create({
+                            //     item_id: record.productValue,
+                            //     item_name: record.productLabel,
+                            //     aasra_id: user.ref_id,
+                            //     quantity: 0,
+                            //     price: item_id.unit_price,
+                            //     stock_in: stockDetails.stock_in - record.qty,
+                            //     stock_out: record.qty
+                            // })
+                           
+                            await Promise.all(stockDetails.map(async (stockDetail) => {
+                                await stock.create({
+                                    item_id: record.productValue,
+                                    item_name: record.productLabel,
+                                    aasra_id: user.ref_id,
+                                    quantity: 0,
+                                    price: item_id.unit_price, // Use unit_price from the current stockDetail
+                                    stock_in: stockDetail.stock_in - record.qty,
+                                    stock_out: record.qty
+                                });
+                            }));
+                        }
 
                     }
                     else {
@@ -306,8 +334,8 @@ exports.ticketOtpVerify = async (req, res) => {
                 status: 1
             }
         })
-        
-        if (verify!=null && verify.otp == req.body.otp) {
+
+        if (verify != null && verify.otp == req.body.otp) {
             const update = await otp.update({
                 status: 0,
             },
@@ -366,6 +394,7 @@ exports.aasraMessage = async (req, res) => {
         const data = {
             descriptionAasra: req.body.message,
             aasraId: userId,
+
             ticket_id: getTicket.dataValues.ticket_id
         }
 
@@ -547,7 +576,7 @@ exports.getUser = async (req, res) => {
         const verify = await otp.findOne({
             where: {
                 mobile: req.body.mobile,
-                otp:req.body.otp,
+                otp: req.body.otp,
                 status: 1
             }
         })
@@ -559,14 +588,17 @@ exports.getUser = async (req, res) => {
             const dataItem = {
                 itemName: record.itemName,
                 itemId: record.itemId,
-                expiryDate: await Helper.addYear(record.dstDate)
+                expiryDate: await Helper.addYear(record.dstDate),
+                dstDate: record.dstDate,
+                amount: record.amount,
+                rate: record.rate
             }
 
             userItem.push(dataItem)
         })
-        
-        if (verify!=null) {
-            console.log("sssssssssss",verify)
+
+        if (verify != null) {
+            console.log("sssssssssss", verify)
             const update = await otp.update({
                 status: 0,
             },
@@ -588,7 +620,7 @@ exports.getUser = async (req, res) => {
             Helper.response('failed', 'Invalid  OTP', {}, res, 200);
         }
     } catch (error) {
-        console.log(error)
+
         Helper.response('failed', 'Something went wrong!', { error }, res, 200);
     }
 }
@@ -598,38 +630,41 @@ exports.getRegisteredData = async (req, res) => {
 
 exports.createCustomerTicketAasraAndSaveUser = async (req, res) => {
     try {
-        // console.log(req.body.userData[0].beneficiary_id)
+
+
         const checkUser = await customer.findOne({ where: { beneficiary_id: req.body.userData[0].beneficiary_id } })
+
         const AasraId = await Helper.getAasraId(req)
+        let userdetails = 0;
         if (!checkUser) {
-            const user = await users.create({
-                name: req.body.userData[0].name,
-                mobile: req.body.mobile,
-                user_type: 'C',
+            const createCustomer = await customer.create({
+                beneficiary_id: req.body.userData[0].beneficiary_id,
+                father_name: req.body.userData[0].father_name,
+                dob: req.body.userData[0].dob,
+                gender: req.body.userData[0].gender,
+                district: req.body.userData[0].district,
+                state: req.body.userData[0].state,
+                aadhaar: req.body.userData[0].aadhaar,
                 udid: req.body.userData[0].udid,
             })
-            if (user) {
-
-                const createCustomer = await customer.create({
-                    beneficiary_id: req.body.userData[0].beneficiary_id,
-                    father_name: req.body.userData[0].father_name,
-                    dob: req.body.userData[0].dob,
-                    gender: req.body.userData[0].gender,
-                    district: req.body.userData[0].district,
-                    state: req.body.userData[0].state,
-                    aadhaar: req.body.userData[0].aadhaar,
+            if (createCustomer) {
+                const user = await users.create({
+                    name: req.body.userData[0].name,
+                    mobile: req.body.mobile,
+                    user_type: 'C',
                     udid: req.body.userData[0].udid,
+                    ref_id: createCustomer.id
                 })
-                if (createCustomer) {
-                    let token = jwt.sign({ id: user.id }, process.env.SECRET_KEY, {
-                        expiresIn: "365d",
-                    });
-                    await users.update({ token: token, ref_id: createCustomer.id }, { where: { id: user.id } });
-                }
+                let token = jwt.sign({ id: user.id }, process.env.SECRET_KEY, {
+                    expiresIn: "365d",
+                });
+                await users.update({ token: token, ref_id: createCustomer.id }, { where: { id: user.id } });
+                userdetails = createCustomer.id
             }
+
+
         }
-        // console.log(await Helper.getUserId(req))
-        // return false
+
         var ticketId = await Helper.generateNumber(100000, 999999);
         const checkTicketId = await ticket.count({
             where: {
@@ -650,10 +685,32 @@ exports.createCustomerTicketAasraAndSaveUser = async (req, res) => {
             itemId: req.body.product.label,
             itemExpiry: req.body.product.value,
             description: req.body.description ?? '-',
-            user_id: await Helper.getUserId(req),
-            aasra_id: await Helper.getAasraId(req)
+            user_id: checkUser?.dataValues?.id ?? userdetails,
+            aasra_id: await Helper.getAasraId(req),
+            problem: req.body.problem.id,
 
         });
+        if (createRecord) {
+            const checkItem = items.findOne({
+                where: {
+                    user_id: checkUser?.dataValues?.id ?? userdetails
+                }
+            })
+            if (checkItem != null) {
+                const createItem = await items.create({
+                    item_name: req.body.userData[0].userItem[0].itemName,
+                    item_id: req.body.userData[0].userItem[0].itemId,
+                    rate: req.body.userData[0].userItem[0].rate,
+                    amount: req.body.userData[0].userItem[0].amount,
+                    user_id: checkUser?.dataValues?.id ?? userdetails,
+                    distributed_date: req.body.userData[0].userItem[0].dstDate,
+                    expire_date: req.body.userData[0].userItem[0].expiryDate,
+                })
+
+            }
+
+        }
+
         Helper.response(
             "success",
             "Ticket Created Successfully!",
@@ -663,7 +720,7 @@ exports.createCustomerTicketAasraAndSaveUser = async (req, res) => {
         );
 
     } catch (error) {
-        console.log(error)
+
         Helper.response(
             "failed",
             "Something went wrong!",
@@ -671,5 +728,101 @@ exports.createCustomerTicketAasraAndSaveUser = async (req, res) => {
             res,
             200
         );
+    }
+}
+
+exports.ticketDetails = async (req, res) => {
+
+    try {
+        const ticketId = req.body.ticket_id
+        const ticketData = await ticket.findOne(
+            {
+                where: {
+                    ticket_id: ticketId
+                }
+            }
+        )
+
+        console.log(ticketData)
+        const ticketDetail = await repair.findAll({
+            where: {
+                ticket_id: ticketId
+            }
+        })
+
+        const getUser = await users.findOne({
+            where: {
+                ref_id: ticketData.user_id,
+                user_type: "C"
+            }
+        })
+        const getAasra = await aasra.findByPk(ticketData.aasra_id)
+
+        const repairPayments = await repairPayment.count({
+            where: {
+                ticket_id: ticketId
+            }
+        })
+
+        const itemDetails = await items.findOne({
+            where: {
+                user_id: ticketData.user_id
+            }
+        })
+        const getProblem = await problem.findOne({
+            where: {
+                id: ticketData.problem
+            }
+        })
+        const warranty = Helper.compareDate(itemDetails?.expire_date);
+
+        var subtotal = 0
+        var serviceCharge = 0
+        var gst = 0
+        var discount = 0
+        ticketDetail.map((t) => {
+            subtotal += t.price * t.qty
+            serviceCharge += t.repairPrice
+            gst = subtotal * 18 / 100
+            discount = t.record == 1 ? 100 : 0
+        })
+        console.log(subtotal)
+        const data = {
+            customer_name: getUser.name,
+            mobile: getUser.mobile,
+            product_name: ticketData.itemName,
+            itemId: ticketData.itemId,
+            description: ticketData.description,
+            appointment_date: ticketData.appointment_date,
+            appointment_time: ticketData.appointment_time,
+            status: ticketData.status == 0 ? 'Pending' : ticketData.status == 1 ? 'Open' : 'Closed',
+            aasraName: getAasra.name_of_org,
+            subtotal: subtotal,
+            serviceCharge: serviceCharge,
+            gst: process.env.SERVICE_GST,
+            totalAmount: subtotal + serviceCharge + gst,
+            discount: 0,
+            createdDate: ticketData.createdAt,
+            payment_status: repairPayments == 0 ? false : true,
+            warranty: warranty,
+            gst: process.env.SERVICE_GST,
+            dstDate: itemDetails?.distributed_date ?? null,
+            expire_date: itemDetails?.expire_date ?? null,
+            problem: getProblem?.problem_name ?? null,
+            ticketDetail: ticketDetail ? ticketDetail : null,
+
+        }
+        Helper.response(
+            "success",
+            "",
+            {
+                tableData: data
+            },
+            res,
+            200
+        );
+
+    } catch (error) {
+        console.log(error)
     }
 }

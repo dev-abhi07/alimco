@@ -37,7 +37,8 @@ exports.createCustomerTicket = async (req, res) => {
             itemExpiry: req.body.itemExpiry,
             description: req.body.description,
             user_id: await Helper.getUserId(req),
-            aasra_id: req.body.aasraId
+            aasra_id: req.body.aasraId,
+            problem:  req.body.id,
 
         });
         Helper.response(
@@ -79,7 +80,14 @@ exports.ticketList = async (req, res) => {
         const ticketData = [];
         await Promise.all(
             tickets.map(async (record) => {
-                const getUser = await users.findByPk(record.user_id)
+                // const getUser = await users.findByPk(record.user_id)
+                const getUser = await users.findOne({
+                    where: {
+                      ref_id: record.user_id,
+                      user_type: 'C'
+                    }
+                  })
+        
                 const getAasra = await aasra.findByPk(record.aasra_id)
                 const data = {
                     aasraId: record.aasraId,
@@ -92,6 +100,7 @@ exports.ticketList = async (req, res) => {
                     aasraName: getAasra?.name_of_org,
                     ticketId: record.ticket_id,
                     status: record.status
+                
 
                 }
                 ticketData.push(data)
@@ -273,8 +282,13 @@ exports.chatHistory = async (req, res) => {
         await Promise.all(
             tickets.map(async (record) => {
 
-                const getUser = await users.findByPk(record.user_id)
-
+                // const getUser = await users.findByPk(record.user_id)
+                const getUser = await users.findOne({
+                    where: {
+                      ref_id: record.user_id,
+                      user_type: 'C'
+                    }
+                  })
                 const getAasra = await aasra.findByPk(record.aasra_id)
 
                 const data = {

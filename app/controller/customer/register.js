@@ -72,15 +72,27 @@ exports.otpVerify = async (req, res) => {
 
         
         if (checkUser!=null) {
-            let token = jwt.sign({ id: checkUser.id }, process.env.SECRET_KEY, {
+            let token = jwt.sign({ ref_id: checkUser.ref_id }, process.env.SECRET_KEY, {
                 expiresIn: "365d",
             });
 
             //console.log(token)
-            await users.update({ token: token }, { where: { id: checkUser.id } }).catch((error) => {
-                console.log(error)
-            });
-            Helper.response('success', 'Login Successfully', { user_data: { id: checkUser.id, name: checkUser.name, user_type: checkUser.user_type, token: token, udid: checkUser.udid } }, res, 200);
+            // await users.update({ token: token }, { where: { ref_id: checkUser.ref_id } }).catch((error) => {
+            //     console.log(error)
+            // });
+
+            await users.update(
+                { token: token },
+                { 
+                  where: { 
+                    ref_id: checkUser.ref_id, 
+                    usertype: 'C' 
+                  } 
+                }
+              ).catch((error) => {
+                console.log(error);
+              });
+            Helper.response('success', 'Login Successfully', { user_data: { id: checkUser.id, name: checkUser.name, user_type: checkUser.user_type, token: token, udid: checkUser.udid,ref_id:checkUser.ref_id} }, res, 200);
         }
 
         else {
@@ -141,10 +153,16 @@ exports.saveUser = async (req, res) => {
                     let token = jwt.sign({ id: user.id }, process.env.SECRET_KEY, {
                         expiresIn: "365d",
                     });
-                    await users.update({ token: token, ref_id: createCustomer.id }, { where: { id: user.id } });
+                    await users.update({ token: token, ref_id: createCustomer.id }, { where: { id: user.id , user_type : 'C' } });
                 }
-                userData = await users.findByPk(user.id)
-                Helper.response('success', 'Register Successfully', { user_data: { id: userData.id, name: userData.name, user_type: userData.user_type, token: userData.token } }, res, 200);
+                // userData = await users.findByPk(user.id)
+                const userData = await users.findOne({
+                    where: {
+                        ref_id: createCustomer.id,
+                        user_type: 'C'
+                    }
+                  })
+                Helper.response('success', 'Register Successfully', { user_data: { id: userData.id, name: userData.name, user_type: userData.user_type, token: userData.token , ref_id:userData.ref_id } }, res, 200);
             }
 
         }

@@ -12,7 +12,8 @@ const city = require("../../model/city");
 const states = require("../../model/state");
 const { where } = require("sequelize");
 const spareParts = require("../../model/spareParts");
-const labour_charges = require('../../model/labour_charges')
+const labour_charges = require('../../model/labour_charges');
+const aasraType = require("../../model/aasratype");
 
 
 
@@ -318,5 +319,174 @@ exports.AarsaDropDown = async(req, res) => {
 
     } catch (error) {
         Helper.response("failed", "Server error", error, res, 200);
+    }
+}
+
+exports.aasraType = async (req, res) => {
+    try {
+     
+        const aasratypeName = [
+            { value: 'AAPC', label: 'AAPC' },
+            { value: 'RMC' , label: 'RMC' },
+            { value: 'PMDK', label: 'PMDK' },
+            { value: 'HQ', label: 'HQ' }
+        ];
+
+       
+        const data = [];
+        aasratypeName.map((record) => {
+            const value = {
+                value: record.value,
+                label: record.label
+            };
+            data.push(value);
+        });
+
+        Helper.response(
+            "success",
+            "Record Fetched Successfully",
+            { data },
+            res,
+            200
+        );
+    } catch (error) {
+        Helper.response(
+            "failed",
+            "Something went wrong!",
+            { error },
+            res,
+            500
+        );
+    }
+};
+exports.aasraTypecreate = async (req, res) => {
+    console.log(req.body)
+   
+   try {
+       
+    const checkName = aasraType.f
+    const data = {
+        type: req.body.type,
+        centre_name: req.body.centre_name,
+        state_id: req.body.state_id,
+        city_id: req.body.city_id,
+        address: req.body.address,
+        contact_details: req.body.contact_details,
+        contact_person: req.body.contact_person,
+        email_id: req.body.email_id
+    }
+
+    const create = aasraType.create(data);
+    if (create) {
+        Helper.response(
+            "success",
+            "Record Created Successfully",
+            {},
+            res,
+            200
+        );
+    } else {
+        Helper.response(
+            "failed",
+            "Something went wrong!",
+            {},
+            res,
+            200
+        );
+    }
+   } catch (error) {
+    Helper.response(
+        "failed",
+        "Something went wrong!",
+        { error },
+        res,
+        200
+    );
+   }
+    
+}
+
+
+exports.aasraTypelist = async (req, res) => {
+   
+    try {
+        const aasralist = await aasraType.findAll();
+        const data = [];
+
+        for (const record of aasralist) {
+            const stateName = await states.findByPk(record.state_id);
+            const cityName = await city.findOne({
+                where: {
+                    id: record.city_id,
+                    state_id: record.state_id
+                }
+            });
+
+            const value = {
+                id: record.id,
+                type: record.type,
+                centre_name: record.centre_name,
+                state_id: record.state_id,
+                city_id: record.city_id,
+                state_label: stateName ? stateName.name : null,
+                city_label: cityName ? cityName.city : null,
+                address: record.address,
+                contact_details: record.contact_details,
+                contact_person: record.contact_person,
+                email_id: record.email_id
+            };
+            data.push(value);
+        }
+
+        Helper.response(
+            "success",
+            "Record Fetched Successfully",
+            { data },
+            res,
+            200
+        );
+    } catch (error) {
+        Helper.response(
+            "failed",
+            "Something went wrong!",
+            { error },
+            res,
+            200
+        );
+    }
+}
+
+
+exports.aasraTypeupdate = async (req, res) => {
+    try {
+        const update = await aasraType.update({
+            type: req.body.type,
+            centre_name: req.body.centre_name,
+            state_id: req.body.state_id,
+            city_id: req.body.city_id,
+            address: req.body.address,
+            contact_details: req.body.contact_details,
+            contact_person: req.body.contact_person,
+            email_id: req.body.email_id 
+        }, {
+            where: {
+                id: req.body.id,
+            }
+        })
+        Helper.response(
+            "success",
+            "Record Update Successfully",
+            {},
+            res,
+            200
+        );
+    } catch (error) {
+        Helper.response(
+            "failed",
+            "Something went wrong!",
+            { error },
+            res,
+            200
+        );
     }
 }

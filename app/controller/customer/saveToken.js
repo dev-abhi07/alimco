@@ -9,7 +9,15 @@ exports.saveToken = async function (req, res, next) {
 
         const { token } = req.body;
 
-        const user = await User.findByPk(user_id);
+        // const user = await User.findByPk(user_id);
+
+        const user = await User.findOne({
+            where: {
+              ref_id: user_id,
+              user_type: 'C'
+            }
+          })
+
 
         if (!user) {
             return res.status(200).json({

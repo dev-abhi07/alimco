@@ -1,16 +1,16 @@
 const express = require("express");
 const router = express.Router();
 
-const { create,list,update ,destroy, uomCreate, listUom, updateUom} = require('../controller/admin/category')
+const { create,list,update ,destroy, uomCreate, listUom, updateUom, problemCreate, updateProblem, listProblem, manufacturerCreate, updateManufacturer, listManufacturer} = require('../controller/admin/category')
 const { createParts , sparePartsList , deleteSpareParts, updateSpareParts , labourCharges} = require('../controller/admin/spareParts')
 const { getUserList, userCreate, rolePermission, RoleList, getRolePermission, userPermission, getUserPermission } = require("../controller/admin/user");
 const { Login, logout, validateToken } = require('../controller/admin/login');
 const {   states , cities , repair , revenueReport, paymentReport, partReplacementReport, inventoryWholeFormat} = require("../controller/admin/dashboard");
 const {Admin,menuListUserPermission, aasra} = require("../middleware/middleware");
-const { registerAasraCentre, aasraList, updateAasraCenter } = require("../controller/admin/aasra");
-const { Dashboard , ticketList,getAasraRevenue } = require("../controller/aasra/dashboard");
+const { registerAasraCentre, aasraList, updateAasraCenter, aasraType, aasraTypecreate, aasraTypelist, aasraTypeupdate } = require("../controller/admin/aasra");
+const { Dashboard , ticketList,getAasraRevenue, servicehistorylist } = require("../controller/aasra/dashboard");
 const { categoryWiseProduct, productRepairList , AarsaDropDown } = require("../controller/admin/aasra");
-const { createRepair , ticketOtpVerify , ticketSendOtp ,aasraChatList ,aasraMessage,openTicket,sentOtpWeb,getUser , getRegisteredData, createCustomerTicketAasraAndSaveUser} = require("../controller/aasra/ticket");
+const { createRepair , ticketOtpVerify , ticketSendOtp ,aasraChatList ,aasraMessage,openTicket,sentOtpWeb,getUser , getRegisteredData, createCustomerTicketAasraAndSaveUser,ticketDetails} = require("../controller/aasra/ticket");
 const { arjunApi } = require("../controller/api/arjunApi");
 
 
@@ -48,6 +48,7 @@ router.post('/ticket-list',Admin,ticketList)
 router.post('/category-product-list',aasra,Admin,categoryWiseProduct)
 router.post('/product-repair-list',Admin,productRepairList)
 router.post('/dashboard',Admin,menuListUserPermission,Dashboard)
+router.post('/service-history-list',Admin,servicehistorylist)
 
 //Aasra Centre
 router.post('/register-aasra',Admin,registerAasraCentre)
@@ -81,4 +82,16 @@ router.post('/create-uom',Admin,uomCreate)
 router.post('/uom-list',Admin,listUom)
 router.post('/update-uom',Admin,updateUom)
 router.post('/inventory-Whole-Format',inventoryWholeFormat)
+router.post('/create-problem' ,Admin , problemCreate)
+router.post('/update-problem' ,Admin , updateProblem)
+router.post('/problem-list' ,Admin , listProblem)
+
+router.post('/create-manufacturer' ,Admin ,manufacturerCreate)
+router.post('/update-manufacturer' ,Admin , updateManufacturer)
+router.post('/manufacturer-list',Admin ,listManufacturer)
+router.post('/ticket-detail',aasra,ticketDetails)
+router.post('/aasra-type',Admin,aasraType)
+router.post('/aasratype-create', Admin , aasraTypecreate)
+router.post('/aasratype-list',Admin, aasraTypelist)
+router.post('/aasratype-update',Admin,aasraTypeupdate)
 module.exports = router;

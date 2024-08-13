@@ -28,7 +28,11 @@ const orderDetails = sequelize.define("orderDetail",{
     order_id:{
         type: DataTypes.BIGINT,
         allowNull:false
-    }
+    },
+    image:{
+        type: DataTypes.TEXT,
+        allowNull: true
+    },
    
 
 

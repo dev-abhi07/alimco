@@ -5,8 +5,9 @@ const ticket = require('../../model/ticket');
 const users = require('../../model/users');
 const { Op } = require('sequelize')
 const aasras = require('../../model/aasra');
-const repairPayment = require('../../model/repairPayment')
-
+const repairPayment = require('../../model/repairPayment');
+const items = require('../../model/items');
+const problem = require('../../model/problem')
 exports.Dashboard = async (req, res) => {
   try {
     //console.log("hell")
@@ -26,13 +27,32 @@ exports.Dashboard = async (req, res) => {
       var subtotal = 0
       await Promise.all(
         tickets.map(async (record, count = 1) => {
-          const getUser = await users.findByPk(record.user_id)
+          // const getUser = await users.findByPk(record.user_id)
           const getAasra = await aasra.findByPk(record.aasra_id)
 
           //console.log(record)
           const repairData = await repair.findAll({
             where: {
               ticket_id: record.ticket_id
+            }
+          })
+          const getUser = await users.findOne({
+            where: {
+              ref_id: record.user_id,
+              user_type: 'C'
+            }
+          })
+
+          const itemDetails = await items.findOne({
+            where: {
+              user_id: record.user_id
+            }
+          })
+          const warranty = await Helper.compareDate(itemDetails?.expire_date);
+
+          const getproblem = await problem.findOne({
+            where: {
+              id: record.problem
             }
           })
 
@@ -74,7 +94,11 @@ exports.Dashboard = async (req, res) => {
             totalAmount: subtotal + serviceCharge + gst,
             discount: 0,
             createdDate: record.createdAt,
-            payment_status: repairPayments == 0 ? false : true
+            payment_status: repairPayments == 0 ? false : true,
+            warranty: warranty,
+            dstDate: itemDetails?.distributed_date ?? null,
+            expire_date: itemDetails?.expire_date ?? null,
+            problem: getproblem?.problem_name ?? null,
 
           }
           ticketData.push(dataValue)
@@ -109,8 +133,14 @@ exports.Dashboard = async (req, res) => {
       const ticketData = [];
       await Promise.all(
         tickets.map(async (record, count = 1) => {
-          const getUser = await users.findByPk(record.user_id)
+          // const getUser = await users.findByPk(record.user_id)
           const getAasra = await aasra.findByPk(record.aasra_id)
+          const getUser = await users.findOne({
+            where: {
+              ref_id: record.user_id,
+              user_type: 'C'
+            }
+          })
 
 
           const repairData = await repair.findAll({
@@ -124,6 +154,17 @@ exports.Dashboard = async (req, res) => {
             }
           })
 
+          const itemDetails = await items.findOne({
+            where: {
+              user_id: record.user_id
+            }
+          })
+          const getproblem = await problem.findOne({
+            where: {
+              id: record.problem
+            }
+          })
+          const warranty = await Helper.compareDate(itemDetails?.expire_date);
 
           var subtotal = 0
           var serviceCharge = 0
@@ -136,7 +177,7 @@ exports.Dashboard = async (req, res) => {
             discount = t.record == 1 ? 100 : 0
           })
 
-          console.log(serviceCharge)
+
           const dataValue = {
             aasraId: record.aasraId,
             customer_name: getUser.name,
@@ -157,7 +198,11 @@ exports.Dashboard = async (req, res) => {
             totalAmount: subtotal + serviceCharge + gst,
             discount: 0,
             createdDate: record.createdAt,
-            payment_status: repairPayments == 0 ? false : true
+            payment_status: repairPayments == 0 ? false : true,
+            warranty: warranty,
+            dstDate: itemDetails?.distributed_date ?? null,
+            expire_date: itemDetails?.expire_date ?? null,
+            problem: getproblem?.problem_name ?? null,
           }
           ticketData.push(dataValue)
         })
@@ -241,110 +286,378 @@ exports.test = async (req, res) => {
 
 exports.ticketList = async (req, res) => {
   try {
+
     const token = req.headers["authorization"];
     const string = token.split(" ");
     const user = await users.findOne({ where: { token: string[1] } });
     const ticketData = [];
+
+
+    const start = await Helper.getMonth(req.body.startDate);
+    const end = await Helper.getMonth(req.body.endDate);
+    const startDate = await Helper.formatDate(new Date(req.body.startDate));
+    const endDate = await Helper.formatDate(new Date(req.body.endDate));
     if (user.user_type == 'S') {
-      var tickets = await ticket.findAll({
-        order: [
-          ['id', 'DESC']
-        ]
-      })
-      await Promise.all(
-        tickets.map(async (record, count = 1) => {
-          const getUser = await users.findByPk(record.user_id)
-          const getAasra = await aasra.findByPk(record.aasra_id)
-          const repairData = await repair.findAll({
-            where: {
-              ticket_id: record.ticket_id
-            }
-          })
+      const aasra_id = req.body.aasra_id;
 
-          const repairPayments = await repairPayment.count({
-            where: {
-              ticket_id: record.ticket_id
-            }
-          })
 
-          var subtotal = 0
-          var serviceCharge = 0
-          var gst = 0
-          var discount = 0
-          repairData.map((t) => {
-            subtotal += t.price * t.qty
-            serviceCharge += t.repairPrice
-            gst = subtotal * 18 / 100
-            discount = t.record == 1 ? 100 : 0
-          })
+      if (aasra_id != null) {
 
-          const dataValue = {
-            aasraId: record.aasraId,
-            customer_name: getUser.name,
-            product_name: record.itemName,
-            itemId: record.itemId,
-            description: record.description,
-            appointment_date: record.appointment_date,
-            appointment_time: record.appointment_time,
-            ticket_id: record.ticket_id,
-            aasraName: getAasra.name_of_org,
-            status: record.status == 0 ? 'Pending' : record.status == 1 ? 'Open' : 'Closed',
-            sr_no: count + 1,
-            ticketDetail: record.status == 2 ? repairData : null,
-            payment_status: repairPayments == 0 ? false : true,
-            subtotal: subtotal,
-            serviceCharge: serviceCharge,
-            gst: process.env.SERVICE_GST,
-            totalAmount: subtotal + serviceCharge + gst,
-            discount: 0
-
-          }
-          ticketData.push(dataValue)
+        var tickets = await ticket.findAll({
+          where: {
+            aasra_id: aasra_id,
+            createdAt: {
+              [Op.between]: [startDate, endDate]
+            },
+          },
+          order: [
+            ['id', 'DESC']
+          ]
         })
-      )
+        if (tickets.length === 0) {
+          Helper.response(
+            "failed",
+            "Record Not Found!",
+            {},
+            res,
+            200
+          );
+          return;
+        }
+
+        await Promise.all(
+          tickets.map(async (record, count = 1) => {
+
+            const getAasra = await aasra.findByPk(record.aasra_id)
+            const repairData = await repair.findAll({
+              where: {
+                ticket_id: record.ticket_id
+              }
+            })
+            const getUser = await users.findOne({
+              where: {
+                ref_id: record.user_id,
+                user_type: 'C'
+              }
+            })
+
+            const getproblem = await problem.findOne({
+              where: {
+                id: record.problem
+              }
+            })
+
+            const repairPayments = await repairPayment.count({
+              where: {
+                ticket_id: record.ticket_id
+              }
+            })
+
+            const itemDetails = await items.findOne({
+              where: {
+                user_id: record.user_id
+              }
+            })
+            const warranty = await Helper.compareDate(itemDetails?.expire_date);
+
+
+
+            var subtotal = 0
+            var serviceCharge = 0
+            var gst = 0
+            var discount = 0
+            repairData.map((t) => {
+              subtotal += t.price * t.qty
+              serviceCharge += t.repairPrice
+              gst = subtotal * 18 / 100
+              discount = t.record == 1 ? 100 : 0
+            })
+
+            const dataValue = {
+              aasraId: record.aasraId,
+              customer_name: getUser.name,
+              product_name: record.itemName,
+              itemId: record.itemId,
+              description: record.description,
+              appointment_date: record.appointment_date,
+              appointment_time: record.appointment_time,
+              ticket_id: record.ticket_id,
+              aasraName: getAasra.name_of_org,
+              status: record.status == 0 ? 'Pending' : record.status == 1 ? 'Open' : 'Closed',
+              sr_no: count + 1,
+              ticketDetail: record.status == 2 ? repairData : null,
+              payment_status: repairPayments == 0 ? false : true,
+              subtotal: subtotal,
+              serviceCharge: serviceCharge,
+              gst: process.env.SERVICE_GST,
+              totalAmount: subtotal + serviceCharge + gst,
+              discount: 0,
+              warranty: warranty,
+              dstDate: itemDetails?.distributed_date ?? null,
+              expire_date: itemDetails?.expire_date ?? null,
+              problem: getproblem?.problem_name ?? null,
+
+
+            }
+            ticketData.push(dataValue)
+          })
+        )
+
+      } else {
+
+
+        var tickets = await ticket.findAll({
+          order: [
+            ['id', 'DESC']
+          ]
+        })
+        await Promise.all(
+          tickets.map(async (record, count = 1) => {
+
+            const getAasra = await aasra.findByPk(record.aasra_id)
+            const repairData = await repair.findAll({
+              where: {
+                ticket_id: record.ticket_id
+              }
+            })
+            const getUser = await users.findOne({
+              where: {
+                ref_id: record.user_id,
+                user_type: 'C'
+              }
+            })
+            const repairPayments = await repairPayment.count({
+              where: {
+                ticket_id: record.ticket_id
+              }
+            })
+            const itemDetails = await items.findOne({
+              where: {
+                user_id: record.user_id
+              }
+            })
+
+
+            const getproblem = await problem.findOne({
+              where: {
+                id: record.problem
+              }
+            })
+            const warranty = await Helper.compareDate(itemDetails?.expire_date);
+
+            var subtotal = 0
+            var serviceCharge = 0
+            var gst = 0
+            var discount = 0
+            repairData.map((t) => {
+              subtotal += t.price * t.qty
+              serviceCharge += t.repairPrice
+              gst = subtotal * 18 / 100
+              discount = t.record == 1 ? 100 : 0
+            })
+
+            const dataValue = {
+              aasraId: record.aasraId,
+              customer_name: getUser.name,
+              product_name: record.itemName,
+              itemId: record.itemId,
+              description: record.description,
+              appointment_date: record.appointment_date,
+              appointment_time: record.appointment_time,
+              ticket_id: record.ticket_id,
+              aasraName: getAasra.name_of_org,
+              status: record.status == 0 ? 'Pending' : record.status == 1 ? 'Open' : 'Closed',
+              sr_no: count + 1,
+              ticketDetail: record.status == 2 ? repairData : null,
+              payment_status: repairPayments == 0 ? false : true,
+              subtotal: subtotal,
+              serviceCharge: serviceCharge,
+              gst: process.env.SERVICE_GST,
+              totalAmount: subtotal + serviceCharge + gst,
+              discount: 0,
+              warranty: warranty,
+              dstDate: itemDetails?.distributed_date ?? null,
+              expire_date: itemDetails?.expire_date ?? null,
+              problem: getproblem?.problem_name ?? null,
+
+            }
+            ticketData.push(dataValue)
+          })
+        )
+      }
+
     } else {
-      var tickets = await ticket.findAll({
-        where: {
-          aasra_id: user.ref_id
-        },
-        order: [
-          ['id', 'DESC']
-        ]
-      })
-      await Promise.all(
-        tickets.map(async (record, count = 1) => {
-          const getUser = await users.findByPk(record.user_id)
-          const getAasra = await aasra.findByPk(record.aasra_id)
-          const repairData = await repair.findAll({
-            where: {
-              ticket_id: record.ticket_id
-            }
-          })
 
-          const repairPayments = await repairPayment.count({
-            where: {
-              ticket_id: record.ticket_id
-            }
-          })
+      if (JSON.stringify(req.body) === '{}') {
 
-          const dataValue = {
-            aasraId: record.aasraId,
-            customer_name: getUser.name,
-            product_name: record.itemName,
-            itemId: record.itemId,
-            description: record.description,
-            appointment_date: record.appointment_date,
-            appointment_time: record.appointment_time,
-            ticket_id: record.ticket_id,
-            aasraName: getAasra.name_of_org,
-            status: record.status == 0 ? 'Pending' : record.status == 1 ? 'Open' : 'Closed',
-            sr_no: count + 1,
-            ticketDetail: record.status == 2 ? repairData : null,
-            payment_status: repairPayments == 0 ? false : true
-          }
-          ticketData.push(dataValue)
+
+        var tickets = await ticket.findAll({
+          where: {
+            aasra_id: user.ref_id
+          },
+          order: [
+            ['id', 'DESC']
+          ]
         })
-      )
+
+        await Promise.all(
+          tickets.map(async (record, count = 1) => {
+            // const getUser = await users.findByPk(record.user_id)
+            const getAasra = await aasra.findByPk(record.aasra_id)
+            const repairData = await repair.findAll({
+              where: {
+                ticket_id: record.ticket_id
+              }
+            })
+            const getUser = await users.findOne({
+              where: {
+                ref_id: record.user_id,
+                user_type: 'C'
+              }
+            })
+
+
+            const repairPayments = await repairPayment.count({
+              where: {
+                ticket_id: record.ticket_id
+              }
+            })
+            const itemDetails = await items.findOne({
+              where: {
+                user_id: record.user_id
+              }
+            })
+            const getproblem = await problem.findOne({
+              where: {
+                id: record.problem
+              }
+            })
+
+            var subtotal = 0
+            var serviceCharge = 0
+            var gst = 0
+            var discount = 0
+            repairData.map((t) => {
+              subtotal += t.price * t.qty
+              serviceCharge += t.repairPrice
+              gst = subtotal * 18 / 100
+              discount = t.record == 1 ? 100 : 0
+            })
+
+            const warranty = await Helper.compareDate(itemDetails?.expire_date);
+
+            const dataValue = {
+              aasraId: record.aasraId,
+              customer_name: getUser.name,
+              product_name: record.itemName,
+              itemId: record.itemId,
+              description: record.description,
+              appointment_date: record.appointment_date,
+              appointment_time: record.appointment_time,
+              ticket_id: record.ticket_id,
+              aasraName: getAasra.name_of_org,
+              status: record.status == 0 ? 'Pending' : record.status == 1 ? 'Open' : 'Closed',
+              sr_no: count + 1,
+              ticketDetail: record.status == 2 ? repairData : null,
+              payment_status: repairPayments == 0 ? false : true,
+              gst: process.env.SERVICE_GST,
+              warranty: warranty,
+              dstDate: itemDetails?.distributed_date ?? null,
+              expire_date: itemDetails?.expire_date ?? null,
+              problem: getproblem?.problem_name ?? null,
+              subtotal: subtotal,
+              serviceCharge: serviceCharge,
+              totalAmount: subtotal + serviceCharge + gst,
+              discount: 0,
+
+            }
+            ticketData.push(dataValue)
+          })
+        )
+      } else {
+
+        var tickets = await ticket.findAll({
+          where: {
+            aasra_id: user.ref_id,
+            createdAt: {
+              [Op.between]: [startDate, endDate]
+            },
+          },
+          order: [
+            ['id', 'DESC']
+          ]
+        })
+        if (tickets.length === 0) {
+          Helper.response(
+            "failed",
+            "Record Not Found!",
+            {},
+            res,
+            200
+          );
+          return;
+        }
+
+        await Promise.all(
+          tickets.map(async (record, count = 1) => {
+
+            const getAasra = await aasra.findByPk(record.aasra_id)
+            const repairData = await repair.findAll({
+              where: {
+                ticket_id: record.ticket_id
+              }
+            })
+            const getUser = await users.findOne({
+              where: {
+                ref_id: record.user_id,
+                user_type: 'C'
+              }
+            })
+            const repairPayments = await repairPayment.count({
+              where: {
+                ticket_id: record.ticket_id
+              }
+            })
+            const itemDetails = await items.findOne({
+              where: {
+                user_id: record.user_id
+              }
+            })
+            const getproblem = await problem.findOne({
+              where: {
+                id: record.problem
+              }
+            })
+
+            const warranty = await Helper.compareDate(itemDetails?.expire_date);
+
+            const dataValue = {
+              aasraId: record.aasraId,
+              customer_name: getUser.name,
+              product_name: record.itemName,
+              itemId: record.itemId,
+              description: record.description,
+              appointment_date: record.appointment_date,
+              appointment_time: record.appointment_time,
+              ticket_id: record.ticket_id,
+              aasraName: getAasra.name_of_org,
+              status: record.status == 0 ? 'Pending' : record.status == 1 ? 'Open' : 'Closed',
+              sr_no: count + 1,
+              ticketDetail: record.status == 2 ? repairData : null,
+              payment_status: repairPayments == 0 ? false : true,
+              gst: process.env.SERVICE_GST,
+              warranty: warranty,
+              dstDate: itemDetails?.distributed_date ?? null,
+              expire_date: itemDetails?.expire_date ?? null,
+              problem: getproblem?.problem_name ?? null,
+              totalAmount: subtotal + serviceCharge + gst,
+            }
+            ticketData.push(dataValue)
+          })
+        )
+
+      }
+
     }
     Helper.response(
       "success",
@@ -356,7 +669,7 @@ exports.ticketList = async (req, res) => {
       200
     );
   } catch (error) {
-    // console.log(error)
+    console.log(error)
     Helper.response(
       "failed",
       "Something went wrong!",
@@ -502,7 +815,178 @@ exports.getAasraRevenue = async (req, res) => {
 
 
   } catch (error) {
-    console.log(error)
+
+    Helper.response(
+      "failed",
+      "Something went wrong!",
+      { error },
+      res,
+      200
+    );
+  }
+}
+
+
+exports.servicehistorylist = async (req, res) => {
+  try {
+
+
+    const token = req.headers["authorization"];
+    const string = token.split(" ");
+    const user = await users.findOne({ where: { token: string[1] } });
+    const ticketData = [];
+
+    if (user.user_type == 'S') {
+      const userDetails = await users.findOne({ where: { udid: req.body.udid } });
+      if (userDetails.length === 0) {
+        Helper.response(
+          "failed",
+          "Record Not Found!",
+          {},
+          res,
+          200
+        );
+        return;
+      }
+      var tickets = await ticket.findAll({
+        where: {
+          user_id: userDetails.ref_id,
+        },
+        order: [
+          ['id', 'DESC']
+        ]
+      })
+      if (tickets.length === 0) {
+        Helper.response(
+          "failed",
+          "Record Not Found!",
+          {},
+          res,
+          200
+        );
+        return;
+      }
+
+      await Promise.all(
+        tickets.map(async (record, count = 1) => {
+
+          const getUser = await users.findOne({
+            where: {
+              ref_id: record.user_id,
+              user_type: 'C'
+            }
+          })
+          const getAasra = await aasra.findByPk(record.aasra_id)
+          const repairData = await repair.findAll({
+            where: {
+              ticket_id: record.ticket_id
+            }
+          })
+
+          const repairPayments = await repairPayment.count({
+            where: {
+              ticket_id: record.ticket_id
+            }
+          })
+
+          var subtotal = 0
+          var serviceCharge = 0
+          var gst = 0
+          var discount = 0
+          repairData.map((t) => {
+            subtotal += t.price * t.qty
+            serviceCharge += t.repairPrice
+            gst = subtotal * 18 / 100
+            discount = t.record == 1 ? 100 : 0
+          })
+
+          const dataValue = {
+            aasraId: record.aasraId,
+            customer_name: getUser.name,
+            aasra_name: getAasra.name_of_org,
+            ticket_no: record.ticket_id,
+            product_name: record.itemName,
+            appointment_date: record.appointment_date,
+            appointment_time: record.appointment_time,
+            status: record.status == 0 ? 'Pending' : record.status == 1 ? 'Open' : 'Closed',
+            sr_no: count + 1,
+          }
+          ticketData.push(dataValue)
+        })
+      )
+
+    } else {
+
+      const userDetails = await users.findOne({ where: { udid: req.body.udid } });
+      if (userDetails.length === 0) {
+        Helper.response(
+          "failed",
+          "Record Not Found!",
+          {},
+          res,
+          200
+        );
+        return;
+      }
+
+
+      var tickets = await ticket.findAll({
+        where: {
+          user_id: userDetails.ref_id,
+        },
+        order: [
+          ['id', 'DESC']
+        ]
+      })
+      await Promise.all(
+        tickets.map(async (record, count = 1) => {
+
+          const getAasra = await aasra.findByPk(record.aasra_id)
+          const repairData = await repair.findAll({
+            where: {
+              ticket_id: record.ticket_id
+            }
+          })
+          const getUser = await users.findOne({
+            where: {
+              ref_id: record.user_id,
+              user_type: 'C'
+            }
+          })
+          const repairPayments = await repairPayment.count({
+            where: {
+              ticket_id: record.ticket_id
+            }
+          })
+
+          const dataValue = {
+            aasraId: record.aasraId,
+            customer_name: getUser.name,
+            aasra_name: getAasra.name_of_org,
+            ticket_no: record.ticket_id,
+            product_name: record.itemName,
+            appointment_date: record.appointment_date,
+            appointment_time: record.appointment_time,
+            status: record.status == 0 ? 'Pending' : record.status == 1 ? 'Open' : 'Closed',
+            sr_no: count + 1,
+          }
+          ticketData.push(dataValue)
+        })
+      )
+
+
+    }
+    Helper.response(
+      "success",
+      "Record Found Successfully!",
+      {
+        tableData: ticketData,
+      },
+      res,
+      200
+    );
+  } catch (error) {
+
     Helper.response(
       "failed",
       "Something went wrong!",

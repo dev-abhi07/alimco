@@ -11,6 +11,7 @@ const aasra = require("../model/aasra");
 const users = require("../model/users");
 
 
+
 Helper.response = (status, message, data = [], res, statusCode) => {
     res.status(statusCode).json({
         status: status,
@@ -190,7 +191,7 @@ Helper.getUserId = async (req) => {
     const token = req.headers['authorization'];
     const string = token.split(" ");
     const user = await users.findOne({ where: { token: string[1] } });
-    return user?.id
+    return user?.ref_id
 }
 
 Helper.getAasra = async (parameter) => {
@@ -253,5 +254,39 @@ Helper.getAasraId = async (req) => {
     const user = await users.findOne({ where: { token: string[1] } });
   
     return user?.ref_id
+}
+
+Helper.compareDate = (dates) => {
+ 
+    if(dates == undefined) {
+     return false;
+    }else{
+        const dateParts = dates.split('-');
+        const day = parseInt(dateParts[0], 10);
+        const month = new Date(Date.parse(dateParts[1] +" 1, 2021")).getMonth(); 
+        const year = parseInt(dateParts[2], 10);
+    
+        const dateToCompare = new Date(year, month, day);
+        const currentDate = new Date();
+    
+     
+        const dateOnly = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    
+        const cleanDateToCompare = dateOnly(dateToCompare);
+        const cleanCurrentDate = dateOnly(currentDate);
+        
+        let warranty;
+        
+        if (cleanCurrentDate.getTime()  <= cleanDateToCompare.getTime()) {
+              warranty = true;
+            
+        } else {
+             warranty = false;
+            
+        }
+    
+        return warranty ;
+    }
+    
 }
 module.exports = Helper

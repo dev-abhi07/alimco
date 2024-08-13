@@ -1,6 +1,7 @@
 const sequelize = require("../../connection/conn");
 const Helper = require("../../helper/helper");
 const aasra = require("../../model/aasra");
+const problem = require("../../model/problem");
 const stock = require("../../model/stock");
 const users = require("../../model/users");
 
@@ -23,7 +24,20 @@ exports.dashboard = async (req ,res) => {
                 district:req.body.city_id
             }
         })
-       
+        const problemDetails = await problem.findAll();
+        problemDetail = [];
+        await Promise.all(
+            problemDetails.map( async (record) => {
+                
+                const values = {
+                    id:record?.id,
+                    problem_name:record?.problem_name,
+                     }
+                
+                problemDetail.push(values)
+            })
+        )
+
         aasraData = [];
         await Promise.all(
             aasraa.map( async (record) => {
@@ -93,7 +107,8 @@ exports.dashboard = async (req ,res) => {
                 itemData:userItem,
                 aasraData:aasraData,
                 slots:slots,
-                productData:productData
+                productData:productData,
+                problemDetail:problemDetail
             },
             res,
             200

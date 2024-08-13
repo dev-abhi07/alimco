@@ -75,6 +75,16 @@ const repair = sequelize.define('repair', {
         type:DataTypes.STRING,
         allowNull:true,
         defaultValue:0
+    }   ,
+    old_manufacturer_id:{
+        type:DataTypes.STRING,
+        allowNull:true,
+        defaultValue:0
+    },
+    new_manufacturer_id:{
+        type:DataTypes.STRING,
+        allowNull:true,
+        defaultValue:0
     }   
 })
 

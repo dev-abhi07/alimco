@@ -25,6 +25,14 @@ const items = sequelize.define('item', {
     user_id: {
         type: DataTypes.INTEGER,
         allowNull: true
+    },
+    distributed_date : {
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
+    expire_date : {
+        type: DataTypes.STRING,
+        allowNull: true,
     }
 });
 

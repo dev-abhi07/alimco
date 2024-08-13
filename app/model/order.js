@@ -48,7 +48,7 @@ const order = sequelize.define('order',{
     payment_status:{
         type: DataTypes.STRING,
         allowNull:false,
-        defaultValue:'pending'
+        defaultValue:'Pending'
     },
     payment_method:{
         type: DataTypes.STRING,
@@ -85,7 +85,11 @@ const order = sequelize.define('order',{
         type: DataTypes.STRING,
         allowNull:true,
         defaultValue:0
-    }
+    },
+    image:{
+        type: DataTypes.TEXT,
+        allowNull: true
+    },
 })
 order.belongsTo(aasra,{foreignKey:'aasra_id'})
 // sequelize.sync()

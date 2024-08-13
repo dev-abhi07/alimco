@@ -258,6 +258,12 @@ const menuListUserPermission = async (req, res, next) => {
               type: "link",
               path: "payment-list",
             },
+            {
+              title: "Service History",
+              icon: "home",
+              type: "link",
+              path: "service-history",
+            },
 
             {
               title: "Purchase",
