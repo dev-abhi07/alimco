@@ -8,11 +8,12 @@ const Helper = require("../../helper/helper");
 const order = require("../../model/order");
 const stock = require("../../model/stock");
 const aasra = require("../../model/aasra");
-const { where } = require("sequelize");
+
 const payment = require("../../model/payment");
 const formidable = require("formidable");
 const fs = require('fs');
 const path = require('path');
+const { where, or, Op, and, Sequelize } = require("sequelize");
 
 
 exports.productApi = async (req, res) => {
@@ -40,7 +41,7 @@ exports.createOrder = async (req, res) => {
         const token = req.headers['authorization'];
         const string = token.split(" ");
         const user = await users.findOne({ where: { token: string[1] } });
-        const { products, gst, discount, shipping, orderStatus, supplier_name, subtotal, orderTaxAmount, grandTotal } = req.body
+        const { products, gst, discount, shipping, orderStatus, supplier_name, subtotal, orderTaxAmount, grandTotal, notes } = req.body
 
         const total_order = {}
 
@@ -53,8 +54,8 @@ exports.createOrder = async (req, res) => {
         total_order['shipping_charges'] = shipping
         total_order['order_status'] = orderStatus.label
         total_order['supplier_name'] = supplier_name.label
-        total_order['order_date'] = new Date().toISOString().slice(0, 10)
-
+        total_order['order_date'] = new Date().toISOString().slice(0, 10),
+            total_order['notes'] = notes
         const creatOrder = await orderModel.create(total_order).catch((err) => {
             console.log(err)
             Helper.response("error", "Something went wrong", err, res, 200)
@@ -127,20 +128,21 @@ exports.orderList = async (req, res) => {
                 dps_value: o.dps_value,
                 dps_date: o.dps_date,
                 dps_no: o.dps_no,
+                notes: o.notes,
                 image: o.image ? o.image.replace('public/', '') : null,
-                orderData: [] ,
-                 payment: {},
-                 aasra:{},
+                orderData: [],
+                payment: {},
+                aasra: {},
             };
         });
-           
+
         const orderDetailsPromises = orderWithImageUrls.map(order =>
             orderDetails.findAll({
                 where: {
                     order_id: order.id
                 }
             })
-        ); 
+        );
 
         const aasraPromises = orderWithImageUrls.map(order =>
             aasra.findOne({
@@ -149,7 +151,7 @@ exports.orderList = async (req, res) => {
                 }
             })
         );
-       
+
         const paymentPromises = orderWithImageUrls.map(order =>
             payment.findOne({
                 where: {
@@ -158,12 +160,12 @@ exports.orderList = async (req, res) => {
             })
         );
         const allPayments = await Promise.all(paymentPromises);
-     
+
         const allOrderDetails = await Promise.all(orderDetailsPromises);
 
         const allAasraDetails = await Promise.all(aasraPromises);
 
-        
+
         const flattenedOrderDetails = allOrderDetails
             .flat()
             .map(detail => ({
@@ -173,33 +175,225 @@ exports.orderList = async (req, res) => {
                 quantity: detail.quantity,
                 price: detail.price,
                 order_id: detail.order_id,
-                image: detail.image
-                
+                image: detail.image,
+
+
             }));
 
-        
-        const ordersWithDetails = orders.map((order , index)=> {
+
+        const ordersWithDetails = orders.map((order, index) => {
             return {
                 ...order,
                 orderData: flattenedOrderDetails.filter(detail => detail.order_id === order.id),
                 payment: allPayments[index] ? {
-                     id: allPayments[index].id,
-                     order_id: allPayments[index].order_id,
-                     purchase_order: allPayments[index].purchase_order,
-                     invoice: allPayments[index].invoice,
-                     PO_number: allPayments[index].PO_number,
-                     invoice_number: allPayments[index].invoice_number,
-                     createdAt: Helper.formatDateTime(allPayments[index].createdAt) ,
+                    id: allPayments[index].id,
+                    order_id: allPayments[index].order_id,
+                    purchase_order: allPayments[index].purchase_order,
+                    invoice: allPayments[index].invoice,
+                    PO_number: allPayments[index].PO_number,
+                    invoice_number: allPayments[index].invoice_number,
+                    createdAt: Helper.formatDateTime(allPayments[index].createdAt),
                 } : {},
-                aasra : allAasraDetails[index] || {}
+                aasra: allAasraDetails[index] || {},
+
             };
         });
 
 
-        Helper.response("success", "Order list",{
-            order:ordersWithDetails,
-         
-        } , res, 200)
+        Helper.response("success", "Order list", {
+            order: ordersWithDetails,
+
+        }, res, 200)
+    } catch (error) {
+        console.log(error)
+        Helper.response("error", "Something went wrong", error, res, 200)
+    }
+}
+
+exports.orderTransfer = async (req, res) => {
+    try {
+
+        let startDate;
+        let endDate;
+        if (req.body.startDate !== null && req.body.endDate !== null) {
+            startDate = await Helper.formatDate(new Date(req.body.startDate));
+            endDate = await Helper.formatDate(new Date(req.body.endDate));
+        }
+
+        const aasra_id = req.body.aasra_id;
+        const token = req.headers['authorization'];
+        const string = token.split(" ");
+        const user = await users.findOne({ where: { token: string[1] } });
+
+        let orderWithImageUrls;
+
+        if (aasra_id === undefined) {
+            if (user.user_type == 'S') {
+                orderWithImageUrls = await orderModel.findAll({
+                    where: {
+                        createdAt: {
+                            [Op.between]: [startDate, endDate]
+                        },
+                        payment_status: 'Paid'
+                    }
+                })
+            } else {
+                orderWithImageUrls = await orderModel.findAll({
+                    where: {
+                        createdAt: {
+                            [Op.between]: [startDate, endDate]
+                        },
+                        payment_status: 'Paid'
+                    }
+                })
+            }
+        }
+        if (req.body.startDate === null && req.body.endDate === null) {
+
+            if (user.user_type == 'S') {
+                orderWithImageUrls = await orderModel.findAll({
+                    where: {
+                        aasra_id: aasra_id,
+                        payment_status: 'Paid'
+                    }
+                })
+            } else {
+                orderWithImageUrls = await orderModel.findAll({
+                    where: {
+                        aasra_id: aasra_id,
+                        payment_status: 'Paid'
+                    }
+                })
+            }
+        }
+        if (startDate !== null && aasra_id !== undefined) {
+            if (user.user_type == 'S') {
+                orderWithImageUrls = await orderModel.findAll({
+                    where: {
+                        aasra_id: aasra_id,
+                        createdAt: {
+                            [Op.between]: [startDate, endDate]
+                        },
+                        payment_status: 'Paid'
+                    }
+                })
+            } else {
+                orderWithImageUrls = await orderModel.findAll({
+                    where: {
+                        aasra_id: aasra_id,
+                        createdAt: {
+                            [Op.between]: [startDate, endDate]
+                        },
+                        payment_status: 'Paid'
+                    }
+                })
+            }
+        }
+
+        const order = orderWithImageUrls.map(o => {
+            if (o.image) {
+                o.image = o.image.replace('public/', '');
+            }
+            return o;
+        });
+
+        const orders = orderWithImageUrls.map(o => {
+            return {
+                id: o.id,
+                aasra_id: o.aasra_id,
+                total_bill: o.total_bill,
+                total_tax: o.total_tax,
+                grand_total: o.grand_total,
+                gst: o.gst,
+                supplier_name: o.supplier_name,
+                order_status: o.order_status,
+                shipping_charges: o.shipping_charges,
+                order_date: o.order_date,
+                payment_status: o.payment_status,
+                payment_method: o.payment_method,
+                transaction_id: o.transaction_id,
+                paid_amount: o.paid_amount,
+                due_amount: o.due_amount,
+                payment_date: o.payment_date,
+                dps_value: o.dps_value,
+                dps_date: o.dps_date,
+                dps_no: o.dps_no,
+                notes: o.notes,
+                image: o.image ? o.image.replace('public/', '') : null,
+                orderData: [],
+                payment: {},
+                aasra: {},
+            };
+        });
+
+        const orderDetailsPromises = orderWithImageUrls.map(order =>
+            orderDetails.findAll({
+                where: {
+                    order_id: order.id
+                }
+            })
+        );
+
+        const aasraPromises = orderWithImageUrls.map(order =>
+            aasra.findOne({
+                where: {
+                    id: order.aasra_id
+                }
+            })
+        );
+
+        const paymentPromises = orderWithImageUrls.map(order =>
+            payment.findOne({
+                where: {
+                    order_id: order.id
+                }
+            })
+        );
+        const allPayments = await Promise.all(paymentPromises);
+
+        const allOrderDetails = await Promise.all(orderDetailsPromises);
+
+        const allAasraDetails = await Promise.all(aasraPromises);
+
+
+        const flattenedOrderDetails = allOrderDetails
+            .flat()
+            .map(detail => ({
+                id: detail.id,
+                item_id: detail.item_id,
+                item_name: detail.item_name,
+                quantity: detail.quantity,
+                price: detail.price,
+                order_id: detail.order_id,
+                image: detail.image,
+
+
+            }));
+
+
+        const ordersWithDetails = orders.map((order, index) => {
+            return {
+                ...order,
+                orderData: flattenedOrderDetails.filter(detail => detail.order_id === order.id),
+                payment: allPayments[index] ? {
+                    id: allPayments[index].id,
+                    order_id: allPayments[index].order_id,
+                    purchase_order: allPayments[index].purchase_order,
+                    invoice: allPayments[index].invoice,
+                    PO_number: allPayments[index].PO_number,
+                    invoice_number: allPayments[index].invoice_number,
+                    createdAt: Helper.formatDateTime(allPayments[index].createdAt),
+                } : {},
+                aasra: allAasraDetails[index] || {},
+
+            };
+        });
+
+
+        Helper.response("success", "Order list", {
+            order: ordersWithDetails,
+
+        }, res, 200)
     } catch (error) {
         console.log(error)
         Helper.response("error", "Something went wrong", error, res, 200)
@@ -250,46 +444,131 @@ exports.updateOrderPayment = async (req, res) => {
     }
 }
 
+
 exports.orderDetails = async (req, res) => {
     try {
-        const { order_id } = req.body
-        const itemPerOrder = await order.findOne({
-            where: { id: order_id },
-        });
-        const aasras = await aasra.findByPk(itemPerOrder.aasra_id)
-        const orderDetail = await orderDetails.findAll({
-            where: {
-                order_id: itemPerOrder.id
-            }
-        })
-        const value = {
-            assraData: aasras,
-            orderData: orderDetail,
-            payment: await payment.findOne({ where: { order_id: itemPerOrder.id } }),
-            total: itemPerOrder.grand_total,
-            gst: itemPerOrder.gst,
-            shipping: itemPerOrder.shipping_charges,
-            discount: 0
+        const token = req.headers['authorization'];
+        const string = token.split(" ");
+        const user = await users.findOne({ where: { token: string[1] } });
+        const { order_id } = req.body;
+
+        let orderWithImageUrls;
+
+        if (user.user_type === 'S') {
+            orderWithImageUrls = await orderModel.findOne({
+                where: { id: order_id },
+            });
+        } else {
+            orderWithImageUrls = await orderModel.findOne({
+                where: { id: order_id },
+            });
         }
-        Helper.response("success", "Order details", value, res, 200)
+
+
+        if (!orderWithImageUrls) {
+            return Helper.response("error", "Order not found", {}, res, 200);
+        }
+
+
+        if (orderWithImageUrls.image) {
+            orderWithImageUrls.image = orderWithImageUrls.image.replace('public/', '');
+        }
+
+        const order = {
+            id: orderWithImageUrls.id,
+            aasra_id: orderWithImageUrls.aasra_id,
+            total_bill: orderWithImageUrls.total_bill,
+            total_tax: orderWithImageUrls.total_tax,
+            grand_total: orderWithImageUrls.grand_total,
+            gst: orderWithImageUrls.gst,
+            supplier_name: orderWithImageUrls.supplier_name,
+            order_status: orderWithImageUrls.order_status,
+            shipping_charges: orderWithImageUrls.shipping_charges,
+            order_date: orderWithImageUrls.order_date,
+            payment_status: orderWithImageUrls.payment_status,
+            payment_method: orderWithImageUrls.payment_method,
+            transaction_id: orderWithImageUrls.transaction_id,
+            paid_amount: orderWithImageUrls.paid_amount,
+            due_amount: orderWithImageUrls.due_amount,
+            payment_date: orderWithImageUrls.payment_date,
+            dps_value: orderWithImageUrls.dps_value,
+            dps_date: orderWithImageUrls.dps_date,
+            dps_no: orderWithImageUrls.dps_no,
+            image: orderWithImageUrls.image || null,
+            notes: orderWithImageUrls.notes,
+            orderData: [],
+            payment: {},
+            aasra: {},
+        };
+
+        const orderDetailsPromises = orderDetails.findAll({
+            where: {
+                order_id: order.id
+            }
+        });
+
+        const aasraPromise = aasra.findOne({
+            where: {
+                id: order.aasra_id
+            }
+        });
+
+        const paymentPromise = payment.findOne({
+            where: {
+                order_id: order.id
+            }
+        });
+
+        const [allOrderDetails, aasraDetails, paymentDetails] = await Promise.all([
+            orderDetailsPromises,
+            aasraPromise,
+            paymentPromise
+        ]);
+
+        const flattenedOrderDetails = allOrderDetails.map(detail => ({
+            id: detail.id,
+            item_id: detail.item_id,
+            item_name: detail.item_name,
+            quantity: detail.quantity,
+            price: detail.price,
+            order_id: detail.order_id,
+            image: detail.image
+        }));
+
+        const orderWithDetails = {
+            ...order,
+            orderData: flattenedOrderDetails,
+            payment: paymentDetails ? {
+                id: paymentDetails.id,
+                order_id: paymentDetails.order_id,
+                purchase_order: paymentDetails.purchase_order,
+                invoice: paymentDetails.invoice,
+                PO_number: paymentDetails.PO_number,
+                invoice_number: paymentDetails.invoice_number,
+                createdAt: Helper.formatDateTime(paymentDetails.createdAt)
+            } : {},
+            aasra: aasraDetails || {}
+        };
+
+        Helper.response("success", "Order details", { order: orderWithDetails }, res, 200);
     } catch (error) {
-        console.log(error)
-        Helper.response("error", "Something went wrong", error, res, 200)
+        console.error(error);
+        Helper.response("error", "Something went wrong", error, res, 200);
     }
 }
-
 exports.addStock = async (req, res) => {
 
 
     try {
         const { order_id, payment } = req.body;
         const payment_status = (await order.findOne({ where: { id: order_id } }))
-        if (payment_status.payment_status == 'paid') {
+        if (payment_status.payment_status == 'Paid') {
 
 
             const itemsAddToStock = await orderDetails.findAll({ where: { order_id: order_id } })
 
             const data = await Promise.all(itemsAddToStock.map(async (f) => {
+
                 await stock.create({
                     ...f.dataValues,
                     aasra_id: payment_status.aasra_id,
@@ -301,15 +580,17 @@ exports.addStock = async (req, res) => {
             if (data) {
                 Helper.response("success", "Stock added success fully", {}, res, 200)
             } else {
-                Helper.response("error", "Something went wrong", {}, res, 200)
+
+                Helper.response("failed", "Stock not added", {}, res, 200)
             }
         }
         else {
-            Helper.response("error", "Payment not done", {}, res, 200)
+            Helper.response("failed", "Payment not done", {}, res, 200)
         }
 
     } catch (error) {
-        Helper.response("error", "Something went wrong", error, res, 200)
+
+        Helper.response("failed", "Something went wrong", error, res, 200)
     }
 }
 
@@ -321,21 +602,47 @@ exports.stockList = async (req, res) => {
 
         if (user.user_type == 'S') {
 
-            var stockList = await stock.findAll(
+            var stockDataList = await stock.findAll(
                 {
-                    include: aasra,
                     where: {
                         aasra_id: req.body.aasra_id
-                    }
+                    },
+                    attributes:[
+                        'item_id',                                              
+                        [Sequelize.fn('COUNT', Sequelize.col('id')), 'count'],
+                        [Sequelize.fn('SUM', Sequelize.col('stock_in')), 'stock_in'],
+                        [Sequelize.fn('SUM', Sequelize.col('stock_out')), 'stock_out'],                        
+                    ],
+                    group: ['item_id'],
+                    raw: true
                 },
             )
+            
+            console.log(stockDataList)
+            var TotalRecord = await Promise.all(stockDataList.map(async(t) => {
+
+                const item = await spareParts.findByPk(t.item_id)
+                const values = {
+                    item_id:t.item_id,
+                    stock_in:t.stock_in,
+                    stock_out:t.stock_out,
+                    item_id:item.part_number,
+                    item_name:item.part_name,
+                    price:item.unit_price,
+                    quantity:t.stock_in,
+                    available_stock:(t.stock_in || 0) - (t.stock_out || 0)
+                }
+
+                return values
+            }))
         }
         else {
-            var stockList = await stock.findAll({
+            var TotalRecord = await stock.findAll({
             }, { where: { aasra_id: user.ref_id } })
+
         }
-        console.log(stockList)
-        Helper.response("success", "Stock List", stockList, res, 200)
+        console.log(TotalRecord);
+        Helper.response("success", "Stock List", TotalRecord, res, 200)
     } catch (error) {
         console.log(error)
         Helper.response("error", "Something went wrong", error, res, 200)
@@ -384,73 +691,19 @@ exports.transactionList = async (req, res) => {
         const token = req.headers['authorization'];
         const string = token.split(" ");
         const user = await users.findOne({ where: { token: string[1] } });
-        const transactionList = await orderModel.findAll({ where: { aasra_id: user.ref_id, payment_status: 'paid' } })
+
+        if (user.user_type == 'S') {
+            var transactionList = await orderModel.findAll({ where: { payment_status: 'Paid' } })
+        } else {
+            var transactionList = await orderModel.findAll({ where: { aasra_id: user.ref_id, payment_status: 'Paid' } })
+        }
+        // console.log(transactionList)
         Helper.response("success", "Transaction List", transactionList, res, 200)
     } catch (error) {
         console.log(error)
         Helper.response("error", "Something went wrong", error, res, 200)
     }
 }
-// exports.updateOrderDetails = async (req, res) => {
-//     try {
-//         const token = req.headers['authorization'];
-//         const string = token.split(" ");
-//         const user = await users.findOne({ where: { token: string[1] } });
-
-
-//         const { products, gst, discount, shipping, orderStatus, supplier_name, subtotal, orderTaxAmount, grandTotal, order_id , aasra_id,dpsValue,dpsDate,dpsNo} = req.body
-
-//         const total_order = {}
-
-//         total_order['aasra_id'] = aasra_id
-//         total_order['total_bill'] = subtotal
-//         total_order['total_tax'] = orderTaxAmount
-//         total_order['grand_total'] = grandTotal
-//         total_order['gst'] = gst
-//         total_order['discount'] = discount
-//         total_order['shipping_charges'] = shipping
-//         total_order['order_status'] = orderStatus.label
-//         total_order['supplier_name'] = supplier_name.label
-//         total_order['order_date'] = new Date().toISOString().slice(0, 10)
-
-//         total_order['dps_value'] = dpsValue
-//         total_order['dps_date'] = dpsDate
-//         total_order['dps_no'] = dpsNo
-
-
-
-//         //const deleteOrder = await orderModel.destroy({ where: { id: order_id } })
-
-//         const createOrder = await orderModel.update(total_order,{where:{id:order_id}}).catch((err) => {
-//             console.log(err)
-//             Helper.response("error", "Something went wrong", err, res, 200)
-//         })
-//         if (createOrder) {
-
-//             const deleteOrder = await orderDetails.destroy({ where: { order_id: order_id } })
-//             const order = await Promise.all(products.map(async (f) => {
-
-//                 const products = {}
-//                 products['order_id'] = order_id
-//                 products['item_id'] = f.id
-//                 products['item_name'] = f.label
-//                 products['quantity'] = f.qty
-//                 products['price'] = f.itemPrice
-
-//                 const data = await orderDetails.create(products).catch((err) => {
-//                     console.log(err)
-//                 })
-//                 return data
-//             }))
-
-//             Helper.response("success", "Order Updated successfully", total_order, res, 200)
-//         }
-
-//     } catch (error) {
-//         console.log(error)
-//         Helper.response("error", "Something went wrong", error, res, 200)
-//     }
-// }
 
 
 
@@ -485,7 +738,8 @@ exports.updateOrderDetails = async (req, res) => {
                 aasra_id = [],
                 dpsValue = [],
                 dpsDate = [],
-                dpsNo = []
+                dpsNo = [],
+                notes = []
             } = fields;
 
             const products = [];
@@ -502,19 +756,14 @@ exports.updateOrderDetails = async (req, res) => {
             }
 
 
-
-            // Handle image upload
-
-
             if (files.image != undefined) {
                 const imageFile = files.image[0];
 
                 const ext = files.image[0].mimetype;
                 var oldPath = files.image[0].filepath
-                // const newPath = 'public/' + files.image[0].originalFilename + '.' + ext.split('/')[1]
                 const newPath = 'public/' + files.image[0].originalFilename
 
-                // Move the file to the public directory
+
                 fs.rename(oldPath, newPath, async (err) => {
 
                     if (err) {
@@ -536,10 +785,10 @@ exports.updateOrderDetails = async (req, res) => {
                             dps_value: dpsValue[0],
                             dps_date: dpsDate[0],
                             dps_no: dpsNo[0],
-                            image: newPath || null
+                            image: newPath || null,
+                            notes: notes[0]
                         };
 
-                        // Update the order
                         await orderModel.update(total_order, { where: { id: order_id[0] } });
 
                         const delet = await orderDetails.destroy({ where: { order_id: order_id[0] } });
@@ -580,7 +829,8 @@ exports.updateOrderDetails = async (req, res) => {
                     order_date: new Date().toISOString().slice(0, 10),
                     dps_value: dpsValue[0],
                     dps_date: dpsDate[0],
-                    dps_no: dpsNo[0]
+                    dps_no: dpsNo[0],
+                    notes: notes[0]
                 };
 
                 // Update the order

@@ -161,6 +161,10 @@ const aasra = sequelize.define('aasra', {
         type: DataTypes.STRING,
         allowNull:true
     },
+    gst:{
+        type:DataTypes.STRING,
+        allowNull:true
+    }
    
     
 

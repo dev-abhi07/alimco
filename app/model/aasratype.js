@@ -1,7 +1,7 @@
 const { DataTypes } = require("sequelize")
 const sequelize = require("../connection/conn");
 
-const aasraType = sequelize.define('aasraType',{
+const aasraType = sequelize.define('alimco_center',{
     type :{
         type:DataTypes.STRING,
         allowNull:false,

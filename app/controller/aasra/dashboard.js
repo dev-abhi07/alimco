@@ -7,7 +7,10 @@ const { Op } = require('sequelize')
 const aasras = require('../../model/aasra');
 const repairPayment = require('../../model/repairPayment');
 const items = require('../../model/items');
-const problem = require('../../model/problem')
+const problem = require('../../model/problem');
+const manufacturer = require('../../model/manufacturer');
+const spareParts = require('../../model/spareParts');
+const customer = require('../../model/customer');
 exports.Dashboard = async (req, res) => {
   try {
     //console.log("hell")
@@ -18,15 +21,21 @@ exports.Dashboard = async (req, res) => {
 
       var data = [
         { id: 1, count: await ticket.count(), type: "Total Tickets", imgSrc: 'tickets.png' },
-        { id: 2, count: await ticket.count({ where: { status: 1 } }), type: "Running Tickets", imgSrc: 'tickets.png' },
-        { id: 3, count: await ticket.count({ where: { status: 2 } }), type: "Pending Tickets", imgSrc: 'tickets.png' },
-        { id: 4, count: 0, type: "Register Grievance", imgSrc: 'griv.png' },
+        { id: 2, count: await ticket.count({ where: { status: 0 } }), type: "Pending Tickets", imgSrc: 'tickets.png' },
+        { id: 3, count: await ticket.count({ where: { status: 1 } }), type: "Running Tickets", imgSrc: 'tickets.png' },
+        { id: 3, count: await ticket.count({ where: { status: 2 } }), type: "Close Tickets", imgSrc: 'tickets.png' },
       ]
-      var tickets = await ticket.findAll()
+      var tickets = await ticket.findAll({
+        order:[
+          ['createdAt','DESC']
+        ]
+      })
       const ticketData = [];
       var subtotal = 0
       await Promise.all(
         tickets.map(async (record, count = 1) => {
+
+          console.log(record)
           // const getUser = await users.findByPk(record.user_id)
           const getAasra = await aasra.findByPk(record.aasra_id)
 
@@ -42,6 +51,15 @@ exports.Dashboard = async (req, res) => {
               user_type: 'C'
             }
           })
+
+          const getCustomer = await customer.findOne({
+            where: {
+              id: getUser.ref_id,             
+            }
+          })
+
+
+          
 
           const itemDetails = await items.findOne({
             where: {
@@ -62,15 +80,17 @@ exports.Dashboard = async (req, res) => {
             }
           })
 
+
+
           var subtotal = 0
           var serviceCharge = 0
           var gst = 0
           var discount = 0
           repairData.map((t) => {
-            subtotal += t.price * t.qty
-            serviceCharge += t.repairPrice
-            gst = subtotal * 18 / 100
-            discount = t.record == 1 ? 100 : 0
+            subtotal += t.productPrice * t.qty;
+            serviceCharge += t.repairServiceCharge + t.repairPrice;
+            gst = subtotal * 18 / 100;
+            discount = t.record == 1 ? 100 : 0;
           })
 
 
@@ -83,27 +103,30 @@ exports.Dashboard = async (req, res) => {
             description: record.description,
             appointment_date: record.appointment_date,
             appointment_time: record.appointment_time,
+            address:getCustomer?.district+', '+getCustomer?.state,
+            aadhaar:getCustomer.aadhaar,
             ticket_id: record.ticket_id,
             aasraName: getAasra.name_of_org,
             status: record.status == 0 ? 'Pending' : record.status == 1 ? 'Open' : 'Closed',
             sr_no: count + 1,
-            ticketDetail: record.status == 2 ? repairData : null,
+            ticketDetail: (record.status == 2 || record.status == 1) ? repairData : null,
             subtotal: subtotal,
             serviceCharge: serviceCharge,
             gst: process.env.SERVICE_GST,
-            totalAmount: subtotal + serviceCharge + gst,
+            totalAmount: subtotal + serviceCharge,
             discount: 0,
-            createdDate: record.createdAt,
+            createdAt: record.createdAt,
             payment_status: repairPayments == 0 ? false : true,
             warranty: warranty,
             dstDate: itemDetails?.distributed_date ?? null,
             expire_date: itemDetails?.expire_date ?? null,
             problem: getproblem?.problem_name ?? null,
-
+            mobile: getUser.mobile ?? null,
           }
           ticketData.push(dataValue)
         })
       )
+      
       Helper.response(
         "success",
         "Welcome to Dashboard",
@@ -120,8 +143,8 @@ exports.Dashboard = async (req, res) => {
 
       var data = [
         { id: 1, count: await ticket.count({ where: { aasra_id: user.ref_id } }), type: "Total Tickets", imgSrc: 'tickets.png' },
-        { id: 2, count: await ticket.count({ where: { status: 1, aasra_id: user.ref_id } }), type: "Running Tickets", imgSrc: 'tickets.png' },
-        { id: 3, count: await ticket.count({ where: { status: 0, aasra_id: user.ref_id } }), type: "Pending Tickets", imgSrc: 'tickets.png' },
+        { id: 2, count: await ticket.count({ where: { status: 0, aasra_id: user.ref_id } }), type: "Running Tickets", imgSrc: 'tickets.png' },
+        { id: 3, count: await ticket.count({ where: { status: 1, aasra_id: user.ref_id } }), type: "Pending Tickets", imgSrc: 'tickets.png' },
         { id: 4, count: await ticket.count({ where: { status: 2, aasra_id: user.ref_id } }), type: "Closed Tickets", imgSrc: 'tickets.png' },
       ]
       var tickets = await ticket.findAll({
@@ -148,6 +171,28 @@ exports.Dashboard = async (req, res) => {
               ticket_id: record.ticket_id
             }
           })
+
+          const repairDataValues = await Promise.all(repairData.map(async (records) => {
+            const oldManufacture = await manufacturer.findOne({
+              where: {
+                id: records.old_manufacturer_id
+              }
+            });
+
+            const newManufacture = await manufacturer.findOne({
+              where: {
+                id: records.new_manufacturer_id
+              }
+            });
+            return {
+              ...records.dataValues,
+              old_manufacture_name: oldManufacture?.manufacturer_code ?? null,
+              new_manufacture_name: newManufacture?.manufacturer_code ?? null,
+              old_manufacture_id: oldManufacture?.id ?? null,
+              new_manufacture_id: newManufacture?.id ?? null,
+
+            }
+          }))
           const repairPayments = await repairPayment.count({
             where: {
               ticket_id: record.ticket_id
@@ -164,6 +209,13 @@ exports.Dashboard = async (req, res) => {
               id: record.problem
             }
           })
+
+          const getCustomer = await customer.findOne({
+            where: {
+              id: getUser.ref_id,             
+            }
+          })
+
           const warranty = await Helper.compareDate(itemDetails?.expire_date);
 
           var subtotal = 0
@@ -171,42 +223,49 @@ exports.Dashboard = async (req, res) => {
           var gst = 0
           var discount = 0
           repairData.map((t) => {
-            subtotal += t.price * t.qty
-            serviceCharge += t.repairPrice
-            gst = subtotal * 18 / 100
-            discount = t.record == 1 ? 100 : 0
+            subtotal += t.productPrice * t.qty;
+            serviceCharge += t.repairServiceCharge + t.price;
+            gst = subtotal * 18 / 100;
+            discount = t.record == 1 ? 100 : 0;
           })
 
 
           const dataValue = {
-            aasraId: record.aasraId,
+            aasraId: record.aasra_id,
             customer_name: getUser.name,
             mobile: getUser.mobile,
             product_name: record.itemName,
             itemId: record.itemId,
             description: record.description,
+            address:getCustomer?.district+', '+getCustomer?.state,
+            aadhaar:getCustomer.aadhaar,
             appointment_date: record.appointment_date,
             appointment_time: record.appointment_time,
             ticket_id: record.ticket_id,
             aasraName: getAasra.name_of_org,
             status: record.status == 0 ? 'Pending' : record.status == 1 ? 'Open' : 'Closed',
             sr_no: count + 1,
-            ticketDetail: record.status == 2 ? repairData : null,
+            ticketDetail: (record.status == 2 || record.status == 1) ? repairDataValues : null,
             subtotal: subtotal,
             serviceCharge: serviceCharge,
             gst: process.env.SERVICE_GST,
-            totalAmount: subtotal + serviceCharge + gst,
-            discount: 0,
+            totalAmount: subtotal + serviceCharge,
+            discount: discount,
             createdDate: record.createdAt,
             payment_status: repairPayments == 0 ? false : true,
             warranty: warranty,
             dstDate: itemDetails?.distributed_date ?? null,
             expire_date: itemDetails?.expire_date ?? null,
             problem: getproblem?.problem_name ?? null,
+            mobile: getUser.mobile ?? null,
+            createdAt:record.createdAt
           }
+          
           ticketData.push(dataValue)
         })
+
       )
+
       Helper.response(
         "success",
         "Welcome to Dashboard",
@@ -334,6 +393,29 @@ exports.ticketList = async (req, res) => {
                 ticket_id: record.ticket_id
               }
             })
+
+            const repairDataValues = await Promise.all(repairData.map(async (records) => {
+              const oldManufacture = await manufacturer.findOne({
+                where: {
+                  id: records.old_manufacturer_id
+                }
+              });
+  
+              const newManufacture = await manufacturer.findOne({
+                where: {
+                  id: records.new_manufacturer_id
+                }
+              });
+              return {
+                ...records.dataValues,
+                old_manufacture_name: oldManufacture?.manufacturer_code ?? null,
+                new_manufacture_name: newManufacture?.manufacturer_code ?? null,
+                old_manufacture_id: oldManufacture?.id ?? null,
+                new_manufacture_id: newManufacture?.id ?? null,
+  
+              }
+            }))
+
             const getUser = await users.findOne({
               where: {
                 ref_id: record.user_id,
@@ -358,6 +440,12 @@ exports.ticketList = async (req, res) => {
                 user_id: record.user_id
               }
             })
+
+            const getCustomer = await customer.findOne({
+              where: {
+                id: getUser.ref_id,             
+              }
+            })
             const warranty = await Helper.compareDate(itemDetails?.expire_date);
 
 
@@ -367,10 +455,10 @@ exports.ticketList = async (req, res) => {
             var gst = 0
             var discount = 0
             repairData.map((t) => {
-              subtotal += t.price * t.qty
-              serviceCharge += t.repairPrice
-              gst = subtotal * 18 / 100
-              discount = t.record == 1 ? 100 : 0
+              subtotal += t.productPrice * t.qty;
+              serviceCharge += t.repairServiceCharge + t.repairPrice;
+              gst = subtotal * 18 / 100;
+              discount = t.record == 1 ? 100 : 0;
             })
 
             const dataValue = {
@@ -381,22 +469,25 @@ exports.ticketList = async (req, res) => {
               description: record.description,
               appointment_date: record.appointment_date,
               appointment_time: record.appointment_time,
+              address:getCustomer?.district+', '+getCustomer?.state,
+              aadhaar:getCustomer.aadhaar,
               ticket_id: record.ticket_id,
               aasraName: getAasra.name_of_org,
               status: record.status == 0 ? 'Pending' : record.status == 1 ? 'Open' : 'Closed',
               sr_no: count + 1,
-              ticketDetail: record.status == 2 ? repairData : null,
+              ticketDetail: (record.status == 2 || record.status == 1) ? repairDataValues : null,
               payment_status: repairPayments == 0 ? false : true,
               subtotal: subtotal,
               serviceCharge: serviceCharge,
               gst: process.env.SERVICE_GST,
-              totalAmount: subtotal + serviceCharge + gst,
+              totalAmount: subtotal + serviceCharge,
               discount: 0,
               warranty: warranty,
               dstDate: itemDetails?.distributed_date ?? null,
               expire_date: itemDetails?.expire_date ?? null,
               problem: getproblem?.problem_name ?? null,
-
+              mobile: getUser.mobile ?? null,
+              createdAt:record.createdAt
 
             }
             ticketData.push(dataValue)
@@ -411,6 +502,7 @@ exports.ticketList = async (req, res) => {
             ['id', 'DESC']
           ]
         })
+        console.log(50111111111111111111111111,tickets)
         await Promise.all(
           tickets.map(async (record, count = 1) => {
 
@@ -436,7 +528,12 @@ exports.ticketList = async (req, res) => {
                 user_id: record.user_id
               }
             })
-
+            
+            const getCustomer = await customer.findOne({
+              where: {
+                id: getUser.ref_id,             
+              }
+            })
 
             const getproblem = await problem.findOne({
               where: {
@@ -450,11 +547,33 @@ exports.ticketList = async (req, res) => {
             var gst = 0
             var discount = 0
             repairData.map((t) => {
-              subtotal += t.price * t.qty
-              serviceCharge += t.repairPrice
-              gst = subtotal * 18 / 100
-              discount = t.record == 1 ? 100 : 0
+              subtotal += t.productPrice * t.qty;
+              serviceCharge += t.repairServiceCharge + t.repairPrice;
+              gst = subtotal * 18 / 100;
+              discount = t.record == 1 ? 100 : 0;
             })
+
+            const repairDataValues = await Promise.all(repairData.map(async (records) => {
+              const oldManufacture = await manufacturer.findOne({
+                where: {
+                  id: records.old_manufacturer_id
+                }
+              });
+  
+              const newManufacture = await manufacturer.findOne({
+                where: {
+                  id: records.new_manufacturer_id
+                }
+              });
+              return {
+                ...records.dataValues,
+                old_manufacture_name: oldManufacture?.manufacturer_code ?? null,
+                new_manufacture_name: newManufacture?.manufacturer_code ?? null,
+                old_manufacture_id: oldManufacture?.id ?? null,
+                new_manufacture_id: newManufacture?.id ?? null,
+  
+              }
+            }))
 
             const dataValue = {
               aasraId: record.aasraId,
@@ -464,21 +583,25 @@ exports.ticketList = async (req, res) => {
               description: record.description,
               appointment_date: record.appointment_date,
               appointment_time: record.appointment_time,
+              aadhaar:getCustomer.aadhaar,
               ticket_id: record.ticket_id,
+              address:getCustomer?.district+', '+getCustomer?.state,
               aasraName: getAasra.name_of_org,
               status: record.status == 0 ? 'Pending' : record.status == 1 ? 'Open' : 'Closed',
               sr_no: count + 1,
-              ticketDetail: record.status == 2 ? repairData : null,
+              ticketDetail: (record.status == 2 || record.status == 1) ? repairDataValues : null,
               payment_status: repairPayments == 0 ? false : true,
               subtotal: subtotal,
               serviceCharge: serviceCharge,
               gst: process.env.SERVICE_GST,
-              totalAmount: subtotal + serviceCharge + gst,
+              totalAmount: subtotal + serviceCharge,
               discount: 0,
               warranty: warranty,
               dstDate: itemDetails?.distributed_date ?? null,
               expire_date: itemDetails?.expire_date ?? null,
               problem: getproblem?.problem_name ?? null,
+              mobile: getUser.mobile ?? null,
+              createdAt:record.createdAt
 
             }
             ticketData.push(dataValue)
@@ -533,15 +656,43 @@ exports.ticketList = async (req, res) => {
               }
             })
 
+            const getCustomer = await customer.findOne({
+              where: {
+                id: getUser.ref_id,             
+              }
+            })
+
+            const repairDataValues = await Promise.all(repairData.map(async (records) => {
+              const oldManufacture = await manufacturer.findOne({
+                where: {
+                  id: records.old_manufacturer_id
+                }
+              });
+  
+              const newManufacture = await manufacturer.findOne({
+                where: {
+                  id: records.new_manufacturer_id
+                }
+              });
+              return {
+                ...records.dataValues,
+                old_manufacture_name: oldManufacture?.manufacturer_code ?? null,
+                new_manufacture_name: newManufacture?.manufacturer_code ?? null,               
+  
+              }
+            }))
+
+            
+
             var subtotal = 0
             var serviceCharge = 0
             var gst = 0
             var discount = 0
             repairData.map((t) => {
-              subtotal += t.price * t.qty
-              serviceCharge += t.repairPrice
-              gst = subtotal * 18 / 100
-              discount = t.record == 1 ? 100 : 0
+              subtotal += t.productPrice * t.qty;
+              serviceCharge += t.repairServiceCharge + t.repairPrice;
+              gst = subtotal * 18 / 100;
+              discount = t.record == 1 ? 100 : 0;
             })
 
             const warranty = await Helper.compareDate(itemDetails?.expire_date);
@@ -554,11 +705,13 @@ exports.ticketList = async (req, res) => {
               description: record.description,
               appointment_date: record.appointment_date,
               appointment_time: record.appointment_time,
+              address:getCustomer?.district+', '+getCustomer?.state,
               ticket_id: record.ticket_id,
+              aadhaar:getCustomer.aadhaar,
               aasraName: getAasra.name_of_org,
               status: record.status == 0 ? 'Pending' : record.status == 1 ? 'Open' : 'Closed',
               sr_no: count + 1,
-              ticketDetail: record.status == 2 ? repairData : null,
+              ticketDetail: (record.status == 2 || record.status == 1) ? repairDataValues : null,
               payment_status: repairPayments == 0 ? false : true,
               gst: process.env.SERVICE_GST,
               warranty: warranty,
@@ -567,8 +720,10 @@ exports.ticketList = async (req, res) => {
               problem: getproblem?.problem_name ?? null,
               subtotal: subtotal,
               serviceCharge: serviceCharge,
-              totalAmount: subtotal + serviceCharge + gst,
+              totalAmount: subtotal + serviceCharge,
               discount: 0,
+              mobile: getUser.mobile ?? null,
+              createdAt:record.createdAt
 
             }
             ticketData.push(dataValue)
@@ -629,6 +784,14 @@ exports.ticketList = async (req, res) => {
               }
             })
 
+            const getCustomer = await customer.findOne({
+              where: {
+                id: getUser.ref_id,             
+              }
+            })
+            var subtotal = 0
+            var serviceCharge = 0
+
             const warranty = await Helper.compareDate(itemDetails?.expire_date);
 
             const dataValue = {
@@ -639,18 +802,22 @@ exports.ticketList = async (req, res) => {
               description: record.description,
               appointment_date: record.appointment_date,
               appointment_time: record.appointment_time,
+              aadhaar:getCustomer.aadhaar,
               ticket_id: record.ticket_id,
+              address:getCustomer?.district+', '+getCustomer?.state,
               aasraName: getAasra.name_of_org,
               status: record.status == 0 ? 'Pending' : record.status == 1 ? 'Open' : 'Closed',
               sr_no: count + 1,
-              ticketDetail: record.status == 2 ? repairData : null,
+              ticketDetail: (record.status == 2 || record.status == 1) ? repairData : null,
               payment_status: repairPayments == 0 ? false : true,
               gst: process.env.SERVICE_GST,
               warranty: warranty,
               dstDate: itemDetails?.distributed_date ?? null,
               expire_date: itemDetails?.expire_date ?? null,
               problem: getproblem?.problem_name ?? null,
-              totalAmount: subtotal + serviceCharge + gst,
+              totalAmount: subtotal + serviceCharge ,
+              mobile: getUser.mobile ?? null,
+              createdAt:record.createdAt
             }
             ticketData.push(dataValue)
           })
@@ -669,7 +836,7 @@ exports.ticketList = async (req, res) => {
       200
     );
   } catch (error) {
-    console.log(error)
+    
     Helper.response(
       "failed",
       "Something went wrong!",
@@ -894,7 +1061,7 @@ exports.servicehistorylist = async (req, res) => {
           var gst = 0
           var discount = 0
           repairData.map((t) => {
-            subtotal += t.price * t.qty
+            subtotal += t.productPrice * t.qty
             serviceCharge += t.repairPrice
             gst = subtotal * 18 / 100
             discount = t.record == 1 ? 100 : 0

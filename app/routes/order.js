@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { createOrder, orderList, updateOrderPayment, productApi, orderDetails, addStock, stockList,transactionList , generatePurchaseOrder ,purchaseOrderStatus ,updateOrderDetails, paymentStatus} = require("../controller/aasra/order");
+const { createOrder, orderList, updateOrderPayment, productApi, orderDetails, addStock, stockList,transactionList , generatePurchaseOrder ,purchaseOrderStatus ,updateOrderDetails, paymentStatus, orderTransfer} = require("../controller/aasra/order");
 const { Admin } = require("../middleware/middleware");
 
 router.post('/create-purchase-order',createOrder)
@@ -15,4 +15,5 @@ router.post('/purchase-order',Admin,generatePurchaseOrder)
 router.post('/purchase-order-status',Admin, purchaseOrderStatus)
 router.post('/update-order-details',Admin,updateOrderDetails)
 router.post('/payment-status',Admin,paymentStatus)
+router.post('/order-transfer-list',orderTransfer)
 module.exports = router;

@@ -77,6 +77,8 @@ exports.ticketList = async (req, res) => {
                 user_id: userId
             }
         })
+
+       
         const ticketData = [];
         await Promise.all(
             tickets.map(async (record) => {

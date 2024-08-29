@@ -66,32 +66,30 @@ exports.otpVerify = async (req, res) => {
         const checkUser = await users.findOne({
             where: {
                 mobile: req.body.mobile,
-                udid: req.body.udid
+                udid: req.body.udid,
+                user_type:'C'
             }
         });
 
         
         if (checkUser!=null) {
-            let token = jwt.sign({ ref_id: checkUser.ref_id }, process.env.SECRET_KEY, {
+            let token = jwt.sign({ id: checkUser.id }, process.env.SECRET_KEY, {
                 expiresIn: "365d",
             });
+            
 
-            //console.log(token)
-            // await users.update({ token: token }, { where: { ref_id: checkUser.ref_id } }).catch((error) => {
-            //     console.log(error)
-            // });
-
-            await users.update(
-                { token: token },
-                { 
-                  where: { 
-                    ref_id: checkUser.ref_id, 
-                    usertype: 'C' 
-                  } 
+            console.log(checkUser.token,85,token)
+            const data = await users.update(
+                {
+                    token:token
+                },{
+                    where:{
+                        id:checkUser.id,
+                        user_type:'C'
+                    }
                 }
-              ).catch((error) => {
-                console.log(error);
-              });
+            )
+                      
             Helper.response('success', 'Login Successfully', { user_data: { id: checkUser.id, name: checkUser.name, user_type: checkUser.user_type, token: token, udid: checkUser.udid,ref_id:checkUser.ref_id} }, res, 200);
         }
 

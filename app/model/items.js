@@ -33,6 +33,14 @@ const items = sequelize.define('item', {
     expire_date : {
         type: DataTypes.STRING,
         allowNull: true,
+    },
+    campName:{
+        type:DataTypes.STRING,
+        allowNull:true
+    },
+    campVenue:{
+        type:DataTypes.STRING,
+        allowNull:true
     }
 });
 

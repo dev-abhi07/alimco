@@ -5,13 +5,16 @@ const { create,list,update ,destroy, uomCreate, listUom, updateUom, problemCreat
 const { createParts , sparePartsList , deleteSpareParts, updateSpareParts , labourCharges} = require('../controller/admin/spareParts')
 const { getUserList, userCreate, rolePermission, RoleList, getRolePermission, userPermission, getUserPermission } = require("../controller/admin/user");
 const { Login, logout, validateToken } = require('../controller/admin/login');
-const {   states , cities , repair , revenueReport, paymentReport, partReplacementReport, inventoryWholeFormat} = require("../controller/admin/dashboard");
+const {   states , cities , repair , revenueReport, paymentReport, partReplacementReport, inventoryWholeFormat,updateLabourCharges, createLabourCharges, destroyLabourCharges, generateNotes} = require("../controller/admin/dashboard");
 const {Admin,menuListUserPermission, aasra} = require("../middleware/middleware");
-const { registerAasraCentre, aasraList, updateAasraCenter, aasraType, aasraTypecreate, aasraTypelist, aasraTypeupdate } = require("../controller/admin/aasra");
+const { registerAasraCentre, aasraList, updateAasraCenter, aasraType, aasraTypecreate, aasraTypelist, aasraTypeupdate, stocktransferupdate } = require("../controller/admin/aasra");
 const { Dashboard , ticketList,getAasraRevenue, servicehistorylist } = require("../controller/aasra/dashboard");
 const { categoryWiseProduct, productRepairList , AarsaDropDown } = require("../controller/admin/aasra");
-const { createRepair , ticketOtpVerify , ticketSendOtp ,aasraChatList ,aasraMessage,openTicket,sentOtpWeb,getUser , getRegisteredData, createCustomerTicketAasraAndSaveUser,ticketDetails} = require("../controller/aasra/ticket");
+const { OtpVerifyAasra,createRepair , ticketOtpVerify , ticketSendOtp ,aasraChatList ,aasraMessage,openTicket,sentOtpWeb,getUser , getRegisteredData, createCustomerTicketAasraAndSaveUser,ticketDetails} = require("../controller/aasra/ticket");
+
 const { arjunApi } = require("../controller/api/arjunApi");
+const { route } = require("./customer");
+const { otpVerify } = require("../controller/customer/register");
 
 
 router.post('/login', Login);
@@ -45,7 +48,7 @@ router.post('/get-role-permission',getRolePermission)
 router.post('/create-user-permission',userPermission)
 router.post('/get-user-permission',getUserPermission)
 router.post('/ticket-list',Admin,ticketList)
-router.post('/category-product-list',aasra,Admin,categoryWiseProduct)
+router.post('/category-product-list',Admin,categoryWiseProduct)
 router.post('/product-repair-list',Admin,productRepairList)
 router.post('/dashboard',Admin,menuListUserPermission,Dashboard)
 router.post('/service-history-list',Admin,servicehistorylist)
@@ -61,6 +64,7 @@ router.post('/repair',aasra,createRepair)
 router.post('/generate-otp',aasra,ticketSendOtp)
 router.post('/open-ticket',aasra,openTicket)
 router.post('/close-ticket',aasra,ticketOtpVerify)
+router.post('/verify-otp',aasra,OtpVerifyAasra)
 
 router.post('/create-aasra-chat',aasra,aasraMessage)
 router.post('/aasra-chat-list',aasra,aasraChatList)
@@ -89,9 +93,14 @@ router.post('/problem-list' ,Admin , listProblem)
 router.post('/create-manufacturer' ,Admin ,manufacturerCreate)
 router.post('/update-manufacturer' ,Admin , updateManufacturer)
 router.post('/manufacturer-list',Admin ,listManufacturer)
-router.post('/ticket-detail',aasra,ticketDetails)
+router.post('/ticket-detail',ticketDetails)
 router.post('/aasra-type',Admin,aasraType)
 router.post('/aasratype-create', Admin , aasraTypecreate)
 router.post('/aasratype-list',Admin, aasraTypelist)
 router.post('/aasratype-update',Admin,aasraTypeupdate)
+router.post('/stock-transfer-update',Admin,stocktransferupdate)
+router.post('/update-labour-charges',updateLabourCharges)
+router.post('/create-labour-charges',createLabourCharges)
+router.post('/delete-labour-charges',destroyLabourCharges)
+router.post('/generate-service-note',generateNotes)
 module.exports = router;

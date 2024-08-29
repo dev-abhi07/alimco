@@ -90,6 +90,10 @@ const order = sequelize.define('order',{
         type: DataTypes.TEXT,
         allowNull: true
     },
+    notes:{
+        type: DataTypes.STRING,
+        allowNull:true,
+    },
 })
 order.belongsTo(aasra,{foreignKey:'aasra_id'})
 // sequelize.sync()

@@ -10,7 +10,7 @@ const Admin = async (req, res, next) => {
   try {
     const string = token.split(" ");
     const user = await UserModel.findOne({ where: { token: string[1] } });
-
+  
     if (user.user_type == 'S' || user.user_type == 'A' || user.user_type == 'AC') {
 
       try {
@@ -45,10 +45,10 @@ const customer = async (req, res, next) => {
       }
 
     } else {
-      Helper.response("expired", "Token expireddue to another login,Login Again!!", {}, res, 200);
+      Helper.response("expired", "Token expired due to another login. Please Login Again!", {}, res, 200);
     }
   } catch (error) {
-    Helper.response("failed", "Unauthorized Access", {}, res, 200);
+    Helper.response("expired", "Unauthorized Access", {}, res, 200);
   }
 }
 const aasra = async (req, res, next) => {
@@ -57,6 +57,7 @@ const aasra = async (req, res, next) => {
   try {
     const string = token.split(" ");
     const user = await UserModel.findOne({ where: { token: string[1] } });
+   
      if (user.user_type == 'AC') {
 
       try {
@@ -70,7 +71,7 @@ const aasra = async (req, res, next) => {
       Helper.response("expired", "Invalid user", {}, res, 200);
     }
   } catch (error) {
-    Helper.response("failed", "Unauthorized Access", {}, res, 200);
+    Helper.response("expired", "Unauthorized Access", {}, res, 200);
   }
 }
 const menuListUserPermission = async (req, res, next) => {

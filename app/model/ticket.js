@@ -57,7 +57,7 @@ const ticket = sequelize.define('ticket', {
     
     
 },{
-    timestamps:false
+    timestamps:true
 });
 
 

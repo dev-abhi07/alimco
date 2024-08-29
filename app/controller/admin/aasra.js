@@ -10,10 +10,14 @@ const document = require("../../model/documents");
 const { default: test } = require("node:test");
 const city = require("../../model/city");
 const states = require("../../model/state");
-const { where } = require("sequelize");
+const { where, Op, or } = require("sequelize");
 const spareParts = require("../../model/spareParts");
 const labour_charges = require('../../model/labour_charges');
 const aasraType = require("../../model/aasratype");
+const orderDetails = require("../../model/orderDetails");
+const order = require("../../model/order");
+const stock = require("../../model/stock");
+
 
 
 
@@ -38,7 +42,29 @@ exports.registerAasraCentre = async (req, res) => {
                 transformedFields[key] = fields[key][0];
             }
 
+           
+            const emailValidate = await users.count({
+                where: {
+                    email: transformedFields.email
+                }
+            });
+
+            const mobileValidate = await users.count({
+                where: {
+                    mobile: transformedFields.mobile_no
+                }
+            });
+
+            if (mobileValidate > 0 || emailValidate > 0) {
+
+                return Helper.response("failed",  emailValidate > 0?  'Email already exists' : 'Mobile already exists', {}, res, 200);
+            }
+
+           
             try {
+
+
+
                 const createAasra = await aasra.create({
                     ...transformedFields,
                     unique_code: unique_code
@@ -139,9 +165,9 @@ exports.aasraList = async (req, res) => {
                 model: city,
                 as: 'city',
                 attributes: ['city', 'id'],
-            }]
+            }
+            ]
         });
-
         if (data) {
             Helper.response("success", "Aasra list", { data }, res, 200);
         }
@@ -268,7 +294,9 @@ exports.categoryWiseProduct = async (req, res) => {
         getProduct.map((record) => {
             const data = {
                 value: record.id,
-                label: record.part_name
+                label: record.part_number + '-' + record.part_name,
+                productPrice: parseFloat(record.unit_price),
+                id: record.id
             }
 
             productData.push(data)
@@ -288,12 +316,12 @@ exports.productRepairList = async (req, res) => {
         const product = await labour_charges.findAll()
         const data = product.map((f) => {
             const productData = {
-                value: f.slNo,
+                value: f.id,
                 label: f.natureOfWork,
-                serviceCharge: f.labourCharges,
-                repair_time: f.repairTime,
-                price: 45,
-                gst: 0.18
+                repairServiceCharge: f.labourCharges,
+                repairTime: f.repairTime,
+                repairPrice: 45,
+                repairGst: 0.18
             }
             return productData
         })
@@ -303,15 +331,15 @@ exports.productRepairList = async (req, res) => {
     }
 }
 
-exports.AarsaDropDown = async(req, res) => {
+exports.AarsaDropDown = async (req, res) => {
     try {
         const aasras = await aasra.findAll()
         const dataset = []
-       
+
         aasras.map((record) => {
             const values = {
-                value:record.id,
-                label:record.name_of_org
+                value: record.id,
+                label: record.name_of_org
             }
             dataset.push(values)
         })
@@ -324,15 +352,15 @@ exports.AarsaDropDown = async(req, res) => {
 
 exports.aasraType = async (req, res) => {
     try {
-     
+
         const aasratypeName = [
             { value: 'AAPC', label: 'AAPC' },
-            { value: 'RMC' , label: 'RMC' },
+            { value: 'RMC', label: 'RMC' },
             { value: 'PMDK', label: 'PMDK' },
             { value: 'HQ', label: 'HQ' }
         ];
 
-       
+
         const data = [];
         aasratypeName.map((record) => {
             const value = {
@@ -361,54 +389,54 @@ exports.aasraType = async (req, res) => {
 };
 exports.aasraTypecreate = async (req, res) => {
     console.log(req.body)
-   
-   try {
-       
-    const checkName = aasraType.f
-    const data = {
-        type: req.body.type,
-        centre_name: req.body.centre_name,
-        state_id: req.body.state_id,
-        city_id: req.body.city_id,
-        address: req.body.address,
-        contact_details: req.body.contact_details,
-        contact_person: req.body.contact_person,
-        email_id: req.body.email_id
-    }
 
-    const create = aasraType.create(data);
-    if (create) {
-        Helper.response(
-            "success",
-            "Record Created Successfully",
-            {},
-            res,
-            200
-        );
-    } else {
+    try {
+
+        const checkName = aasraType.f
+        const data = {
+            type: req.body.type,
+            centre_name: req.body.centre_name,
+            state_id: req.body.state_id,
+            city_id: req.body.city_id,
+            address: req.body.address,
+            contact_details: req.body.contact_details,
+            contact_person: req.body.contact_person,
+            email_id: req.body.email_id
+        }
+
+        const create = aasraType.create(data);
+        if (create) {
+            Helper.response(
+                "success",
+                "Record Created Successfully",
+                {},
+                res,
+                200
+            );
+        } else {
+            Helper.response(
+                "failed",
+                "Something went wrong!",
+                {},
+                res,
+                200
+            );
+        }
+    } catch (error) {
         Helper.response(
             "failed",
             "Something went wrong!",
-            {},
+            { error },
             res,
             200
         );
     }
-   } catch (error) {
-    Helper.response(
-        "failed",
-        "Something went wrong!",
-        { error },
-        res,
-        200
-    );
-   }
-    
+
 }
 
 
 exports.aasraTypelist = async (req, res) => {
-   
+
     try {
         const aasralist = await aasraType.findAll();
         const data = [];
@@ -467,12 +495,88 @@ exports.aasraTypeupdate = async (req, res) => {
             address: req.body.address,
             contact_details: req.body.contact_details,
             contact_person: req.body.contact_person,
-            email_id: req.body.email_id 
+            email_id: req.body.email_id
         }, {
             where: {
                 id: req.body.id,
             }
         })
+        Helper.response(
+            "success",
+            "Record Update Successfully",
+            {},
+            res,
+            200
+        );
+    } catch (error) {
+        Helper.response(
+            "failed",
+            "Something went wrong!",
+            { error },
+            res,
+            200
+        );
+    }
+}
+
+exports.stocktransferupdate = async (req, res) => {
+    try {
+        
+        const orderId =   await order.findOne({
+            where:{
+                id:req.body.order_id
+            }
+        })
+       if(!orderId){
+         return  Helper.response(
+            "failed",
+            "Record Not Found!",
+            {},
+            res,
+            200
+        );
+       }
+        
+        const orderDetailsId = await orderDetails.findAll({
+            where:{
+                order_id:orderId.id
+            }
+        })
+        if(!orderDetailsId){
+          return  Helper.response(
+             "failed",
+             "Record Not Found!",
+             {},
+             res,
+             200
+         );
+        }
+
+        if(orderDetailsId){
+              orderDetailsId.map(async(t) => {
+                await stock.create({
+                    item_id: t.item_id,
+                    quantity: t.quantity,
+                    price: t.price,
+                    item_name: t.item_name,
+                    quantity: t.quantity,
+                    aasra_id:orderId.aasra_id,
+                    stock_in:t.quantity
+                });
+              })
+        }
+
+        if (orderDetailsId) {
+            await order.update({
+               order_status: req.body.status
+            }, {
+                where: {
+                    id: req.body.order_id
+                }
+            });
+        }
+    
+      
         Helper.response(
             "success",
             "Record Update Successfully",

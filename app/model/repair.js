@@ -85,6 +85,10 @@ const repair = sequelize.define('repair', {
         type:DataTypes.STRING,
         allowNull:true,
         defaultValue:0
+    },
+    productPrice:{
+        type:DataTypes.DECIMAL(10,2),
+        allowNull:false
     }   
 })
 

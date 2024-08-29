@@ -14,6 +14,9 @@ const customer = require('../../model/customer');
 const jwt = require("jsonwebtoken");
 const items = require('../../model/items');
 const problem = require('../../model/problem');
+const manufacturer = require('../../model/manufacturer');
+const sequelize = require('../../connection/conn');
+const { Op } = require('sequelize');
 
 
 exports.ticketListDetails = async (req, res) => {
@@ -126,7 +129,9 @@ exports.ticketList = async (req, res) => {
 }
 
 exports.createRepair = async (req, res) => {
+
     try {
+
         const token = req.headers['authorization'];
         const string = token.split(" ");
         const user = await users.findOne({ where: { token: string[1] } });
@@ -134,149 +139,201 @@ exports.createRepair = async (req, res) => {
 
         const data = req.body;
 
+
+        // return false;
         var discount = 0
         var totalAmount = 0
         var serviceCharge = 0
-        var mode = []
+        // var mode = []
         var ticketId = ''
         var stocks = true
-        const create = await Promise.all(
-            data.map(async (record) => {
-                const item_id = await spareParts.findByPk(record.productValue)
-                const stockData = await stock.findAll({ where: { item_id: item_id.id, aasra_id: user.ref_id } })
-                if (stock)
-                    if (stockData.length > 0) {
-
-                        totalAmount += record.price * record.qty
-                        serviceCharge += record.repairServiceCharge
-                        mode.push(record.mode)
-                        ticketId = record.ticket_id
-                        if (record.warranty == true) {
-                            const values = {
-                                warranty: record.warranty,
-                                categoryValue: record.categoryValue,
-                                categoryLabel: record.categoryLabel,
-                                productValue: record.productValue,
-                                productLabel: record.productLabel,
-                                repairValue: record.repairValue,
-                                repairLabel: record.repairLabel,
-                                repairServiceCharge: record.repairServiceCharge,
-                                repairTime: record.repairTime,
-                                repairPrice: record.repairPrice,
-                                repairGst: record.repairGst,
-                                qty: record.qty,
-                                price: record.price,
-                                serviceCharge: record.serviceCharge,
-                                gst: record.gst,
-                                amount: record.amount,
-                                ticket_id: record.ticket_id,
-                                discount: discount,
-                                old_serial_number: record.old_sr_no,
-                                new_serial_number: record.new_sr_no,
-                                old_manufacturer_id: record.old_manufacturer_id,
-                                new_manufacturer_id: record.new_manufacturer_id
-                            }
-                            repairsCreate = await repair.create(values)
-
-                        }
-                        else {
-                            const values = {
-                                warranty: record.warranty,
-                                categoryValue: record.categoryValue,
-                                categoryLabel: record.categoryLabel,
-                                productValue: record.productValue,
-                                productLabel: record.productLabel,
-                                repairValue: record.repairValue,
-                                repairLabel: record.repairLabel,
-                                repairServiceCharge: record.repairServiceCharge,
-                                repairTime: record.repairTime,
-                                repairPrice: record.repairPrice,
-                                repairGst: record.repairGst,
-                                qty: record.qty,
-                                price: record.price,
-                                serviceCharge: record.serviceCharge,
-                                gst: record.gst,
-                                amount: record.amount,
-                                ticket_id: record.ticket_id,
-                                old_serial_number: record.old_sr_no,
-                                new_serial_number: record.new_sr_no,
-                                old_manufacturer_id: record.old_manufacturer_id,
-                                new_manufacturer_id: record.new_manufacturer_id
-                            }
-                            repairsCreate = await repair.create(values)
-
-                        }
-                        //return false
-                        const stockDetails = await stock.findAll({
-                            where: {
-                                item_id: record.productValue,
-                                aasra_id: user.ref_id
-                            }
-
-                        })
-                        if (stockDetails.length > 0) {
-                            // await stock.create({
-                            //     item_id: record.productValue,
-                            //     item_name: record.productLabel,
-                            //     aasra_id: user.ref_id,
-                            //     quantity: 0,
-                            //     price: item_id.unit_price,
-                            //     stock_in: stockDetails.stock_in - record.qty,
-                            //     stock_out: record.qty
-                            // })
-                           
-                            await Promise.all(stockDetails.map(async (stockDetail) => {
-                                await stock.create({
-                                    item_id: record.productValue,
-                                    item_name: record.productLabel,
-                                    aasra_id: user.ref_id,
-                                    quantity: 0,
-                                    price: item_id.unit_price, // Use unit_price from the current stockDetail
-                                    stock_in: stockDetail.stock_in - record.qty,
-                                    stock_out: record.qty
-                                });
-                            }));
-                        }
-
+        async function validateStock(data) {
+            const msg = [];
+            await Promise.all(data.map(async (record) => {
+                const checkItem = await stock.findOne({
+                    attributes: [
+                        [sequelize.fn('SUM', sequelize.col('stock_in')), 'total_stock_in'],
+                        [sequelize.fn('SUM', sequelize.col('stock_out')), 'total_stock_out']
+                    ],
+                    where: {
+                        item_id: record.productValue
                     }
-                    else {
-                        return false
-                    }
-            })
+                })
+                const availableStock = (checkItem.dataValues.total_stock_in || 0) - (checkItem.dataValues.total_stock_out || 0);
+                if (availableStock < record.qty || availableStock < 0) {
+                    msg.push(`Insufficient stock to process this purchase for item ID ${record.productValue}.`);
+                }
+            }))
+            return msg;
+        }
 
-        )
-
-        if (create[0] != false) {
-
-            await repairPayment.create({
-                ticket_id: ticketId,
-                discount: totalAmount + serviceCharge,
-                total_amount: totalAmount,
-                aasra_id: aasras.id,
-                payment_mode: mode[0] ? mode[0] : null
-
-            }).catch((error) => {
-                console.log(error)
-            })
+        const validationMessages = await validateStock(data);
+        if (validationMessages.length > 0) {
             Helper.response(
-                "success",
-                "Repair Created Successfully!",
+                "failed",
+                "Stock Not Available!",
                 {},
                 res,
                 200
             );
         } else {
+            const deleteCount = await repair.destroy({ where: { ticket_id: data[0].ticket_id } })
 
-            Helper.response(
-                "failed",
-                "Stocks are Not available",
-                {},
-                res,
-                200
-            );
+            if (deleteCount == 0) {
+                data.map(async (record) => {
+                    totalAmount += record.price * record.qty
+                    serviceCharge += record.repairServiceCharge
+                    ticketId = record.ticket_id
+                    const values = {
+                        warranty: record.warranty,
+                        categoryValue: record.categoryValue,
+                        categoryLabel: record.categoryLabel,
+                        productValue: record.productValue,
+                        productLabel: record.productLabel,
+                        productPrice: record.productPrice,
+                        repairValue: record.repairValue,
+                        repairLabel: record.repairLabel,
+                        repairServiceCharge: record.repairServiceCharge,
+                        repairTime: record.repairTime,
+                        repairPrice: record.repairPrice,
+                        repairGst: record.repairGst,
+                        qty: record.qty,
+                        price: record.price,
+                        serviceCharge: record.serviceCharge,
+                        gst: record.gst,
+                        amount: record.amount,
+                        ticket_id: record.ticket_id,
+                        discount: discount,
+                        old_serial_number: record.old_sr_no,
+                        new_serial_number: record.new_sr_no,
+                        old_manufacturer_id: record.old_manufacturer_id,
+                        new_manufacturer_id: record.new_manufacturer_id
+                    }
+                    repairsCreate = await repair.create(values)
+                })
+                Helper.response(
+                    "success",
+                    "Repair Created Successfully!",
+                    {},
+                    res,
+                    200
+                );
+            } else {
+                data.map(async (record) => {
+                    totalAmount += record.price * record.qty
+                    serviceCharge += record.repairServiceCharge
+                    ticketId = record.ticket_id
+                    const values = {
+                        warranty: record.warranty,
+                        categoryValue: record.categoryValue,
+                        categoryLabel: record.categoryLabel,
+                        productValue: record.productValue,
+                        productLabel: record.productLabel,
+                        productPrice: record.productPrice,
+                        repairValue: record.repairValue,
+                        repairLabel: record.repairLabel,
+                        repairServiceCharge: record.repairServiceCharge,
+                        repairTime: record.repairTime,
+                        repairPrice: record.repairPrice,
+                        repairGst: record.repairGst,
+                        qty: record.qty,
+                        price: record.price,
+                        serviceCharge: record.serviceCharge,
+                        gst: record.gst,
+                        amount: record.amount,
+                        ticket_id: record.ticket_id,
+                        discount: discount,
+                        old_serial_number: record.old_sr_no,
+                        new_serial_number: record.new_sr_no,
+                        old_manufacturer_id: record.old_manufacturer_id,
+                        new_manufacturer_id: record.new_manufacturer_id
+                    }
+                    repairsCreate = await repair.create(values)
+                })
+                Helper.response(
+                    "success",
+                    "Repair Created Successfully!",
+                    {},
+                    res,
+                    200
+                );
+            }
+
         }
+
+
+
+
+
+        // if (deleteCount === 0) {
+
+        //     data.map(async (record) => {
+        //         const checkItem = await stock.findOne({
+        //             attributes: [
+        //                 [sequelize.fn('SUM', sequelize.col('stock_in')), 'total_stock_in'],
+        //                 [sequelize.fn('SUM', sequelize.col('stock_out')), 'total_stock_out']
+        //             ],
+        //             where: {
+        //                 item_id: record.productValue
+        //             }
+        //         })
+        //         const availableStock = (checkItem.dataValues.total_stock_in || 0) - (checkItem.dataValues.total_stock_out || 0)
+
+        //         if (availableStock < record.qty || availableStock < 0) {
+        //             msg.push('Insufficient stock to process this purchase.')
+        //         } 
+        //         else{
+        // totalAmount += record.price * record.qty
+        // serviceCharge += record.repairServiceCharge
+        // ticketId = record.ticket_id
+        // const values = {
+        //     warranty: record.warranty,
+        //     categoryValue: record.categoryValue,
+        //     categoryLabel: record.categoryLabel,
+        //     productValue: record.productValue,
+        //     productLabel: record.productLabel,
+        //     productPrice: record.productPrice,
+        //     repairValue: record.repairValue,
+        //     repairLabel: record.repairLabel,
+        //     repairServiceCharge: record.repairServiceCharge,
+        //     repairTime: record.repairTime,
+        //     repairPrice: record.repairPrice,
+        //     repairGst: record.repairGst,
+        //     qty: record.qty,
+        //     price: record.price,
+        //     serviceCharge: record.serviceCharge,
+        //     gst: record.gst,
+        //     amount: record.amount,
+        //     ticket_id: record.ticket_id,
+        //     discount: discount,
+        //     old_serial_number: record.old_sr_no,
+        //     new_serial_number: record.new_sr_no,
+        //     old_manufacturer_id: record.old_manufacturer_id,
+        //     new_manufacturer_id: record.new_manufacturer_id
+        // }
+        //             repairsCreate = await repair.create(values)
+        //             msg.push('Repair Created Successfully')
+        //         } 
+        //     })
+        //     if(msg ==0){
+        //         Helper.response(
+        //             "failed",
+        //             "Stock Not Available!",
+        //             {},
+        //             res,
+        //             200
+        //         );               
+        //     }else{
+        //         Helper.response(
+        //             "success",
+        //             "Repair Created Successfully!",
+        //             {},
+        //             res,
+        //             200
+        //         );
+        //     }
+        // }      
     } catch (error) {
-        console.log(error)
         Helper.response(
             "failed",
             "Something went wrong!",
@@ -325,8 +382,11 @@ exports.ticketSendOtp = async (req, res) => {
     }
 }
 
-exports.ticketOtpVerify = async (req, res) => {
+exports.OtpVerifyAasra = async (req, res) => {
+
+
     try {
+
         const userId = await Helper.getUserDetails(req)
         const verify = await otp.findOne({
             where: {
@@ -336,6 +396,29 @@ exports.ticketOtpVerify = async (req, res) => {
         })
 
         if (verify != null && verify.otp == req.body.otp) {
+
+            const financialYear = Helper.getFinancialYear()
+
+            const lastReceipt = await repairPayment.findOne({
+                where: {
+                    receipt_no: {
+                        [Op.like]: `${financialYear}-%`
+                    }
+                },
+                order: [['createdAt', 'DESC']],
+                attributes: ['receipt_no']
+            });
+
+            var newSequence = '00000001'
+
+            if (lastReceipt) {
+                const lastReceiptNo = lastReceipt.receipt_no;
+                const lastSequence = lastReceiptNo.split('-').pop();
+                const incrementedSequence = (parseInt(lastSequence, 10) + 1).toString().padStart(8, '0');
+                newSequence = incrementedSequence;
+            }
+            const newReceiptNo = `${financialYear}-${newSequence}`;
+
             const update = await otp.update({
                 status: 0,
             },
@@ -347,20 +430,202 @@ exports.ticketOtpVerify = async (req, res) => {
                     }
                 }
             )
-            if (update) {
-                const update = await ticket.update({
+            Helper.response('success', 'Otp verify successfully!', { receipt_no: newReceiptNo }, res, 200);
+
+        } else {
+            return Helper.response('failed', 'OTP does not match!', { error }, res, 200);
+        }
+    } catch (error) {
+        console.log(error)
+        Helper.response('failed', 'Something went wrong!', { error }, res, 200);
+    }
+
+}
+
+exports.ticketOtpVerify = async (req, res) => {
+
+    const token = req.headers['authorization'];
+    const string = token.split(" ");
+    const user = await users.findOne({ where: { token: string[1] } });
+    const ticketid = req.body.ticket_id
+
+    try {
+        // const repairDetails = await repair.findOne({
+        //     where: {
+        //         ticket_id: ticketid
+        //     }
+        // })
+        // const item_id = await spareParts.findByPk(repairDetails.productValue)
+
+        // if (!repairDetails) {
+        //     return Helper.response('failed', 'Repair details not found!', {}, res, 200);
+        // }
+        // if (repairDetails.warranty === false) {
+        //     if (req.body.mode === 'Cash') {
+        //         const update = await ticket.update({
+        //             status: 2
+        //         }, {
+        //             where: {
+        //                 ticket_id: req.body.ticket_id,
+        //             }
+        //         })
+        //         const totalAmount = repairDetails.price * repairDetails.qty
+        //         const serviceCharge = repairDetails.repairServiceCharge
+        //         await repairPayment.create({
+        //             ticket_id: ticketid,
+        //             discount: totalAmount + serviceCharge,
+        //             total_amount: totalAmount,
+        //             serviceCharge: serviceCharge,
+        //             aasra_id: user.ref_id,
+        //             payment_mode: req.body.mode || null,
+        //             receipt_no: req.body.receipt_no
+
+        //         })
+
+        //         const stockDetails = await stock.findOne({
+        //             where: {
+        //                 item_id: repairDetails.productValue,
+        //                 aasra_id: user.ref_id
+        //             }
+
+        //         })
+        //         if (stockDetails.length > 0) {
+        //             await Promise.all(stockDetails.map(async (stockDetail) => {
+        //                 await stock.create({
+        //                     item_id: repairDetails.productValue,
+        //                     item_name: repairDetails.productLabel,
+        //                     aasra_id: user.ref_id,
+        //                     quantity: 0,
+        //                     price: item_id.unit_price,
+        //                     stock_in: 0,
+        //                     stock_out: repairDetails.qty
+        //                 });
+        //             }));
+        //         }
+
+        //     }
+
+        // } else {
+        //     const update = await ticket.update({
+        //         status: 2
+        //     }, {
+        //         where: {
+        //             ticket_id: req.body.ticket_id,
+        //         }
+        //     })
+
+        //     const stockDetails = await stock.findAll({
+        //         where: {
+        //             item_id: repairDetails.productValue,
+        //             aasra_id: user.ref_id
+        //         }
+
+        //     })
+        //     if (stockDetails.length > 0) {
+        //         await Promise.all(stockDetails.map(async (stockDetail) => {
+        //             await stock.create({
+        //                 item_id: repairDetails.productValue,
+        //                 item_name: repairDetails.productLabel,
+        //                 aasra_id: user.ref_id,
+        //                 quantity: 0,
+        //                 price: item_id.unit_price,
+        //                 stock_in: 0,
+        //                 stock_out: repairDetails.qty
+        //             });
+        //         }));
+        //     }
+
+        // }
+        const repairDetailsList = await repair.findAll({
+            where: {
+                ticket_id: ticketid
+            }
+        });
+
+        if (repairDetailsList.length === 0) {
+            return Helper.response('failed', 'Repair details not found!', {}, res, 200);
+        }
+
+        for (const repairDetails of repairDetailsList) {
+            const item_id = await spareParts.findByPk(repairDetails.productValue);
+
+            if (repairDetails.warranty === false) {
+                if (req.body.mode === 'Cash') {
+                    await ticket.update({
+                        status: 2
+                    }, {
+                        where: {
+                            ticket_id: req.body.ticket_id,
+                        }
+                    });
+
+                    const totalAmount = repairDetails.price * repairDetails.qty;
+                    const serviceCharge = repairDetails.repairServiceCharge;
+                    await repairPayment.create({
+                        ticket_id: ticketid,
+                        discount: totalAmount + serviceCharge,
+                        total_amount: totalAmount,
+                        serviceCharge: serviceCharge,
+                        aasra_id: user.ref_id,
+                        payment_mode: req.body.mode || null,
+                        receipt_no: req.body.receipt_no
+                    });
+
+
+                    const stockDetails = await stock.findOne({
+                        where: {
+                            item_id: repairDetails.productValue,
+                            aasra_id: user.ref_id
+                        }
+                    });
+
+
+                    if (stockDetails) {
+                        await stock.create({
+                            item_id: repairDetails.productValue,
+                            item_name: repairDetails.productLabel,
+                            aasra_id: user.ref_id,
+                            quantity: 0,
+                            price: item_id.unit_price,
+                            stock_in: 0,
+                            stock_out: repairDetails.qty
+                        });
+                    }
+
+                }
+            } else {
+                await ticket.update({
                     status: 2
                 }, {
                     where: {
                         ticket_id: req.body.ticket_id,
                     }
-                })
-                Helper.response('success', 'Ticket Closed Successfully!', {}, res, 200);
-            }
+                });
 
-        } else {
-            Helper.response('failed', 'OTP does not match!', { error }, res, 200);
+                const stockDetails = await stock.findOne({
+                    where: {
+                        item_id: repairDetails.productValue,
+                        aasra_id: user.ref_id
+                    }
+                });
+
+                if (stockDetails) {
+                    await stock.create({
+                        item_id: repairDetails.productValue,
+                        item_name: repairDetails.productLabel,
+                        aasra_id: user.ref_id,
+                        quantity: 0,
+                        price: item_id.unit_price,
+                        stock_in: 0,
+                        stock_out: repairDetails.qty
+                    });
+                }
+            }
         }
+
+
+        Helper.response('success', 'Ticket Closed Successfully!', {}, res, 200);
+
     } catch (error) {
         Helper.response('failed', 'Something went wrong!', { error }, res, 200);
     }
@@ -591,7 +856,10 @@ exports.getUser = async (req, res) => {
                 expiryDate: await Helper.addYear(record.dstDate),
                 dstDate: record.dstDate,
                 amount: record.amount,
-                rate: record.rate
+                rate: record.rate,
+                campVenue: record.campVenue,
+                campName: record.campName
+
             }
 
             userItem.push(dataItem)
@@ -705,6 +973,8 @@ exports.createCustomerTicketAasraAndSaveUser = async (req, res) => {
                     user_id: checkUser?.dataValues?.id ?? userdetails,
                     distributed_date: req.body.userData[0].userItem[0].dstDate,
                     expire_date: req.body.userData[0].userItem[0].expiryDate,
+                    campName: req.body.userData[0].userItem[0].campName,
+                    campVenue: req.body.userData[0].userItem[0].campVenue,
                 })
 
             }
@@ -720,7 +990,8 @@ exports.createCustomerTicketAasraAndSaveUser = async (req, res) => {
         );
 
     } catch (error) {
-
+        console.log(error)
+        return false;
         Helper.response(
             "failed",
             "Something went wrong!",
@@ -734,93 +1005,236 @@ exports.createCustomerTicketAasraAndSaveUser = async (req, res) => {
 exports.ticketDetails = async (req, res) => {
 
     try {
-        const ticketId = req.body.ticket_id
-        const ticketData = await ticket.findOne(
-            {
+        const token = req.headers["authorization"];
+        const string = token.split(" ");
+        const user = await users.findOne({ where: { token: string[1] } });
+
+        if (user.user_type == 'AC') {
+            const ticketId = req.body.ticket_id
+            const ticketData = await ticket.findOne(
+                {
+                    where: {
+                        ticket_id: ticketId
+                    }
+                }
+            )
+
+            console.log(ticketData)
+            let ticketDetail = await repair.findAll({
                 where: {
                     ticket_id: ticketId
                 }
-            }
-        )
+            })
 
-        console.log(ticketData)
-        const ticketDetail = await repair.findAll({
-            where: {
-                ticket_id: ticketId
-            }
-        })
+            const getUser = await users.findOne({
+                where: {
+                    ref_id: ticketData.user_id,
+                    user_type: "C"
+                }
+            })
+            const getAasra = await aasra.findByPk(ticketData.aasra_id)
 
-        const getUser = await users.findOne({
-            where: {
-                ref_id: ticketData.user_id,
-                user_type: "C"
-            }
-        })
-        const getAasra = await aasra.findByPk(ticketData.aasra_id)
+            const repairPayments = await repairPayment.count({
+                where: {
+                    ticket_id: ticketId
+                }
+            })
 
-        const repairPayments = await repairPayment.count({
-            where: {
-                ticket_id: ticketId
-            }
-        })
+            const itemDetails = await items.findOne({
+                where: {
+                    user_id: ticketData.user_id
+                }
+            })
+            const getProblem = await problem.findOne({
+                where: {
+                    id: ticketData.problem
+                }
+            })
+            const warranty = Helper.compareDate(itemDetails?.expire_date);
 
-        const itemDetails = await items.findOne({
-            where: {
-                user_id: ticketData.user_id
-            }
-        })
-        const getProblem = await problem.findOne({
-            where: {
-                id: ticketData.problem
-            }
-        })
-        const warranty = Helper.compareDate(itemDetails?.expire_date);
+            var subtotal = 0
+            var serviceCharge = 0
+            var gst = 0
+            var discount = 0
 
-        var subtotal = 0
-        var serviceCharge = 0
-        var gst = 0
-        var discount = 0
-        ticketDetail.map((t) => {
-            subtotal += t.price * t.qty
-            serviceCharge += t.repairPrice
-            gst = subtotal * 18 / 100
-            discount = t.record == 1 ? 100 : 0
-        })
-        console.log(subtotal)
-        const data = {
-            customer_name: getUser.name,
-            mobile: getUser.mobile,
-            product_name: ticketData.itemName,
-            itemId: ticketData.itemId,
-            description: ticketData.description,
-            appointment_date: ticketData.appointment_date,
-            appointment_time: ticketData.appointment_time,
-            status: ticketData.status == 0 ? 'Pending' : ticketData.status == 1 ? 'Open' : 'Closed',
-            aasraName: getAasra.name_of_org,
-            subtotal: subtotal,
-            serviceCharge: serviceCharge,
-            gst: process.env.SERVICE_GST,
-            totalAmount: subtotal + serviceCharge + gst,
-            discount: 0,
-            createdDate: ticketData.createdAt,
-            payment_status: repairPayments == 0 ? false : true,
-            warranty: warranty,
-            gst: process.env.SERVICE_GST,
-            dstDate: itemDetails?.distributed_date ?? null,
-            expire_date: itemDetails?.expire_date ?? null,
-            problem: getProblem?.problem_name ?? null,
-            ticketDetail: ticketDetail ? ticketDetail : null,
+            ticketDetail = await Promise.all(ticketDetail.map(async (t) => {
+                const oldManufacture = await manufacturer.findOne({
+                    where: {
+                        id: t.old_manufacturer_id
+                    }
+                });
 
+                const newManufacture = await manufacturer.findOne({
+                    where: {
+                        id: t.new_manufacturer_id
+                    }
+                });
+
+                subtotal += t.productPrice * t.qty;
+                serviceCharge += t.repairServiceCharge + t.repairPrice;
+                gst = subtotal * 18 / 100;
+                discount = t.record == 1 ? 100 : 0;
+
+                return {
+                    ...t.dataValues,
+                    old_manufacture_name: oldManufacture?.manufacturer_code ?? null,
+                    new_manufacture_name: newManufacture?.manufacturer_code ?? null,
+                    old_manufacture_id: oldManufacture?.id ?? null,
+                    new_manufacture_id: newManufacture?.id ?? null,
+                };
+            }));
+
+
+            const data = {
+                customer_name: getUser.name,
+                ticket_id: ticketId,
+                mobile: getUser.mobile,
+                product_name: ticketData.itemName,
+                itemId: ticketData.itemId,
+                description: ticketData.description,
+                appointment_date: ticketData.appointment_date,
+                appointment_time: ticketData.appointment_time,
+                status: ticketData.status == 0 ? 'Pending' : ticketData.status == 1 ? 'Open' : 'Closed',
+                aasraName: getAasra.name_of_org,
+                subtotal: subtotal,
+                serviceCharge: serviceCharge,
+                gst: process.env.SERVICE_GST,
+                totalAmount: subtotal + serviceCharge + gst,
+                discount: 0,
+                createdDate: ticketData.createdAt,
+                payment_status: repairPayments == 0 ? false : true,
+                warranty: warranty,
+                gst: process.env.SERVICE_GST,
+                dstDate: itemDetails?.distributed_date ?? null,
+                expire_date: itemDetails?.expire_date ?? null,
+                problem: getProblem?.problem_name ?? null,
+                ticketDetail: ticketDetail ? ticketDetail : null,
+
+            }
+            Helper.response(
+                "success",
+                "",
+                {
+                    tableData: data
+                },
+                res,
+                200
+            );
+        } else {
+            if (user.user_type == 'S') {
+                const ticketId = req.body.ticket_id
+                const ticketData = await ticket.findOne(
+                    {
+                        where: {
+                            ticket_id: ticketId
+                        }
+                    }
+                )
+
+                console.log(ticketData)
+                let ticketDetail = await repair.findAll({
+                    where: {
+                        ticket_id: ticketId
+                    }
+                })
+
+                const getUser = await users.findOne({
+                    where: {
+                        ref_id: ticketData.user_id,
+                        user_type: "C"
+                    }
+                })
+                const getAasra = await aasra.findByPk(ticketData.aasra_id)
+
+                const repairPayments = await repairPayment.count({
+                    where: {
+                        ticket_id: ticketId
+                    }
+                })
+
+                const itemDetails = await items.findOne({
+                    where: {
+                        user_id: ticketData.user_id
+                    }
+                })
+                const getProblem = await problem.findOne({
+                    where: {
+                        id: ticketData.problem
+                    }
+                })
+                const warranty = Helper.compareDate(itemDetails?.expire_date);
+
+                var subtotal = 0
+                var serviceCharge = 0
+                var gst = 0
+                var discount = 0
+
+                ticketDetail = await Promise.all(ticketDetail.map(async (t) => {
+                    const oldManufacture = await manufacturer.findOne({
+                        where: {
+                            id: t.old_manufacturer_id
+                        }
+                    });
+
+                    const newManufacture = await manufacturer.findOne({
+                        where: {
+                            id: t.new_manufacturer_id
+                        }
+                    });
+
+                    subtotal += t.productPrice * t.qty;
+                    serviceCharge += t.repairServiceCharge + t.repairPrice;
+                    gst = subtotal * 18 / 100;
+                    discount = t.record == 1 ? 100 : 0;
+
+                    return {
+                        ...t.dataValues,
+                        old_manufacture_name: oldManufacture?.manufacturer_code ?? null,
+                        new_manufacture_name: newManufacture?.manufacturer_code ?? null,
+                        old_manufacture_id: oldManufacture?.id ?? null,
+                        new_manufacture_id: newManufacture?.id ?? null,
+                    };
+                }));
+
+                console.log(serviceCharge)
+                const data = {
+                    customer_name: getUser.name,
+                    ticket_id: ticketId,
+                    mobile: getUser.mobile,
+                    product_name: ticketData.itemName,
+                    itemId: ticketData.itemId,
+                    description: ticketData.description,
+                    appointment_date: ticketData.appointment_date,
+                    appointment_time: ticketData.appointment_time,
+                    status: ticketData.status == 0 ? 'Pending' : ticketData.status == 1 ? 'Open' : 'Closed',
+                    aasraName: getAasra.name_of_org,
+                    subtotal: subtotal,
+                    serviceCharge: serviceCharge,
+                    gst: process.env.SERVICE_GST,
+                    totalAmount: subtotal + serviceCharge + gst,
+                    discount: 0,
+                    createdDate: ticketData.createdAt,
+                    payment_status: repairPayments == 0 ? false : true,
+                    warranty: warranty,
+                    gst: process.env.SERVICE_GST,
+                    dstDate: itemDetails?.distributed_date ?? null,
+                    expire_date: itemDetails?.expire_date ?? null,
+                    problem: getProblem?.problem_name ?? null,
+                    ticketDetail: ticketDetail ? ticketDetail : null,
+
+                }
+                Helper.response(
+                    "success",
+                    "",
+                    {
+                        tableData: data
+                    },
+                    res,
+                    200
+                );
+            }
         }
-        Helper.response(
-            "success",
-            "",
-            {
-                tableData: data
-            },
-            res,
-            200
-        );
+
 
     } catch (error) {
         console.log(error)

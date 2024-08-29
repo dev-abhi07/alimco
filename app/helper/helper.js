@@ -197,8 +197,9 @@ Helper.getUserId = async (req) => {
 Helper.getAasra = async (parameter) => {
     aasraId = await aasra.findByPk(parameter)
     unique_code = aasraId.unique_code
-    id = unique_code.split('_')
-    return id[1]
+    // id = unique_code.split('_')
+    // return id[1]
+    return unique_code
 }
 Helper.pushNotification = async (token, notification) => {
     try {
@@ -240,7 +241,9 @@ Helper.getMonth = (date) => {
     return monthName;
 }
 Helper.formatDate = (date) => {
+
     const year = date.getFullYear();
+    console.log(year)
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     const hours = String(date.getHours()).padStart(2, '0');
@@ -252,41 +255,74 @@ Helper.getAasraId = async (req) => {
     const token = req.headers['authorization'];
     const string = token.split(" ");
     const user = await users.findOne({ where: { token: string[1] } });
-  
+
     return user?.ref_id
 }
 
 Helper.compareDate = (dates) => {
- 
-    if(dates == undefined) {
-     return false;
-    }else{
+
+    if (dates == undefined) {
+        return false;
+    } else {
         const dateParts = dates.split('-');
         const day = parseInt(dateParts[0], 10);
-        const month = new Date(Date.parse(dateParts[1] +" 1, 2021")).getMonth(); 
+        const month = new Date(Date.parse(dateParts[1] + " 1, 2021")).getMonth();
         const year = parseInt(dateParts[2], 10);
-    
+
         const dateToCompare = new Date(year, month, day);
         const currentDate = new Date();
-    
-     
+
+
         const dateOnly = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    
+
         const cleanDateToCompare = dateOnly(dateToCompare);
         const cleanCurrentDate = dateOnly(currentDate);
-        
+
         let warranty;
-        
-        if (cleanCurrentDate.getTime()  <= cleanDateToCompare.getTime()) {
-              warranty = true;
-            
+
+        if (cleanCurrentDate.getTime() <= cleanDateToCompare.getTime()) {
+            warranty = false;
+
         } else {
-             warranty = false;
-            
+            warranty = false;
+
         }
-    
-        return warranty ;
+
+
+        return warranty;
     }
-    
+
+}
+
+Helper.getFinancialYear = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth() + 1; 
+    if (month >= 4) { 
+        return `${year}-${year + 1}`;
+    } else { 
+        return `${year - 1}-${year}`;
+    }
+}
+
+Helper.formatISODateTime = (isoString) => {
+    const date = new Date(isoString);
+
+    // Format date
+    const formattedDate = date.toLocaleDateString('en-IN', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+    });
+
+    // Format time
+    const formattedTime = date.toLocaleTimeString('en-IN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+    });
+
+    return `${formattedDate} ${formattedTime}`;
 }
 module.exports = Helper

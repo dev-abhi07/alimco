@@ -35,6 +35,7 @@ exports.getUserList = async (req, res) => {
             mobile: user?.mobile,
             user_type: role?.id,
             email: user?.email,
+            password: user?.pass_code,
             status: user?.status
           };
         })

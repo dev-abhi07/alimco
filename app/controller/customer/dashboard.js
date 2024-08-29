@@ -1,6 +1,7 @@
 const sequelize = require("../../connection/conn");
 const Helper = require("../../helper/helper");
 const aasra = require("../../model/aasra");
+const aasraType = require("../../model/aasratype");
 const problem = require("../../model/problem");
 const stock = require("../../model/stock");
 const users = require("../../model/users");
@@ -24,6 +25,8 @@ exports.dashboard = async (req ,res) => {
                 district:req.body.city_id
             }
         })
+
+
         const problemDetails = await problem.findAll();
         problemDetail = [];
         await Promise.all(
@@ -58,6 +61,36 @@ exports.dashboard = async (req ,res) => {
                 aasraData.push(values)
             })
         )
+
+        aasraCenter = [] ;
+        const aasraaCentresDate = await aasraType.findAll({
+                    where:{
+                        state_id:req.body.state_id,
+                        city_id:req.body.city_id
+                    }
+            })
+
+            await Promise.all(
+                 aasraaCentresDate.map( async (record) => {
+                    const user = await users.findOne({
+                        where:{
+                            ref_id : record?.id,
+                            user_type:'AC'
+                        }
+                    })  
+                    const values = {
+                        type:record?.type,
+                        address:record?.address,
+                        center_name:record?.centre_name ,
+                        id:user?.ref_id,
+                        contact_details: record?.contact_details,
+                        contact_person : record?.contact_person,                        
+                    }
+                    
+                    aasraCenter.push(values)
+                })
+            )
+
         productData = [] ;
         await Promise.all(
             aasraa.map(async (record) => {
@@ -108,7 +141,8 @@ exports.dashboard = async (req ,res) => {
                 aasraData:aasraData,
                 slots:slots,
                 productData:productData,
-                problemDetail:problemDetail
+                problemDetail:problemDetail,
+                aasraCenter:aasraCenter
             },
             res,
             200

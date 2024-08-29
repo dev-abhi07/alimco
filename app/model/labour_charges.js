@@ -2,11 +2,6 @@ const { DataTypes } = require("sequelize");
 const sequelize = require("../connection/conn");
 
 const labour_charges = sequelize.define('labour_charges', {
-    slNo: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        primaryKey: true
-    },
     codeNo: {
         type: DataTypes.STRING,
         allowNull: false

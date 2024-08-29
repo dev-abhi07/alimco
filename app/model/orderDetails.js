@@ -32,7 +32,7 @@ const orderDetails = sequelize.define("orderDetail",{
     image:{
         type: DataTypes.TEXT,
         allowNull: true
-    },
+    }
    
 
 

@@ -26,7 +26,11 @@ const repairPayments = sequelize.define('repair_payments', {
     payment_mode: {
         type: DataTypes.STRING,
         allowNull: true
-    }
+    },
+    receipt_no: {
+        type: DataTypes.STRING,
+        allowNull: false
+    },
 })
 
 // sequelize.sync()
