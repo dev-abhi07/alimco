@@ -609,7 +609,7 @@ exports.stockList = async (req, res) => {
                     },
                     attributes:[
                         'item_id',                                              
-                        [Sequelize.fn('COUNT', Sequelize.col('id')), 'count'],
+                        [Sequelize.fn('COUNT', Sequelize.col('item_id')), 'count'],
                         [Sequelize.fn('SUM', Sequelize.col('stock_in')), 'stock_in'],
                         [Sequelize.fn('SUM', Sequelize.col('stock_out')), 'stock_out'],                        
                     ],
@@ -626,8 +626,8 @@ exports.stockList = async (req, res) => {
                     item_id:t.item_id,
                     stock_in:t.stock_in,
                     stock_out:t.stock_out,
-                    item_id:item.part_number,
-                    item_name:item.part_name,
+                    item_id:item.part_number || '',
+                    item_name:item.part_name || '',
                     price:item.unit_price,
                     quantity:t.stock_in,
                     available_stock:(t.stock_in || 0) - (t.stock_out || 0)

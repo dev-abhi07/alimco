@@ -27,9 +27,10 @@ exports.Dashboard = async (req, res) => {
       ]
       var tickets = await ticket.findAll({
         order:[
-          ['createdAt','DESC']
+          ['id','DESC']
         ]
       })
+      console.log(tickets)
       const ticketData = [];
       var subtotal = 0
       await Promise.all(
