@@ -1,13 +1,15 @@
 const express = require("express");
+const multer = require('multer');
+
 const router = express.Router();
 
 const { create,list,update ,destroy, uomCreate, listUom, updateUom, problemCreate, updateProblem, listProblem, manufacturerCreate, updateManufacturer, listManufacturer} = require('../controller/admin/category')
 const { createParts , sparePartsList , deleteSpareParts, updateSpareParts , labourCharges} = require('../controller/admin/spareParts')
-const { getUserList, userCreate, rolePermission, RoleList, getRolePermission, userPermission, getUserPermission } = require("../controller/admin/user");
+const { getUserList, userCreate, rolePermission, RoleList, getRolePermission, userPermission, getUserPermission, userStatusUpdate } = require("../controller/admin/user");
 const { Login, logout, validateToken } = require('../controller/admin/login');
 const {   states , cities , repair , revenueReport, paymentReport, partReplacementReport, inventoryWholeFormat,updateLabourCharges, createLabourCharges, destroyLabourCharges, generateNotes} = require("../controller/admin/dashboard");
 const {Admin,menuListUserPermission, aasra} = require("../middleware/middleware");
-const { registerAasraCentre, aasraList, updateAasraCenter, aasraType, aasraTypecreate, aasraTypelist, aasraTypeupdate, stocktransferupdate } = require("../controller/admin/aasra");
+const { registerAasraCentre, aasraList, updateAasraCenter, aasraType, aasraTypecreate, aasraTypelist, aasraTypeupdate, stocktransferupdate, importUser } = require("../controller/admin/aasra");
 const { Dashboard , ticketList,getAasraRevenue, servicehistorylist } = require("../controller/aasra/dashboard");
 const { categoryWiseProduct, productRepairList , AarsaDropDown } = require("../controller/admin/aasra");
 const { OtpVerifyAasra,createRepair , ticketOtpVerify , ticketSendOtp ,aasraChatList ,aasraMessage,openTicket,sentOtpWeb,getUser , getRegisteredData, createCustomerTicketAasraAndSaveUser,ticketDetails} = require("../controller/aasra/ticket");
@@ -16,11 +18,10 @@ const { arjunApi } = require("../controller/api/arjunApi");
 const { route } = require("./customer");
 const { otpVerify } = require("../controller/customer/register");
 
-
 router.post('/login', Login);
 router.post('/logout', logout)
 
-
+const upload = multer({ dest: 'uploads/' }); 
 //Category Master
 
 router.post('/create-category',Admin,create)
@@ -75,7 +76,7 @@ router.post('/labour-charges',Admin,labourCharges)
 router.post('/inventory-report',Admin,repair)
 router.post('/validate-token',validateToken)
 router.post('/revenue-report',revenueReport)
-router.post('/sentOtpWeb',sentOtpWeb)
+router.post('/sentOtpWeb',arjunApi,sentOtpWeb)
 router.post('/get-user',arjunApi,aasra,getUser)
 router.post('/getRegisteredData',aasra,getRegisteredData)
 router.post('/getAasraRevenue',aasra,getAasraRevenue)
@@ -103,4 +104,7 @@ router.post('/update-labour-charges',updateLabourCharges)
 router.post('/create-labour-charges',createLabourCharges)
 router.post('/delete-labour-charges',destroyLabourCharges)
 router.post('/generate-service-note',generateNotes)
+router.post('/user-status-update',Admin,userStatusUpdate)
+
+
 module.exports = router;

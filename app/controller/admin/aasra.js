@@ -10,7 +10,7 @@ const document = require("../../model/documents");
 const { default: test } = require("node:test");
 const city = require("../../model/city");
 const states = require("../../model/state");
-const { where, Op, or } = require("sequelize");
+const { where, Op, or , fn, col } = require("sequelize");
 const spareParts = require("../../model/spareParts");
 const labour_charges = require('../../model/labour_charges');
 const aasraType = require("../../model/aasratype");
@@ -19,12 +19,12 @@ const order = require("../../model/order");
 const stock = require("../../model/stock");
 
 
-
+const XLSX = require('xlsx');
 
 exports.registerAasraCentre = async (req, res) => {
     try {
         const form = new formidable.IncomingForm();
-        const unique_code = `AC_${await Helper.generateNumber(10000, 99999)}`;
+        // const unique_code = `AC_${await Helper.generateNumber(10000, 99999)}`;
         const rootUploadDir = 'documents/';
         form.parse(req, async function (err, fields, files) {
             if (!files.photoImg || !files.panImg || !files.adhaarImg || !files.areaImgs || !files.marketImg || !files.salesImg || !files.regImg || !files.signatureImg) {
@@ -66,8 +66,7 @@ exports.registerAasraCentre = async (req, res) => {
 
 
                 const createAasra = await aasra.create({
-                    ...transformedFields,
-                    unique_code: unique_code
+                    ...transformedFields                    
                 });
 
                 if (createAasra) {
@@ -82,7 +81,7 @@ exports.registerAasraCentre = async (req, res) => {
                         const createUser = await users.create({
                             name: createAasra.name,
                             ref_id: createAasra.id,
-                            user_type: 'AC',
+                            user_type:  'AC' ,
                             email: createAasra.email,
                             password: Helper.encryptPassword(password),
                             pass_code: password,
@@ -185,7 +184,7 @@ exports.aasraList = async (req, res) => {
 exports.updateAasraCenter = async (req, res) => {
     try {
         const form = new formidable.IncomingForm();
-        const unique_code = `AC_${await Helper.generateNumber(10000, 99999)}`;
+        // const unique_code = `AC_${await Helper.generateNumber(10000, 99999)}`;
         const rootUploadDir = 'documents/';
         form.parse(req, async function (err, fields, files) {
 
@@ -248,7 +247,7 @@ exports.updateAasraCenter = async (req, res) => {
                                 }
                             }
 
-                            const updateFields = { ...transformedFieldsFile, unique_code: unique_code };
+                            const updateFields = { ...transformedFieldsFile};
 
                             const documentData = await document.update(
                                 updateFields,
@@ -357,7 +356,8 @@ exports.aasraType = async (req, res) => {
             { value: 'AAPC', label: 'AAPC' },
             { value: 'RMC', label: 'RMC' },
             { value: 'PMDK', label: 'PMDK' },
-            { value: 'HQ', label: 'HQ' }
+            { value: 'HQ', label: 'HQ' },
+            { value: 'aasra', label: 'Aasra' }
         ];
 
 
@@ -594,3 +594,68 @@ exports.stocktransferupdate = async (req, res) => {
         );
     }
 }
+exports.importUser = async (req, res) => {
+    try {
+        const filePath = req.file.path;
+
+        
+        const workbook = XLSX.readFile(filePath);
+        const sheetName = workbook.SheetNames[0];
+        const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+
+  
+        for (const row of sheetData) {
+            const createAasra = await aasra.create({
+                name_of_org: row.centre_name,         
+                address: row.address,
+                state: row.state_id,
+                district: row.city_id,
+                mobile_no: row.contact_details,
+                email: row.email_id,
+                name: row.contact_person,
+                aasra_type :row.type,
+            });
+
+           
+            const password = generate_pass.generate({
+                length: 8,
+                numbers: true,
+                uppercase: true,
+                lowercase: true,
+            });
+
+            
+            const createUser = await users.create({
+                name: createAasra.name_of_org ,
+                ref_id: createAasra.id,
+                user_type: 'AC',
+                email: createAasra.email,
+                password: Helper.encryptPassword(password),
+                pass_code: password,
+                mobile: createAasra.mobile_spoc ,
+                status: 1,
+            });
+        }
+
+        
+        fs.unlinkSync(filePath);
+
+        Helper.response(
+            "success",
+            "file data insert Successfully",
+            {},
+            res,
+            200
+        );
+    } catch (error) {
+        console.error('Error importing users:', error);
+        Helper.response(
+            "failed",
+            "something went wrong",
+            {},
+            res,
+            200
+        );
+    }
+};
+

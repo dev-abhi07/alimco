@@ -9,7 +9,7 @@ const { getUserList, userCreate, rolePermission, RoleList, getRolePermission, us
 const { customer } = require("../middleware/middleware");
 const { createCustomerTicket, ticketList, customerMessage, chatList, chatHistory } = require("../controller/customer/ticket");
 const { saveToken } = require("../controller/customer/saveToken")
-const { dashboard } = require("../controller/customer/dashboard");
+const { dashboard, aasraGroupList, aasraTypeListCentre, centrelist } = require("../controller/customer/dashboard");
 
 
 
@@ -37,7 +37,8 @@ router.post('/customer/message', customer, customerMessage)
 router.post('/customer/chat-list', customer, chatList)
 router.post('/customer/save-token', customer, saveToken)
 router.post('/customer/chat-history', customer, chatHistory)
-
+router.post('/aasra-group',aasraGroupList)
+router.post('/aasra-type-list',centrelist)
 // router.post('/update-spare-part',updateSpareParts)
 //Complaint
 

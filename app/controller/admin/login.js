@@ -8,20 +8,21 @@ const jwt = require("jsonwebtoken");
 
 exports.Login = async (req, res) => {
     try {
-        if (validator.isEmail(req.body.email) == false) {
-            Helper.response(
-                "Success",
-                "Email is Invalid",
-                {},
-                res,
-                200
-            );
-            return false
-        }
+        
+        // if (validator.isEmail(req.body.email) == false) {
+        //     Helper.response(
+        //         "Success",
+        //         "Email is Invalid",
+        //         {},
+        //         res,
+        //         200
+        //     );
+        //     return false
+        // }
 
         const user = await users.findOne({
             where: {
-                email: req.body.email
+                unique_code: req.body.email
             }
         });
                

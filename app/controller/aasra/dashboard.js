@@ -140,7 +140,130 @@ exports.Dashboard = async (req, res) => {
         200
       );
     }
-    if (user.user_type == 'AC') {
+    if (user.user_type == 'A') {
+
+      var data = [
+        { id: 1, count: await ticket.count(), type: "Total Tickets", imgSrc: 'tickets.png' },
+        { id: 2, count: await ticket.count({ where: { status: 0 } }), type: "Pending Tickets", imgSrc: 'tickets.png' },
+        { id: 3, count: await ticket.count({ where: { status: 1 } }), type: "Running Tickets", imgSrc: 'tickets.png' },
+        { id: 3, count: await ticket.count({ where: { status: 2 } }), type: "Close Tickets", imgSrc: 'tickets.png' },
+      ]
+      var tickets = await ticket.findAll({
+        order:[
+          ['id','DESC']
+        ]
+      })
+      console.log(tickets)
+      const ticketData = [];
+      var subtotal = 0
+      await Promise.all(
+        tickets.map(async (record, count = 1) => {
+
+          console.log(record)
+          // const getUser = await users.findByPk(record.user_id)
+          const getAasra = await aasra.findByPk(record.aasra_id)
+
+          //console.log(record)
+          const repairData = await repair.findAll({
+            where: {
+              ticket_id: record.ticket_id
+            }
+          })
+          const getUser = await users.findOne({
+            where: {
+              ref_id: record.user_id,
+              user_type: 'C'
+            }
+          })
+
+          const getCustomer = await customer.findOne({
+            where: {
+              id: getUser.ref_id,             
+            }
+          })
+
+
+          
+
+          const itemDetails = await items.findOne({
+            where: {
+              user_id: record.user_id
+            }
+          })
+          const warranty = await Helper.compareDate(itemDetails?.expire_date);
+
+          const getproblem = await problem.findOne({
+            where: {
+              id: record.problem
+            }
+          })
+
+          const repairPayments = await repairPayment.count({
+            where: {
+              ticket_id: record.ticket_id
+            }
+          })
+
+
+
+          var subtotal = 0
+          var serviceCharge = 0
+          var gst = 0
+          var discount = 0
+          repairData.map((t) => {
+            subtotal += t.productPrice * t.qty;
+            serviceCharge += t.repairServiceCharge + t.repairPrice;
+            gst = subtotal * 18 / 100;
+            discount = t.record == 1 ? 100 : 0;
+          })
+
+
+          const dataValue = {
+            aasraId: record.aasraId,
+            customer_name: getUser.name,
+            mobile: getUser.mobile,
+            product_name: record.itemName,
+            itemId: record.itemId,
+            description: record.description,
+            appointment_date: record.appointment_date,
+            appointment_time: record.appointment_time,
+            address:getCustomer?.district+', '+getCustomer?.state,
+            aadhaar:getCustomer.aadhaar,
+            ticket_id: record.ticket_id,
+            aasraName: getAasra.name_of_org,
+            status: record.status == 0 ? 'Pending' : record.status == 1 ? 'Open' : 'Closed',
+            sr_no: count + 1,
+            ticketDetail: (record.status == 2 || record.status == 1) ? repairData : null,
+            subtotal: subtotal,
+            serviceCharge: serviceCharge,
+            gst: process.env.SERVICE_GST,
+            totalAmount: subtotal + serviceCharge,
+            discount: 0,
+            createdAt: record.createdAt,
+            payment_status: repairPayments == 0 ? false : true,
+            warranty: warranty,
+            dstDate: itemDetails?.distributed_date ?? null,
+            expire_date: itemDetails?.expire_date ?? null,
+            problem: getproblem?.problem_name ?? null,
+            mobile: getUser.mobile ?? null,
+          }
+          ticketData.push(dataValue)
+        })
+      )
+      
+      Helper.response(
+        "success",
+        "Welcome to Dashboard",
+        {
+          cardData: data,
+          tableData: ticketData,
+          sideBar: res.filteredMenu
+        },
+        res,
+        200
+      );
+    }
+    if (user.user_type == 'AC' || user.user_type == 'PMDK' || user.user_type == 'HQ'|| user.user_type == 'RMC'|| user.user_type == 'AAPC') {
 
       var data = [
         { id: 1, count: await ticket.count({ where: { aasra_id: user.ref_id } }), type: "Total Tickets", imgSrc: 'tickets.png' },
@@ -355,8 +478,11 @@ exports.ticketList = async (req, res) => {
 
     const start = await Helper.getMonth(req.body.startDate);
     const end = await Helper.getMonth(req.body.endDate);
-    const startDate = await Helper.formatDate(new Date(req.body.startDate));
-    const endDate = await Helper.formatDate(new Date(req.body.endDate));
+    const startDatesplit = await Helper.formatDate(new Date(req.body.startDate));
+    const splitDate = await Helper.formatDate(new Date(req.body.endDate));
+    const startDate = startDatesplit.split(" ")[0] + " " + "00:00:00";
+    const endDate = splitDate.split(" ")[0] + " " + "23:59:59";
+     
     if (user.user_type == 'S') {
       const aasra_id = req.body.aasra_id;
 
@@ -374,6 +500,7 @@ exports.ticketList = async (req, res) => {
             ['id', 'DESC']
           ]
         })
+       
         if (tickets.length === 0) {
           Helper.response(
             "failed",
@@ -503,7 +630,7 @@ exports.ticketList = async (req, res) => {
             ['id', 'DESC']
           ]
         })
-        console.log(50111111111111111111111111,tickets)
+       
         await Promise.all(
           tickets.map(async (record, count = 1) => {
 
@@ -854,11 +981,14 @@ exports.getAasraRevenue = async (req, res) => {
   try {
     const aasra = await Helper.getAasraId(req)
     if (req.body.type == 2) {
-      const startDate = await Helper.formatDate(new Date(req.body.startDate));
-      const endDate = await Helper.formatDate(new Date(req.body.endDate));
+      // const startDate = await Helper.formatDate(new Date(req.body.startDate));
+      // const endDate = await Helper.formatDate(new Date(req.body.endDate));
       const start = await Helper.getMonth(req.body.startDate);
       const end = await Helper.getMonth(req.body.endDate);
-
+      const startDatesplit = await Helper.formatDate(new Date(req.body.startDate));
+      const splitDate = await Helper.formatDate(new Date(req.body.endDate));
+      const startDate = startDatesplit.split(" ")[0] + " " + "00:00:00";
+      const endDate = splitDate.split(" ")[0] + " " + "23:59:59";
 
       const ticketDetails = await ticket.findAll({
         where: {
@@ -917,11 +1047,14 @@ exports.getAasraRevenue = async (req, res) => {
       );
     }
     else if (req.body.type == 1) {
-      const startDate = await Helper.formatDate(new Date(req.body.startDate));
-      const endDate = await Helper.formatDate(new Date(req.body.endDate));
+      // const startDate = await Helper.formatDate(new Date(req.body.startDate));
+      // const endDate = await Helper.formatDate(new Date(req.body.endDate));
       const start = await Helper.getMonth(req.body.startDate);
       const end = await Helper.getMonth(req.body.endDate);
-
+      const startDatesplit = await Helper.formatDate(new Date(req.body.startDate));
+      const splitDate = await Helper.formatDate(new Date(req.body.endDate));
+      const startDate = startDatesplit.split(" ")[0] + " " + "00:00:00";
+      const endDate = splitDate.split(" ")[0] + " " + "23:59:59";
 
       const ticketDetails = await ticket.findAll({
         where: {
@@ -1003,10 +1136,21 @@ exports.servicehistorylist = async (req, res) => {
     const string = token.split(" ");
     const user = await users.findOne({ where: { token: string[1] } });
     const ticketData = [];
-
+    const userData = await users.findOne({ where: { udid: req.body.udid } });
+    if (userData === null ) {
+      Helper.response(
+        "failed",
+        "Data Not Found!",
+        {},
+        res,
+        200
+      );
+      return;
+    }
     if (user.user_type == 'S') {
       const userDetails = await users.findOne({ where: { udid: req.body.udid } });
-      if (userDetails.length === 0) {
+     
+      if (userDetails.length === 0 ) {
         Helper.response(
           "failed",
           "Record Not Found!",
@@ -1016,6 +1160,9 @@ exports.servicehistorylist = async (req, res) => {
         );
         return;
       }
+      
+      console.log('1');
+
       var tickets = await ticket.findAll({
         where: {
           user_id: userDetails.ref_id,

@@ -28,7 +28,7 @@ exports.getUserList = async (req, res) => {
 
           // console.log(district.rows[0])
           return {
-            role: role?.role ?? '-',
+            role: role?.role ?? user.user_type,
             id: user.id,
             name: user.name,
             password: user?.pass_code,
@@ -42,7 +42,9 @@ exports.getUserList = async (req, res) => {
       );
     }
     getData().then((values) => {
+
       values.forEach((e) => {
+
         data.push({
           name: e.name ? e.name : "",
           userTypeName: e.role ? e.role : "",
@@ -54,6 +56,7 @@ exports.getUserList = async (req, res) => {
           email: e.email
         });
       });
+
       Helper.response("success", "Record Found Successfully", data, res, 200);
     });
   } catch (error) {
@@ -65,12 +68,40 @@ exports.getUserList = async (req, res) => {
 exports.userCreate = async (req, res) => {
   try {
     const { email, user_type, name, mobile, status, password } = req.body
+
     if (!email || !user_type || !name || !mobile || !status || !password) {
       return Helper.response("Failed", "All fields are required", {}, res, 200);
     }
     if (user_type != 'S' && user_type != 'A') {
       return Helper.response("Failed", "Enter correct user type", {}, res, 200);
     }
+
+    const userEmail = await UserModel.findOne({ where: { email: email } });
+
+    if (userEmail) {
+      Helper.response(
+        "failed",
+        "Email Already Exist!",
+        {},
+        res,
+        200
+      );
+      return;
+    }
+    const userPhone = await UserModel.findOne({ where: { mobile: mobile } });
+
+    if (userPhone) {
+      Helper.response(
+        "failed",
+        "Mobile Already Exist!",
+        {},
+        res,
+        200
+      );
+      return;
+    }
+
+
     const encryptPassword = await Helper.encryptPassword(password)
 
     const user = await UserModel.create({ email, user_type, name, mobile, status, pass_code: password, password: encryptPassword })
@@ -186,7 +217,7 @@ exports.rolePermission = async (req, res) => {
             isUpdate: isUpdate,
           };
 
-          await rolePermission.create(updateData);
+          await role_permission.create(updateData);
         } catch (error) {
           console.error("Error processing data:", error);
         }
@@ -209,7 +240,7 @@ exports.rolePermission = async (req, res) => {
             isUpdate: isUpdate,
           };
 
-          await rolePermission.create(updateData);
+          await role_permission.create(updateData);
         } catch (error) {
           console.error("Error processing data:", error);
         }
@@ -224,17 +255,29 @@ exports.rolePermission = async (req, res) => {
 };
 exports.RoleList = async (req, res) => {
   try {
-    const role = await Role.findAll({ order: [["role_name", "ASC"]] });
-    const list = [];
-    role.forEach((element) => {
-      list.push({
-        id: element.dataValues.id,
-        role_name: element.dataValues.role_name,
-        created_at: Helper.getDateTime(element.dataValues.createdAt),
-      });
-    });
-    Helper.response("success", "Record Feteched Successfully", { list: list }, res, 200);
+    const role = await Role.findAll({ order: [["role", "ASC"]] });
+
+        const data = [];
+        role.map((element) => {
+            const value = {
+              id: element.dataValues.id,
+              user_type: element.dataValues.user_type,
+              value: element.dataValues.id,
+              label: element.dataValues.role,
+            }
+            data.push(value)
+        });
+        
+        Helper.response(
+            "success",
+            "Record Fetched Successfully",
+            { data },
+            res,
+            200
+        );
+    
   } catch (error) {
+
     Helper.response("failed", "Record Not Found", { error }, res, 200);
   }
 };
@@ -317,7 +360,7 @@ exports.getRolePermission = async (req, res) => {
 };
 exports.userPermission = async (req, res) => {
   try {
-    const reqData = req.body.data;
+    const reqData = req.body.permissions;
 
     // const token = req.headers["authorization"];
     // const string = token.split(" ");
@@ -325,9 +368,10 @@ exports.userPermission = async (req, res) => {
     // console.log(userToken)
     // const user = await UserModel.getUser({ token: string[1] });
     const user_id = req.body.user_id;
-    const role_id = (await register.findByPk(user_id)).dataValues.user_type;
 
-    const userdata = await userPermission.destroy({
+    const role_id = (await UserModel.findByPk(user_id)).dataValues.user_type;
+
+    const userdata = await user_permission.destroy({
       where: { userid: user_id },
     });
 
@@ -342,8 +386,8 @@ exports.userPermission = async (req, res) => {
 
           const updateData = {
             userid: req.body.user_id,
-            userTypeId: role_id,
-            roleId: role_id,
+            userType: role_id,
+            // roleId: role_id,
             menu_id: menu_id,
             submenu_id: submenu_id,
             isView: isView,
@@ -351,13 +395,14 @@ exports.userPermission = async (req, res) => {
             isUpdate: isUpdate,
           };
 
-          await userPermission.create(updateData);
+          await user_permission.create(updateData);
         } catch (error) {
           console.error("Error processing data:", error);
         }
       }
     } else {
       for (const element of reqData) {
+
         try {
           const menu_id = element.menu_id;
           const submenu_id = element.submenu_id || null;
@@ -367,8 +412,8 @@ exports.userPermission = async (req, res) => {
 
           const updateData = {
             userid: req.body.user_id,
-            userTypeId: role_id,
-            roleId: role_id,
+            userType: role_id,
+            // roleId: role_id,
             menu_id: menu_id,
             submenu_id: submenu_id,
             isView: isView,
@@ -376,7 +421,7 @@ exports.userPermission = async (req, res) => {
             isUpdate: isUpdate,
           };
 
-          await userPermission.create(updateData);
+          await user_permission.create(updateData);
         } catch (error) {
           console.error("Error processing data:", error);
         }
@@ -389,3 +434,58 @@ exports.userPermission = async (req, res) => {
     Helper.response("failed", "Internal Server Error", {}, res, 200);
   }
 };
+
+
+exports.userStatusUpdate = async (req, res) => {
+  try {
+
+    const userStatus = await UserModel.findOne({
+      where: {
+        id: req.body.id
+      }
+    })
+    if (!userStatus) {
+     return Helper.response(
+        "failed",
+        "user not found!",
+        {},
+        res,
+        200
+      );
+    }
+    if (userStatus.status === true) {
+      const update = await UserModel.update({
+        status: false
+
+      }, {
+        where: {
+          id: req.body.id,
+        }
+      })
+    } else {
+      const update = await UserModel.update({
+        status: true
+      }, {
+        where: {
+          id: req.body.id,
+        }
+      })
+    }
+
+    Helper.response(
+      "success",
+      "status Update Successfully",
+      {},
+      res,
+      200
+    );
+  } catch (error) {
+    Helper.response(
+      "failed",
+      "Something went wrong!",
+      { error },
+      res,
+      200
+    );
+  }
+}

@@ -11,7 +11,9 @@ const Admin = async (req, res, next) => {
     const string = token.split(" ");
     const user = await UserModel.findOne({ where: { token: string[1] } });
   
-    if (user.user_type == 'S' || user.user_type == 'A' || user.user_type == 'AC') {
+    if (user.user_type == 'S' || user.user_type == 'A' || user.user_type == 'AC' 
+
+    ) {
 
       try {
         const tokens = jwt.verify(string[1], process.env.SECRET_KEY);
@@ -57,7 +59,7 @@ const aasra = async (req, res, next) => {
   try {
     const string = token.split(" ");
     const user = await UserModel.findOne({ where: { token: string[1] } });
-   
+    
      if (user.user_type == 'AC') {
 
       try {
@@ -86,6 +88,8 @@ const menuListUserPermission = async (req, res, next) => {
 
       const menuId = await Helper.getMenuByRole(user_type);
 
+
+      
       const menu = await Menu.findAll({
         where: {
           status: true
@@ -150,6 +154,9 @@ const menuListUserPermission = async (req, res, next) => {
       const menuId = await Helper.getMenuByRole(userid);
       // console.log(roleid);
 
+      console.log(menuId)
+      return false
+
       const menu = await Menu.findAll({ order: [["order", "ASC"]] });
 
       var main_menu = [];
@@ -162,7 +169,7 @@ const menuListUserPermission = async (req, res, next) => {
         const subMenuArray = await Promise.all(
           subMenus.map(async (key) => {
             const submenu = await Helper.getSubMenuPermission(key?.dataValues?.id, userid);
-
+        
             if (submenu?.[0]?.isView == true) {
               return {
                 text: key.dataValues.sub_menu,
@@ -213,62 +220,62 @@ const menuListUserPermission = async (req, res, next) => {
           Items: [
             {
               title: "Dashboards",
-              icon: "home",
+              icon: "fa fa-th-large fa-1x",
               type: "link",
               path: "dashboard",
             },
             {
               title: "Tickets",
-              icon: "task",
+              icon: "fa fa-ticket fa-1x",
               type: "link",
               path: "tickets",
             },
             {
               title: "Inventory Reports",
-              icon: "home",
+              icon: "fa fa-shopping-cart fa-1x",
               type: "link",
               path: "inventory-reports",
             },
             {
               title: "Revenue Reports",
-              icon: "home",
+              icon: "fa fa-file fa-1x",
               type: "link",
               path: "revenue-reports",
             },
             {
               title: "Payment Reports",
-              icon: "home",
+              icon: "fa fa-file fa-1x",
               type: "link",
               path: "payment-reports",
             },
             {
               title: "Replacement Reports",
-              icon: "home",
+              icon: "fa fa-exchange fa-1x",
               type: "link",
               path: "parts-replacement-report",
             },
             {
               title: "Stock Reports",
-              icon: "home",
+              icon: "fa fa-list fa-1x",
               type: "link",
               path: "as-a-whole-stock-report",
             },
             {
               title: "Transaction",
-              icon: "home",
+              icon: "fa fa-money fa-1x",
               type: "link",
               path: "payment-list",
             },
             {
               title: "Service History",
-              icon: "home",
+              icon: "fa fa-history fa-1x",
               type: "link",
               path: "service-history",
             },
 
             {
               title: "Purchase",
-              icon: "home",
+              icon: "fa fa-shopping-cart fa-1x",
               type: "sub",
               children: [
                 {

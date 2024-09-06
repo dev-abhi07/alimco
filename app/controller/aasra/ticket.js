@@ -450,92 +450,7 @@ exports.ticketOtpVerify = async (req, res) => {
     const ticketid = req.body.ticket_id
 
     try {
-        // const repairDetails = await repair.findOne({
-        //     where: {
-        //         ticket_id: ticketid
-        //     }
-        // })
-        // const item_id = await spareParts.findByPk(repairDetails.productValue)
-
-        // if (!repairDetails) {
-        //     return Helper.response('failed', 'Repair details not found!', {}, res, 200);
-        // }
-        // if (repairDetails.warranty === false) {
-        //     if (req.body.mode === 'Cash') {
-        //         const update = await ticket.update({
-        //             status: 2
-        //         }, {
-        //             where: {
-        //                 ticket_id: req.body.ticket_id,
-        //             }
-        //         })
-        //         const totalAmount = repairDetails.price * repairDetails.qty
-        //         const serviceCharge = repairDetails.repairServiceCharge
-        //         await repairPayment.create({
-        //             ticket_id: ticketid,
-        //             discount: totalAmount + serviceCharge,
-        //             total_amount: totalAmount,
-        //             serviceCharge: serviceCharge,
-        //             aasra_id: user.ref_id,
-        //             payment_mode: req.body.mode || null,
-        //             receipt_no: req.body.receipt_no
-
-        //         })
-
-        //         const stockDetails = await stock.findOne({
-        //             where: {
-        //                 item_id: repairDetails.productValue,
-        //                 aasra_id: user.ref_id
-        //             }
-
-        //         })
-        //         if (stockDetails.length > 0) {
-        //             await Promise.all(stockDetails.map(async (stockDetail) => {
-        //                 await stock.create({
-        //                     item_id: repairDetails.productValue,
-        //                     item_name: repairDetails.productLabel,
-        //                     aasra_id: user.ref_id,
-        //                     quantity: 0,
-        //                     price: item_id.unit_price,
-        //                     stock_in: 0,
-        //                     stock_out: repairDetails.qty
-        //                 });
-        //             }));
-        //         }
-
-        //     }
-
-        // } else {
-        //     const update = await ticket.update({
-        //         status: 2
-        //     }, {
-        //         where: {
-        //             ticket_id: req.body.ticket_id,
-        //         }
-        //     })
-
-        //     const stockDetails = await stock.findAll({
-        //         where: {
-        //             item_id: repairDetails.productValue,
-        //             aasra_id: user.ref_id
-        //         }
-
-        //     })
-        //     if (stockDetails.length > 0) {
-        //         await Promise.all(stockDetails.map(async (stockDetail) => {
-        //             await stock.create({
-        //                 item_id: repairDetails.productValue,
-        //                 item_name: repairDetails.productLabel,
-        //                 aasra_id: user.ref_id,
-        //                 quantity: 0,
-        //                 price: item_id.unit_price,
-        //                 stock_in: 0,
-        //                 stock_out: repairDetails.qty
-        //             });
-        //         }));
-        //     }
-
-        // }
+       
         const repairDetailsList = await repair.findAll({
             where: {
                 ticket_id: ticketid
@@ -789,6 +704,10 @@ exports.openTicket = async (req, res) => {
 
 exports.sentOtpWeb = async (req, res) => {
     try {
+        if (res.data.length === 0) {
+            return Helper.response('failed', 'Invalid Udid!', {}, res, 200);
+        }
+
         const checkUdid = await users.count({
             where: {
                 udid: req.body.udid
@@ -991,7 +910,7 @@ exports.createCustomerTicketAasraAndSaveUser = async (req, res) => {
 
     } catch (error) {
         console.log(error)
-        return false;
+       
         Helper.response(
             "failed",
             "Something went wrong!",

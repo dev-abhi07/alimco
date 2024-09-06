@@ -138,12 +138,15 @@ exports.revenueReport = async (req, res) => {
 
 
         if (req.body.type == 2) {
-            const startDate = await Helper.formatDate(new Date(req.body.startDate));
-            const endDate = await Helper.formatDate(new Date(req.body.endDate));
+            // const startDate = await Helper.formatDate(new Date(req.body.startDate));
+            // const endDate = await Helper.formatDate(new Date(req.body.endDate));
             const start = await Helper.getMonth(req.body.startDate);
             const end = await Helper.getMonth(req.body.endDate);
 
-
+            const startDatesplit = await Helper.formatDate(new Date(req.body.startDate));
+            const splitDate = await Helper.formatDate(new Date(req.body.endDate));
+            const startDate = startDatesplit.split(" ")[0] + " " + "00:00:00";
+            const endDate = splitDate.split(" ")[0] + " " + "23:59:59";
             const ticketDetails = await ticket.findAll({
                 where: {
                     aasra_id: aasra,
@@ -205,11 +208,16 @@ exports.revenueReport = async (req, res) => {
             );
         }
         else if (req.body.type == 1) {
-            const startDate = await Helper.formatDate(new Date(req.body.startDate));
-            const endDate = await Helper.formatDate(new Date(req.body.endDate));
+            // const startDate = await Helper.formatDate(new Date(req.body.startDate));
+            // const endDate = await Helper.formatDate(new Date(req.body.endDate));
+
             const start = await Helper.getMonth(req.body.startDate);
             const end = await Helper.getMonth(req.body.endDate);
 
+            const startDatesplit = await Helper.formatDate(new Date(req.body.startDate));
+            const splitDate = await Helper.formatDate(new Date(req.body.endDate));
+            const startDate = startDatesplit.split(" ")[0] + " " + "00:00:00";
+            const endDate = splitDate.split(" ")[0] + " " + "23:59:59";
 
             const ticketDetails = await ticket.findAll({
                 where: {
@@ -300,10 +308,14 @@ exports.paymentReport = async (req, res) => {
         const aasra = req.body.aasra_id !== undefined && req.body.aasra_id !== null
             ? req.body.aasra_id
             : await Helper.getAasraId(req);
-        const startDate = await Helper.formatDate(new Date(req.body.startDate));
-        const endDate = await Helper.formatDate(new Date(req.body.endDate));
+        // const startDate = await Helper.formatDate(new Date(req.body.startDate));
+        // const endDate = await Helper.formatDate(new Date(req.body.endDate));
         const start = await Helper.getMonth(req.body.startDate);
         const end = await Helper.getMonth(req.body.endDate);
+        const startDatesplit = await Helper.formatDate(new Date(req.body.startDate));
+        const splitDate = await Helper.formatDate(new Date(req.body.endDate));
+        const startDate = startDatesplit.split(" ")[0] + " " + "00:00:00";
+        const endDate = splitDate.split(" ")[0] + " " + "23:59:59";
         // const aasra = req.body.aasra_id;
 
         const orders = await order.findAll({
@@ -336,7 +348,7 @@ exports.paymentReport = async (req, res) => {
                 order_amount: order.grand_total,
                 paid_amount: order.paid_amount,
                 balance: order.grand_total - order.paid_amount,
-                payment_date: Helper.formatDateTime(order.createdAt),
+                payment_date: Helper.formatISODateTime(order.createdAt),
                 payment_method: order.payment_method,
                 payment_status: order.payment_status,
                 transaction_id: order.transaction_id,
@@ -372,11 +384,15 @@ exports.partReplacementReport = async (req, res) => {
             ? req.body.aasra_id
             : await Helper.getAasraId(req);
 
-        const startDate = await Helper.formatDate(new Date(req.body.startDate));
-        const endDate = await Helper.formatDate(new Date(req.body.endDate));
+        // const startDate = await Helper.formatDate(new Date(req.body.startDate));
+        // const endDate = await Helper.formatDate(new Date(req.body.endDate));
         const start = await Helper.getMonth(req.body.startDate);
         const end = await Helper.getMonth(req.body.endDate);
         // const aasra = req.body.aasra_id;
+        const startDatesplit = await Helper.formatDate(new Date(req.body.startDate));
+        const splitDate = await Helper.formatDate(new Date(req.body.endDate));
+        const startDate = startDatesplit.split(" ")[0] + " " + "00:00:00";
+        const endDate = splitDate.split(" ")[0] + " " + "23:59:59";
 
         const ticketDetails = await ticket.findAll({
             where: {
@@ -460,7 +476,7 @@ exports.partReplacementReport = async (req, res) => {
                 sap_material_code_code: f.new_serial_number || '-',
                 material_description: '-',
                 unit_of_measurement: '-',
-                date_of_replacement: Helper.formatDateTime((f.createdAt)),
+                date_of_replacement: Helper.formatISODateTime((f.createdAt)),
                 labour_rate: labour_rate || '-',
                 labour_amount: labour_amount || '-',
                 quantity: quantity || '-',
@@ -501,10 +517,10 @@ exports.inventoryWholeFormat = async (req, res) => {
             ? req.body.aasra_id
             : await Helper.getAasraId(req);
 
-        const startDate = await Helper.formatDate(new Date(req.body.startDate));
-        const endDate = await Helper.formatDate(new Date(req.body.endDate));
-        const start = await Helper.getMonth(req.body.startDate);
-        const end = await Helper.getMonth(req.body.endDate);
+            const startDatesplit = await Helper.formatDate(new Date(req.body.startDate));
+            const splitDate = await Helper.formatDate(new Date(req.body.endDate));
+            const startDate = startDatesplit.split(" ")[0] + " " + "00:00:00";
+            const endDate = splitDate.split(" ")[0] + " " + "23:59:59";
 
         var stocks = await stock.findAll({
             where: {
@@ -543,7 +559,7 @@ exports.inventoryWholeFormat = async (req, res) => {
                 sap_material_code_code: repairDetails ? repairDetails.new_serial_number : '-',
                 material_description: '-',
                 unit_of_measurement: '-',
-                date: Helper.formatDateTime((f.createdAt)) || '-',
+                date: Helper.formatISODateTime((f.createdAt)) || '-',
                 opening_stock: labour_amount || '-',
                 stock_in: f.stock_in || '-',
                 stock_out: f.stock_out || '-',
@@ -658,10 +674,14 @@ exports.destroyLabourCharges = async (req, res) => {
 
 exports.generateNotes = async (req, res) => {
     try {
-        const startDate = Helper.formatDate(new Date(req.body.start_date))
-        const splitDate = Helper.formatDate(new Date(req.body.end_date))
-        const endDate = splitDate.split(" ")[0] + " " + "23:59:59";
+        // const startDate = Helper.formatDate(new Date(req.body.start_date))
+        // const splitDate = Helper.formatDate(new Date(req.body.end_date))
+        // const endDate = splitDate.split(" ")[0] + " " + "23:59:59";
 
+        const startDatesplit = await Helper.formatDate(new Date(req.body.startDate));
+        const splitDate = await Helper.formatDate(new Date(req.body.endDate));
+        const startDate = startDatesplit.split(" ")[0] + " " + "00:00:00";
+        const endDate = splitDate.split(" ")[0] + " " + "23:59:59";
 
         const getRepairs = await repairPayments.findAll({
             where: {
@@ -714,10 +734,21 @@ exports.generateNotes = async (req, res) => {
                 totalData.push(values)
             }
         }))
-        
+       
+        if (totalData.length === 0) {
+            Helper.response(
+              "failed",
+              "Record Not Found!",
+              {},
+              res,
+              200
+            );
+            return;
+          }
+
         Helper.response(
             "success",
-            "",
+            "Service Notes List",
             { totalData },
             res,
             200

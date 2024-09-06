@@ -37,6 +37,7 @@ const stock = sequelize.define('stock', {
         allowNull:false,
         defaultValue:0
     }
+    
 
 
 })

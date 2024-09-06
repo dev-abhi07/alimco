@@ -8,7 +8,9 @@ const Menu = require("./menu");
 
 const user_permission = sequelize.define('userpermission',{
     userType :{
-        type:DataTypes.INTEGER,
+        // type:DataTypes.INTEGER,
+        // allowNull:true,
+        type:DataTypes.STRING,
         allowNull:true,
         field:"user_type"
 
@@ -50,7 +52,7 @@ const user_permission = sequelize.define('userpermission',{
 user_permission.belongsTo(Role, { foreignKey: 'id' });
 user_permission.belongsTo(Menu, { foreignKey: 'id' });
 
-// sequelize.sync({force:true}).then(()=>{
+// sequelize.sync().then(()=>{
 //   console.log("role_permission table created");
 // }).catch((error)=>{
 //   console.log(error);

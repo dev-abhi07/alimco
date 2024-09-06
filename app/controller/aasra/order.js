@@ -14,6 +14,9 @@ const formidable = require("formidable");
 const fs = require('fs');
 const path = require('path');
 const { where, or, Op, and, Sequelize } = require("sequelize");
+const repairPayments = require("../../model/repairPayment");
+const e = require("express");
+const states = require("../../model/state");
 
 
 exports.productApi = async (req, res) => {
@@ -54,8 +57,10 @@ exports.createOrder = async (req, res) => {
         total_order['shipping_charges'] = shipping
         total_order['order_status'] = orderStatus.label
         total_order['supplier_name'] = supplier_name.label
+
         total_order['order_date'] = new Date().toISOString().slice(0, 10),
             total_order['notes'] = notes
+
         const creatOrder = await orderModel.create(total_order).catch((err) => {
             console.log(err)
             Helper.response("error", "Something went wrong", err, res, 200)
@@ -91,23 +96,135 @@ exports.createOrder = async (req, res) => {
 
 exports.orderList = async (req, res) => {
     try {
+        
         const token = req.headers['authorization'];
         const string = token.split(" ");
         const user = await users.findOne({ where: { token: string[1] } });
-        let orderWithImageUrls;
-        if (user.user_type == 'S') {
-            orderWithImageUrls = await orderModel.findAll()
-        } else {
-            orderWithImageUrls = await orderModel.findAll({ where: { aasra_id: user.ref_id } })
-        }
-        const order = orderWithImageUrls.map(o => {
-            if (o.image) {
-                o.image = o.image.replace('public/', '');
-            }
-            return o;
-        });
+        // const startDate = await Helper.formatDate(new Date(req.body.startDate));
+        // const endDate = await Helper.formatDate(new Date(req.body.endDate));
 
-        const orders = orderWithImageUrls.map(o => {
+        const startDatesplit = await Helper.formatDate(new Date(req.body.startDate));
+        const splitDate = await Helper.formatDate(new Date(req.body.endDate));
+        const startDate = startDatesplit.split(" ")[0] + " " + "00:00:00";
+        const endDate = splitDate.split(" ")[0] + " " + "23:59:59";
+
+        let orderWithImageUrls;
+        if (req.body.startDate === null && req.body.endDate === null) {
+            if (req.body.stock === true) {
+                if (user.user_type == 'S') {
+                    orderWithImageUrls = await orderModel.findAll({
+                       
+                        order: [
+                            ['id', 'DESC']
+                        ],
+                        where: {
+                            payment_status: 'Paid'
+                        }
+                    })
+
+                    
+
+                } else {
+                    orderWithImageUrls = await orderModel.findAll({ order: [['id', 'DESC']], where: { aasra_id: user.ref_id, payment_status: 'Paid' } })
+                }
+                const order = orderWithImageUrls.map(o => {
+                    if (o.image) {
+                        o.image = o.image.replace('public/', '');
+                    }
+                    return o;
+                });
+            } else {
+
+                if (user.user_type == 'S') {
+                    orderWithImageUrls = await orderModel.findAll({ 
+                        order: [['id', 'DESC']]
+                 })
+                } else {
+                    orderWithImageUrls = await orderModel.findAll({ order: [['id', 'DESC']], where: { aasra_id: user.ref_id } })
+                }
+                const order = orderWithImageUrls.map(o => {
+                    if (o.image) {
+                        o.image = o.image.replace('public/', '');
+                    }
+                    return o;
+                });
+            }
+        } else if (req.body.startDate !== null && req.body.endDate !== null) {
+            if (req.body.stock === true) {
+                if (user.user_type == 'S') {
+                    orderWithImageUrls = await orderModel.findAll({
+                        order: [['id', 'DESC']],
+                        where: {
+                            payment_status: 'Paid',
+                            createdAt: {
+                                [Op.between]: [startDate, endDate]
+                            },
+                            aasra_id: req.body.aasra_id
+                        }
+                    })
+                } else {
+                    orderWithImageUrls = await orderModel.findAll(
+                        {
+                            order: [
+                                ['id', 'DESC']
+                            ],
+                            where:
+                            {
+                                aasra_id: user.ref_id, payment_status: 'Paid'
+                            }
+                        }
+                    )
+
+
+                }
+                const order = orderWithImageUrls.map(o => {
+                    if (o.image) {
+                        o.image = o.image.replace('public/', '');
+                    }
+                    return o;
+                });
+            }
+            else {
+
+                if (user.user_type == 'S') {
+                    orderWithImageUrls = await orderModel.findAll({ order: [['id', 'DESC']] })
+                } else {
+                    orderWithImageUrls = await orderModel.findAll({ order: [['id', 'DESC']], where: { aasra_id: user.ref_id } })
+
+                }
+                const order = orderWithImageUrls.map(o => {
+                    if (o.image) {
+                        o.image = o.image.replace('public/', '');
+                    }
+                    return o;
+                });
+            }
+
+        }
+
+
+        if (orderWithImageUrls.length === 0) {
+            Helper.response(
+                "failed",
+                "Record Not Found!",
+                {},
+                res,
+                200
+            );
+            return;
+        }
+        const orders = await Promise.all(orderWithImageUrls.map(async (o) => {
+
+            const aasraData = await aasra.findOne({ where: { id: o.aasra_id } });
+
+            let cgst = 0;
+            let sgst = 0;
+            const stateDetails = await states.findOne({ where: { id: aasraData?.state } })
+
+            if (stateDetails.name !== 'UTTAR PRADESH') {
+                cgst = o.gst / 2;
+                sgst = o.gst / 2;
+            }
             return {
                 id: o.id,
                 aasra_id: o.aasra_id,
@@ -124,17 +241,21 @@ exports.orderList = async (req, res) => {
                 transaction_id: o.transaction_id,
                 paid_amount: o.paid_amount,
                 due_amount: o.due_amount,
-                payment_date: o.payment_date,
+                payment_date: o.payment_date == null ? null :Helper.formatISODateTime(o.payment_date),
                 dps_value: o.dps_value,
                 dps_date: o.dps_date,
                 dps_no: o.dps_no,
                 notes: o.notes,
+                stock_transfer: o.stock_transfer,
+                discount: o.discount,
                 image: o.image ? o.image.replace('public/', '') : null,
+                sgst: sgst,
+                cgst: cgst,
                 orderData: [],
                 payment: {},
                 aasra: {},
             };
-        });
+        }));
 
         const orderDetailsPromises = orderWithImageUrls.map(order =>
             orderDetails.findAll({
@@ -192,7 +313,7 @@ exports.orderList = async (req, res) => {
                     invoice: allPayments[index].invoice,
                     PO_number: allPayments[index].PO_number,
                     invoice_number: allPayments[index].invoice_number,
-                    createdAt: Helper.formatDateTime(allPayments[index].createdAt),
+                    createdAt: Helper.formatISODateTime(allPayments[index].createdAt),
                 } : {},
                 aasra: allAasraDetails[index] || {},
 
@@ -200,12 +321,9 @@ exports.orderList = async (req, res) => {
         });
 
 
-        Helper.response("success", "Order list", {
-            order: ordersWithDetails,
-
-        }, res, 200)
+        Helper.response("success", "Order list", {order: ordersWithDetails}, res, 200)
     } catch (error) {
-        console.log(error)
+
         Helper.response("error", "Something went wrong", error, res, 200)
     }
 }
@@ -216,8 +334,12 @@ exports.orderTransfer = async (req, res) => {
         let startDate;
         let endDate;
         if (req.body.startDate !== null && req.body.endDate !== null) {
-            startDate = await Helper.formatDate(new Date(req.body.startDate));
-            endDate = await Helper.formatDate(new Date(req.body.endDate));
+            // startDate = await Helper.formatDate(new Date(req.body.startDate));
+            // endDate = await Helper.formatDate(new Date(req.body.endDate));
+            const startDatesplit = await Helper.formatDate(new Date(req.body.startDate));
+            const splitDate = await Helper.formatDate(new Date(req.body.endDate));
+            startDate = startDatesplit.split(" ")[0] + " " + "00:00:00";
+            endDate = splitDate.split(" ")[0] + " " + "23:59:59";
         }
 
         const aasra_id = req.body.aasra_id;
@@ -314,7 +436,7 @@ exports.orderTransfer = async (req, res) => {
                 transaction_id: o.transaction_id,
                 paid_amount: o.paid_amount,
                 due_amount: o.due_amount,
-                payment_date: o.payment_date,
+                payment_date: Helper.formatISODateTime(o.payment_date),
                 dps_value: o.dps_value,
                 dps_date: o.dps_date,
                 dps_no: o.dps_no,
@@ -341,6 +463,8 @@ exports.orderTransfer = async (req, res) => {
                 }
             })
         );
+
+
 
         const paymentPromises = orderWithImageUrls.map(order =>
             payment.findOne({
@@ -382,7 +506,7 @@ exports.orderTransfer = async (req, res) => {
                     invoice: allPayments[index].invoice,
                     PO_number: allPayments[index].PO_number,
                     invoice_number: allPayments[index].invoice_number,
-                    createdAt: Helper.formatDateTime(allPayments[index].createdAt),
+                    createdAt: Helper.formatISODateTime(allPayments[index].createdAt),
                 } : {},
                 aasra: allAasraDetails[index] || {},
 
@@ -403,11 +527,13 @@ exports.orderTransfer = async (req, res) => {
 exports.updateOrderPayment = async (req, res) => {
     try {
         const { order_id } = req.body
+
         const token = req.headers['authorization'];
         const string = token.split(" ");
         const date = new Date();
         const year = `${date.getFullYear()}`
         const user = await users.findOne({ where: { token: string[1] } });
+
         const invoice_number = (date.getFullYear() + '-' + `${parseInt((year)?.split('0')[1]) + 1}`) + '/' + await Helper.generateNumber(10000000, 99999999)
         const order = await orderModel.update(
             {
@@ -428,6 +554,9 @@ exports.updateOrderPayment = async (req, res) => {
                 id: req.body.order_id
             }
         })
+
+
+
         if (orderUpdated.due_amount == 0) {
             await orderModel.update({ payment_status: 'Paid' }, {
                 where: {
@@ -474,6 +603,18 @@ exports.orderDetails = async (req, res) => {
             orderWithImageUrls.image = orderWithImageUrls.image.replace('public/', '');
         }
 
+        const aasraData = await aasra.findOne({ where: { id: orderWithImageUrls.aasra_id } });
+
+        const stateDetails = await states.findOne({ where: { id: aasraData.state } })
+        let cgst = 0;
+        var sgst = 0;
+
+        if (stateDetails.name !== 'UTTAR PRADESH') {
+            cgst = orderWithImageUrls.gst / 2;
+            sgst = orderWithImageUrls.gst / 2;
+
+        }
+
         const order = {
             id: orderWithImageUrls.id,
             aasra_id: orderWithImageUrls.aasra_id,
@@ -490,12 +631,16 @@ exports.orderDetails = async (req, res) => {
             transaction_id: orderWithImageUrls.transaction_id,
             paid_amount: orderWithImageUrls.paid_amount,
             due_amount: orderWithImageUrls.due_amount,
-            payment_date: orderWithImageUrls.payment_date,
+            payment_date: Helper.formatISODateTime(orderWithImageUrls.payment_date),
             dps_value: orderWithImageUrls.dps_value,
             dps_date: orderWithImageUrls.dps_date,
             dps_no: orderWithImageUrls.dps_no,
             image: orderWithImageUrls.image || null,
             notes: orderWithImageUrls.notes,
+            stock_transfer: orderWithImageUrls.stock_transfer,
+            discount: orderWithImageUrls.discount,
+            cgst: cgst,
+            sgst: sgst,
             orderData: [],
             payment: {},
             aasra: {},
@@ -526,7 +671,7 @@ exports.orderDetails = async (req, res) => {
         ]);
 
         const flattenedOrderDetails = allOrderDetails.map(detail => ({
-            id: detail.id,
+            id: detail.item_id,
             item_id: detail.item_id,
             item_name: detail.item_name,
             quantity: detail.quantity,
@@ -562,8 +707,14 @@ exports.addStock = async (req, res) => {
     try {
         const { order_id, payment } = req.body;
         const payment_status = (await order.findOne({ where: { id: order_id } }))
+        await order.update({
+            stock_transfer: true
+        }, {
+            where: {
+                id: order_id,
+            }
+        })
         if (payment_status.payment_status == 'Paid') {
-
 
             const itemsAddToStock = await orderDetails.findAll({ where: { order_id: order_id } })
 
@@ -572,13 +723,16 @@ exports.addStock = async (req, res) => {
                 await stock.create({
                     ...f.dataValues,
                     aasra_id: payment_status.aasra_id,
-                    stock_in: f.quantity
+                    stock_in: f.quantity,
                 }).catch((err) => {
                     console.log(err)
                 })
             }))
+
+
+
             if (data) {
-                Helper.response("success", "Stock added success fully", {}, res, 200)
+                Helper.response("success", "Stock added successfully", {}, res, 200)
             } else {
 
                 Helper.response("failed", "Stock not added", {}, res, 200)
@@ -607,38 +761,95 @@ exports.stockList = async (req, res) => {
                     where: {
                         aasra_id: req.body.aasra_id
                     },
-                    attributes:[
-                        'item_id',                                              
+                    attributes: [
+                        'item_id',
                         [Sequelize.fn('COUNT', Sequelize.col('item_id')), 'count'],
                         [Sequelize.fn('SUM', Sequelize.col('stock_in')), 'stock_in'],
-                        [Sequelize.fn('SUM', Sequelize.col('stock_out')), 'stock_out'],                        
+                        [Sequelize.fn('SUM', Sequelize.col('stock_out')), 'stock_out'],
                     ],
                     group: ['item_id'],
                     raw: true
                 },
             )
-            
-            console.log(stockDataList)
-            var TotalRecord = await Promise.all(stockDataList.map(async(t) => {
+
+
+            if (stockDataList.length === 0) {
+                Helper.response(
+                    "failed",
+                    "Stock Not Available!",
+                    {},
+                    res,
+                    200
+                );
+                return;
+            }
+
+            var TotalRecord = await Promise.all(stockDataList.map(async (t) => {
 
                 const item = await spareParts.findByPk(t.item_id)
+
+
                 const values = {
-                    item_id:t.item_id,
-                    stock_in:t.stock_in,
-                    stock_out:t.stock_out,
-                    item_id:item.part_number || '',
-                    item_name:item.part_name || '',
-                    price:item.unit_price,
-                    quantity:t.stock_in,
-                    available_stock:(t.stock_in || 0) - (t.stock_out || 0)
+                    item_id: t.item_id,
+                    stock_in: t.stock_in,
+                    stock_out: t.stock_out,
+                    item_id: item?.part_number || '',
+                    item_name: item?.part_name || '',
+                    price: item?.unit_price || '',
+                    quantity: t.stock_in,
+                    available_stock: (t.stock_in || 0) - (t.stock_out || 0)
                 }
 
                 return values
             }))
         }
         else {
-            var TotalRecord = await stock.findAll({
-            }, { where: { aasra_id: user.ref_id } })
+            var stockDataList = await stock.findAll(
+                {
+                    where: {
+                        aasra_id: user.ref_id
+                    },
+                    attributes: [
+                        'item_id',
+                        [Sequelize.fn('COUNT', Sequelize.col('item_id')), 'count'],
+                        [Sequelize.fn('SUM', Sequelize.col('stock_in')), 'stock_in'],
+                        [Sequelize.fn('SUM', Sequelize.col('stock_out')), 'stock_out'],
+                    ],
+                    group: ['item_id'],
+                    raw: true
+                },
+            )
+
+
+            if (stockDataList.length === 0) {
+                Helper.response(
+                    "failed",
+                    "Stock Not Available!",
+                    {},
+                    res,
+                    200
+                );
+                return;
+            }
+
+            var TotalRecord = await Promise.all(stockDataList.map(async (t) => {
+
+                const item = await spareParts.findByPk(t.item_id)
+
+
+                const values = {
+                    item_id: t.item_id,
+                    stock_in: t.stock_in,
+                    stock_out: t.stock_out,
+                    item_id: item?.part_number || '',
+                    item_name: item?.part_name || '',
+                    price: item?.unit_price || '',
+                    quantity: t.stock_in,
+                    available_stock: (t.stock_in || 0) - (t.stock_out || 0)
+                }
+
+                return values
+            }))
 
         }
         console.log(TotalRecord);
@@ -692,10 +903,48 @@ exports.transactionList = async (req, res) => {
         const string = token.split(" ");
         const user = await users.findOne({ where: { token: string[1] } });
 
+        const startDate = await Helper.formatDate(new Date(req.body.startDate));
+        const endDate = await Helper.formatDate(new Date(req.body.endDate));
+
         if (user.user_type == 'S') {
-            var transactionList = await orderModel.findAll({ where: { payment_status: 'Paid' } })
+            var transactionList = await repairPayments.findAll({
+                where: {
+                    aasra_id: req.body.aasra_id, createdAt: {
+                        [Op.between]: [startDate, endDate]
+                    },
+                }
+            })
+            if (transactionList.length === 0) {
+                Helper.response(
+                    "failed",
+                    "Record Not Found!",
+                    {},
+                    res,
+                    200
+                );
+                return;
+            }
+
+
         } else {
-            var transactionList = await orderModel.findAll({ where: { aasra_id: user.ref_id, payment_status: 'Paid' } })
+            var transactionList = await repairPayments.findAll({
+                where: {
+                    aasra_id: user.ref_id, createdAt: {
+                        [Op.between]: [startDate, endDate]
+                    },
+                }
+            })
+
+            if (transactionList.length === 0) {
+                Helper.response(
+                    "failed",
+                    "Record Not Found!",
+                    {},
+                    res,
+                    200
+                );
+                return;
+            }
         }
         // console.log(transactionList)
         Helper.response("success", "Transaction List", transactionList, res, 200)

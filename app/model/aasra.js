@@ -12,6 +12,7 @@ const aasra = sequelize.define('aasra', {
         primaryKey: true,
         autoIncrement:true
     },
+    
     name_of_org: {
         type: DataTypes.STRING,
         allowNull: true,
@@ -33,7 +34,7 @@ const aasra = sequelize.define('aasra', {
     name:
     {
         type: DataTypes.STRING,
-        allowNull: false,
+        allowNull: true,
         field:'name_spoc'
     },
     designation_spoc:{
@@ -42,7 +43,7 @@ const aasra = sequelize.define('aasra', {
     },
     mobile_no:{ 
         type: DataTypes.BIGINT,
-        allowNull:false,
+        allowNull: true,
         field:'mobile_spoc'
     },
     telephone_no:{
@@ -51,7 +52,7 @@ const aasra = sequelize.define('aasra', {
     },
     email:{
         type: DataTypes.STRING,
-        allowNull:false,
+        allowNull: true,
         
     },
     latitude:{
@@ -164,7 +165,20 @@ const aasra = sequelize.define('aasra', {
     gst:{
         type:DataTypes.STRING,
         allowNull:true
+    },
+    lat:{
+        type:DataTypes.STRING,
+        allowNull:true
+    },
+    log:{
+        type:DataTypes.STRING,
+        allowNull:true
+    },
+    aasra_type:{
+        type:DataTypes.STRING,
+        allowNull:true
     }
+   
    
     
 

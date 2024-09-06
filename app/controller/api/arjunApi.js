@@ -18,7 +18,7 @@ exports.arjunApi = (req, res, next) => {
     headers: {}
   };
 
-  axios.request(config)
+    axios.request(config)
     .then((response) => {
       console.log(response.data)
       res.data = response.data ? response.data : []
@@ -28,7 +28,5 @@ exports.arjunApi = (req, res, next) => {
       console.log(error)
       Helper.response("Failed", "Internal  Server Error", { error }, res, 200)
     });
-
-
 
 }
