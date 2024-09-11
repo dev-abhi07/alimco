@@ -785,7 +785,7 @@ exports.getUser = async (req, res) => {
         })
 
         if (verify != null) {
-            console.log("sssssssssss", verify)
+            // console.log("sssssssssss", verify)
             const update = await otp.update({
                 status: 0,
             },
@@ -865,7 +865,7 @@ exports.createCustomerTicketAasraAndSaveUser = async (req, res) => {
 
         aasraUniqueId = await Helper.getAasra(AasraId)
         const createRecord = await ticket.create({
-            ticket_id: ticketId + '-' + aasraUniqueId,
+            ticket_id: ticketId,
             appointment_date: req.body.appointment_date,
             appointment_time: req.body.userData.appointment_time.split('-')[1].trim(),
             itemName: req.body.product.name,
@@ -1040,7 +1040,7 @@ exports.ticketDetails = async (req, res) => {
                 200
             );
         } else {
-            if (user.user_type == 'S') {
+            if (user.user_type == 'S' || user.user_type == 'A') {
                 const ticketId = req.body.ticket_id
                 const ticketData = await ticket.findOne(
                     {

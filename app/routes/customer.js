@@ -7,7 +7,7 @@ const { Dashboard } = require("../controller/aasra/dashboard");
 const { ticketListDetails } = require("../controller/aasra/ticket");
 const { getUserList, userCreate, rolePermission, RoleList, getRolePermission, userPermission, getUserPermission } = require("../controller/admin/user");
 const { customer } = require("../middleware/middleware");
-const { createCustomerTicket, ticketList, customerMessage, chatList, chatHistory } = require("../controller/customer/ticket");
+const { createCustomerTicket, ticketList, customerMessage, chatList, chatHistory, ticketCustomerdetails } = require("../controller/customer/ticket");
 const { saveToken } = require("../controller/customer/saveToken")
 const { dashboard, aasraGroupList, aasraTypeListCentre, centrelist } = require("../controller/customer/dashboard");
 
@@ -39,6 +39,7 @@ router.post('/customer/save-token', customer, saveToken)
 router.post('/customer/chat-history', customer, chatHistory)
 router.post('/aasra-group',aasraGroupList)
 router.post('/aasra-type-list',centrelist)
+router.post('/customer/ticket-details',customer,ticketCustomerdetails)
 // router.post('/update-spare-part',updateSpareParts)
 //Complaint
 

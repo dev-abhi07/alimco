@@ -6,76 +6,76 @@ const subMenu = require("../model/submenu");
 const { title } = require("process");
 const Admin = async (req, res, next) => {
 
-  const token = req.headers['authorization'];
+  const token = req.headers["authorization"];
   try {
     const string = token.split(" ");
     const user = await UserModel.findOne({ where: { token: string[1] } });
-  
-    if (user.user_type == 'S' || user.user_type == 'A' || user.user_type == 'AC' 
 
+    if (
+      user.user_type == "S" ||
+      user.user_type == "A" ||
+      user.user_type == "AC"
     ) {
-
       try {
         const tokens = jwt.verify(string[1], process.env.SECRET_KEY);
         next();
       } catch (error) {
         Helper.response("expired", "Your Token is Expired", {}, res, 200);
       }
-
     } else {
       Helper.response("expired", "Unauthorized Access", {}, res, 200);
     }
   } catch (error) {
-    console.log(error)
+    console.log(error);
     Helper.response("expired", "Unauthorized Access", {}, res, 200);
   }
-}
+};
 const customer = async (req, res, next) => {
-
-  const token = req.headers['authorization'];
+  const token = req.headers["authorization"];
   try {
     const string = token.split(" ");
     const user = await UserModel.findOne({ where: { token: string[1] } });
 
-    if (user.user_type == 'C') {
-
+    if (user.user_type == "C") {
       try {
         const tokens = jwt.verify(string[1], process.env.SECRET_KEY);
         next();
       } catch (error) {
         Helper.response("expired", "Your Token is Expired", {}, res, 200);
       }
-
     } else {
-      Helper.response("expired", "Token expired due to another login. Please Login Again!", {}, res, 200);
+      Helper.response(
+        "expired",
+        "Token expired due to another login. Please Login Again!",
+        {},
+        res,
+        200
+      );
     }
   } catch (error) {
     Helper.response("expired", "Unauthorized Access", {}, res, 200);
   }
-}
+};
 const aasra = async (req, res, next) => {
-
-  const token = req.headers['authorization'];
+  const token = req.headers["authorization"];
   try {
     const string = token.split(" ");
     const user = await UserModel.findOne({ where: { token: string[1] } });
-    
-     if (user.user_type == 'AC') {
 
+    if (user.user_type == "AC") {
       try {
         const tokens = jwt.verify(string[1], process.env.SECRET_KEY);
         next();
       } catch (error) {
         Helper.response("expired", "Your Token is Expired", {}, res, 200);
       }
-
     } else {
       Helper.response("expired", "Invalid user", {}, res, 200);
     }
   } catch (error) {
     Helper.response("expired", "Unauthorized Access", {}, res, 200);
   }
-}
+};
 const menuListUserPermission = async (req, res, next) => {
   try {
     const token = req.headers["authorization"];
@@ -84,44 +84,42 @@ const menuListUserPermission = async (req, res, next) => {
     // console.log(user)
     var user_type = user.user_type;
     var userid = user.id;
-    if (user_type == 'S') {
-
+    if (user_type == "S") {
       const menuId = await Helper.getMenuByRole(user_type);
 
-
-      
       const menu = await Menu.findAll({
         where: {
-          status: true
+          status: true,
         },
-        order: [["order", "ASC"]]
+        order: [["order", "ASC"]],
       });
-
 
       var main_menu = [];
       async function fetchSubMenu(menuItem) {
         const subMenus = await subMenu.findAll({
           where: { menu_id: menuItem.dataValues.id, status: true },
-          order: [["order", "ASC"]]
+          order: [["order", "ASC"]],
         });
 
         const subMenuArray = await Promise.all(
           subMenus.map(async (key) => {
-            const submenu = await Helper.getSubMenuPermission(key?.dataValues?.id, userid);
+            const submenu = await Helper.getSubMenuPermission(
+              key?.dataValues?.id,
+              userid
+            );
 
             return {
               active: false,
               title: key.dataValues.sub_menu,
               path: key.dataValues.page_url,
 
-              type: 'link'
+              type: "link",
             };
           })
         );
 
         if (subMenuArray.length > 0) {
           return {
-
             icon: menuItem.dataValues.icon_class,
             title: menuItem.dataValues.menu_name,
             type: "sub",
@@ -130,7 +128,6 @@ const menuListUserPermission = async (req, res, next) => {
           };
         } else {
           return {
-
             icon: menuItem.dataValues.icon_class,
             title: menuItem.dataValues.menu_name,
             type: "link",
@@ -150,12 +147,8 @@ const menuListUserPermission = async (req, res, next) => {
 
       res.filteredMenu = [{ Items: main_menu }];
       next();
-    } else if (user_type == 'A') {
+    } else if (user_type == "A") {
       const menuId = await Helper.getMenuByRole(userid);
-      // console.log(roleid);
-
-      console.log(menuId)
-      return false
 
       const menu = await Menu.findAll({ order: [["order", "ASC"]] });
 
@@ -163,19 +156,23 @@ const menuListUserPermission = async (req, res, next) => {
       async function fetchSubMenu(menuItem) {
         const subMenus = await subMenu.findAll({
           where: { menu_id: menuItem.dataValues.id },
-          order: [["order", "ASC"]]
+          order: [["order", "ASC"]],
         });
 
         const subMenuArray = await Promise.all(
           subMenus.map(async (key) => {
-            const submenu = await Helper.getSubMenuPermission(key?.dataValues?.id, userid);
-        
+            const submenu = await Helper.getSubMenuPermission(
+              key?.dataValues?.id,
+              userid
+            );
+
             if (submenu?.[0]?.isView == true) {
               return {
                 text: key.dataValues.sub_menu,
                 path: key.dataValues.page_url,
                 type: "link",
                 id: key.dataValues.id,
+                title:key.dataValues.sub_menu,
               };
             }
           })
@@ -183,16 +180,16 @@ const menuListUserPermission = async (req, res, next) => {
 
         if (subMenuArray.length > 0) {
           return {
-
+            id: menuItem.dataValues.id,
             icon: menuItem.dataValues.icon_class,
             title: menuItem.dataValues.menu_name,
             path: menuItem.dataValues.page_url,
-            type: "link",
+            type: "sub",
             children: subMenuArray.filter(Boolean),
           };
         } else {
           return {
-
+            id: menuItem.dataValues.id,
             icon: menuItem.dataValues.icon_class,
             title: menuItem.dataValues.menu_name,
             type: "link",
@@ -209,12 +206,15 @@ const menuListUserPermission = async (req, res, next) => {
       }
 
       await getMenuData();
-      var filteredMenu = main_menu.filter((f) => menuId?.some((d) => d.menu_id == f.id && d.isView == true));
-      res.filteredMenu = filteredMenu ? filteredMenu : main_menu;
+
+      var filteredMenu = main_menu.filter((f) =>
+        menuId?.some((d) => d.menu_id == f.id && d.isView == true)
+      );
+
+      res.filteredMenu = filteredMenu ? [{ Items: filteredMenu }] : [{ Items: [] }];
 
       next();
-    } else if (user_type == 'AC') {
-
+    } else if (user_type == "AC") {
       res.filteredMenu = [
         {
           Items: [
@@ -293,17 +293,17 @@ const menuListUserPermission = async (req, res, next) => {
               ],
             },
           ],
-        }
-      ]
-      next()
+        },
+      ];
+      next();
     }
   } catch (error) {
-    console.log(error)
+    console.log(error);
   }
-}
+};
 module.exports = {
   Admin: Admin,
   customer: customer,
   aasra: aasra,
-  menuListUserPermission: menuListUserPermission
+  menuListUserPermission: menuListUserPermission,
 };

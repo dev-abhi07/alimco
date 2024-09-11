@@ -139,7 +139,7 @@ exports.sparePartsList = async (req, res) => {
                 part_name: record.part_name,
                 part_number: record.part_number,
                 description: record.description,
-                category: record.categories.category_name,
+                category: record?.categories?.category_name,
                 category_id: record.category,
                 manufacturer: record.manufacturer,
                 unit_price: record.unit_price,
@@ -153,11 +153,10 @@ exports.sparePartsList = async (req, res) => {
                 uom_name: vv ? vv.unit_of_measurement : '-'
             };
 
-            console.log(values)
+            
             data.push(values);
 
-        }));
-
+        }));        
         Helper.response(
             "success",
             "Record Found Successfully",

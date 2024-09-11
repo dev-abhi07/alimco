@@ -57,7 +57,7 @@ exports.createOrder = async (req, res) => {
         total_order['shipping_charges'] = shipping
         total_order['order_status'] = orderStatus.label
         total_order['supplier_name'] = supplier_name.label
-
+      
         total_order['order_date'] = new Date().toISOString().slice(0, 10),
             total_order['notes'] = notes
 
@@ -96,7 +96,7 @@ exports.createOrder = async (req, res) => {
 
 exports.orderList = async (req, res) => {
     try {
-        
+
         const token = req.headers['authorization'];
         const string = token.split(" ");
         const user = await users.findOne({ where: { token: string[1] } });
@@ -111,21 +111,18 @@ exports.orderList = async (req, res) => {
         let orderWithImageUrls;
         if (req.body.startDate === null && req.body.endDate === null) {
             if (req.body.stock === true) {
-                if (user.user_type == 'S') {
+                if (user.user_type == 'S' || user.user_type == 'A') {
                     orderWithImageUrls = await orderModel.findAll({
-                       
-                        order: [
-                            ['id', 'DESC']
+                        order:[
+                            ['id','DESC']
                         ],
                         where: {
                             payment_status: 'Paid'
                         }
                     })
-
                     
-
                 } else {
-                    orderWithImageUrls = await orderModel.findAll({ order: [['id', 'DESC']], where: { aasra_id: user.ref_id, payment_status: 'Paid' } })
+                    orderWithImageUrls = await orderModel.findAll({ order:[['id','DESC']],where: { aasra_id: user.ref_id, payment_status: 'Paid' } })
                 }
                 const order = orderWithImageUrls.map(o => {
                     if (o.image) {
@@ -135,12 +132,10 @@ exports.orderList = async (req, res) => {
                 });
             } else {
 
-                if (user.user_type == 'S') {
-                    orderWithImageUrls = await orderModel.findAll({ 
-                        order: [['id', 'DESC']]
-                 })
+                if (user.user_type == 'S' || user.user_type == 'A') {
+                    orderWithImageUrls = await orderModel.findAll({order:[['id','DESC']]})
                 } else {
-                    orderWithImageUrls = await orderModel.findAll({ order: [['id', 'DESC']], where: { aasra_id: user.ref_id } })
+                    orderWithImageUrls = await orderModel.findAll({ order:[['id','DESC']],where: { aasra_id: user.ref_id } })
                 }
                 const order = orderWithImageUrls.map(o => {
                     if (o.image) {
@@ -151,9 +146,9 @@ exports.orderList = async (req, res) => {
             }
         } else if (req.body.startDate !== null && req.body.endDate !== null) {
             if (req.body.stock === true) {
-                if (user.user_type == 'S') {
+                if (user.user_type == 'S' || user.user_type == 'A') {
                     orderWithImageUrls = await orderModel.findAll({
-                        order: [['id', 'DESC']],
+                        order:[['id','DESC']],
                         where: {
                             payment_status: 'Paid',
                             createdAt: {
@@ -164,18 +159,18 @@ exports.orderList = async (req, res) => {
                     })
                 } else {
                     orderWithImageUrls = await orderModel.findAll(
-                        {
-                            order: [
-                                ['id', 'DESC']
+                        { 
+                            order:[
+                                ['id','DESC']
                             ],
-                            where:
-                            {
-                                aasra_id: user.ref_id, payment_status: 'Paid'
-                            }
+                            where: 
+                            { 
+                                aasra_id: user.ref_id, payment_status: 'Paid' 
+                            } 
                         }
                     )
 
-
+                    
                 }
                 const order = orderWithImageUrls.map(o => {
                     if (o.image) {
@@ -183,14 +178,14 @@ exports.orderList = async (req, res) => {
                     }
                     return o;
                 });
-            }
+            } 
             else {
 
-                if (user.user_type == 'S') {
-                    orderWithImageUrls = await orderModel.findAll({ order: [['id', 'DESC']] })
+                if (user.user_type == 'S'|| user.user_type == 'A') {
+                    orderWithImageUrls = await orderModel.findAll({order:[['id','DESC']]})
                 } else {
-                    orderWithImageUrls = await orderModel.findAll({ order: [['id', 'DESC']], where: { aasra_id: user.ref_id } })
-
+                    orderWithImageUrls = await orderModel.findAll({ order:[['id','DESC']],where: { aasra_id: user.ref_id } })
+                    
                 }
                 const order = orderWithImageUrls.map(o => {
                     if (o.image) {
@@ -214,14 +209,14 @@ exports.orderList = async (req, res) => {
             return;
         }
         const orders = await Promise.all(orderWithImageUrls.map(async (o) => {
-
+            
             const aasraData = await aasra.findOne({ where: { id: o.aasra_id } });
-
+        
             let cgst = 0;
             let sgst = 0;
-            const stateDetails = await states.findOne({ where: { id: aasraData?.state } })
-
-            if (stateDetails.name !== 'UTTAR PRADESH') {
+            const stateDetails =   await states.findOne({where:{id:aasraData?.state}})
+            
+            if(stateDetails.name !== 'UTTAR PRADESH'){
                 cgst = o.gst / 2;
                 sgst = o.gst / 2;
             }
@@ -241,7 +236,7 @@ exports.orderList = async (req, res) => {
                 transaction_id: o.transaction_id,
                 paid_amount: o.paid_amount,
                 due_amount: o.due_amount,
-                payment_date: o.payment_date == null ? null :Helper.formatISODateTime(o.payment_date),
+                payment_date: Helper.formatISODateTime(o.payment_date),
                 dps_value: o.dps_value,
                 dps_date: o.dps_date,
                 dps_no: o.dps_no,
@@ -249,8 +244,8 @@ exports.orderList = async (req, res) => {
                 stock_transfer: o.stock_transfer,
                 discount: o.discount,
                 image: o.image ? o.image.replace('public/', '') : null,
-                sgst: sgst,
-                cgst: cgst,
+                sgst: sgst,  
+                cgst: cgst, 
                 orderData: [],
                 payment: {},
                 aasra: {},
@@ -321,9 +316,13 @@ exports.orderList = async (req, res) => {
         });
 
 
-        Helper.response("success", "Order list", {order: ordersWithDetails}, res, 200)
-    } catch (error) {
+        Helper.response("success", "Order list", {
+            order: ordersWithDetails,
 
+        }, res, 200)
+    } catch (error) {
+        console.log(error,'wdwdwdwde')
+        return false 
         Helper.response("error", "Something went wrong", error, res, 200)
     }
 }
@@ -350,7 +349,7 @@ exports.orderTransfer = async (req, res) => {
         let orderWithImageUrls;
 
         if (aasra_id === undefined) {
-            if (user.user_type == 'S') {
+            if (user.user_type == 'S' || user.user_type == 'A') {
                 orderWithImageUrls = await orderModel.findAll({
                     where: {
                         createdAt: {
@@ -372,7 +371,7 @@ exports.orderTransfer = async (req, res) => {
         }
         if (req.body.startDate === null && req.body.endDate === null) {
 
-            if (user.user_type == 'S') {
+            if (user.user_type == 'S' || user.user_type == 'A') {
                 orderWithImageUrls = await orderModel.findAll({
                     where: {
                         aasra_id: aasra_id,
@@ -389,7 +388,7 @@ exports.orderTransfer = async (req, res) => {
             }
         }
         if (startDate !== null && aasra_id !== undefined) {
-            if (user.user_type == 'S') {
+            if (user.user_type == 'S' || user.user_type == 'A') {
                 orderWithImageUrls = await orderModel.findAll({
                     where: {
                         aasra_id: aasra_id,
@@ -506,7 +505,7 @@ exports.orderTransfer = async (req, res) => {
                     invoice: allPayments[index].invoice,
                     PO_number: allPayments[index].PO_number,
                     invoice_number: allPayments[index].invoice_number,
-                    createdAt: Helper.formatISODateTime(allPayments[index].createdAt),
+                    createdAt: Helper.formatDateTime(allPayments[index].createdAt),
                 } : {},
                 aasra: allAasraDetails[index] || {},
 
@@ -583,7 +582,7 @@ exports.orderDetails = async (req, res) => {
 
         let orderWithImageUrls;
 
-        if (user.user_type === 'S') {
+        if (user.user_type === 'S' || user.user_type == 'A') {
             orderWithImageUrls = await orderModel.findOne({
                 where: { id: order_id },
             });
@@ -604,17 +603,17 @@ exports.orderDetails = async (req, res) => {
         }
 
         const aasraData = await aasra.findOne({ where: { id: orderWithImageUrls.aasra_id } });
-
-        const stateDetails = await states.findOne({ where: { id: aasraData.state } })
+       
+        const stateDetails =   await states.findOne({where:{id:aasraData.state}})
         let cgst = 0;
         var sgst = 0;
-
-        if (stateDetails.name !== 'UTTAR PRADESH') {
+       
+        if(stateDetails.name !== 'UTTAR PRADESH'){
             cgst = orderWithImageUrls.gst / 2;
-            sgst = orderWithImageUrls.gst / 2;
-
+            sgst = orderWithImageUrls.gst / 2 ;
+            
         }
-
+      
         const order = {
             id: orderWithImageUrls.id,
             aasra_id: orderWithImageUrls.aasra_id,
@@ -631,7 +630,7 @@ exports.orderDetails = async (req, res) => {
             transaction_id: orderWithImageUrls.transaction_id,
             paid_amount: orderWithImageUrls.paid_amount,
             due_amount: orderWithImageUrls.due_amount,
-            payment_date: Helper.formatISODateTime(orderWithImageUrls.payment_date),
+            payment_date: orderWithImageUrls.payment_date,
             dps_value: orderWithImageUrls.dps_value,
             dps_date: orderWithImageUrls.dps_date,
             dps_no: orderWithImageUrls.dps_no,
@@ -639,8 +638,8 @@ exports.orderDetails = async (req, res) => {
             notes: orderWithImageUrls.notes,
             stock_transfer: orderWithImageUrls.stock_transfer,
             discount: orderWithImageUrls.discount,
-            cgst: cgst,
-            sgst: sgst,
+            cgst :cgst,
+            sgst :sgst ,
             orderData: [],
             payment: {},
             aasra: {},
@@ -663,7 +662,7 @@ exports.orderDetails = async (req, res) => {
                 order_id: order.id
             }
         });
-
+        
         const [allOrderDetails, aasraDetails, paymentDetails] = await Promise.all([
             orderDetailsPromises,
             aasraPromise,
@@ -754,7 +753,7 @@ exports.stockList = async (req, res) => {
         const string = token.split(" ");
         const user = await users.findOne({ where: { token: string[1] } });
 
-        if (user.user_type == 'S') {
+        if (user.user_type == 'S' || user.user_type == 'A') {
 
             var stockDataList = await stock.findAll(
                 {
@@ -836,7 +835,7 @@ exports.stockList = async (req, res) => {
 
                 const item = await spareParts.findByPk(t.item_id)
 
-
+             
                 const values = {
                     item_id: t.item_id,
                     stock_in: t.stock_in,
@@ -906,7 +905,7 @@ exports.transactionList = async (req, res) => {
         const startDate = await Helper.formatDate(new Date(req.body.startDate));
         const endDate = await Helper.formatDate(new Date(req.body.endDate));
 
-        if (user.user_type == 'S') {
+        if (user.user_type == 'S'|| user.user_type == 'A') {
             var transactionList = await repairPayments.findAll({
                 where: {
                     aasra_id: req.body.aasra_id, createdAt: {

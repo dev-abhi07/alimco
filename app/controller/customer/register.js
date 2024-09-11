@@ -90,7 +90,7 @@ exports.otpVerify = async (req, res) => {
                 }
             )
                       
-            Helper.response('success', 'Login Successfully', { user_data: { id: checkUser.id, name: checkUser.name, user_type: checkUser.user_type, token: token, udid: checkUser.udid,ref_id:checkUser.ref_id} }, res, 200);
+            Helper.response('success', 'Login Successfully', { user_data: { id: checkUser.id, name: checkUser.name, user_type: checkUser.user_type, token: token, udid: req.body.udid,ref_id:checkUser.ref_id} }, res, 200);
         }
 
         else {

@@ -42,6 +42,10 @@ const users = sequelize.define('user', {
     udid:{
         type:DataTypes.STRING,
         allowNull:true
+    },
+    unique_code:{
+        type:DataTypes.STRING,
+        allowNull:true
     }
 });
 

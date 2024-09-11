@@ -79,7 +79,7 @@ const order = sequelize.define('order', {
     dps_date: {
         type: DataTypes.STRING,
         allowNull: true,
-        defaultValue: 0
+        defaultValue: null
     },
     dps_no: {
         type: DataTypes.STRING,

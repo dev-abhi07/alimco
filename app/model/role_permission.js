@@ -15,6 +15,10 @@ const role_permission = sequelize.define('rolepermission', {
         type: DataTypes.INTEGER,
         field: 'user_type'
     },
+    role_id: {
+        type: DataTypes.INTEGER,
+        allowNull:true,
+    },
     menu_id: {
         type: DataTypes.INTEGER,
         type: DataTypes.INTEGER,
@@ -23,8 +27,6 @@ const role_permission = sequelize.define('rolepermission', {
     },
     submenu_id: {
         type: DataTypes.INTEGER,
-
-
 
     },
     isView: {

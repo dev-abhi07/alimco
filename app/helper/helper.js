@@ -51,13 +51,14 @@ Helper.formatDateTime = (time) => {
 
     return formattedDate;
 };
+
 Helper.getMenuByRole = async (userid) => {
     try {
 
 
         const userId = userid
-
-        UserPermissions.findAll({
+        
+       const data= UserPermissions.findAll({
             attributes: [
                 'menu_id',
                 [sequelize.col('menu.menu_name'), 'menu_name'],
@@ -79,46 +80,44 @@ Helper.getMenuByRole = async (userid) => {
                 userid: userId
             },
 
-        }).then(userpermissions => {
-            return userpermissions
-        }).catch(error => {
-            console.error('Error fetching data:', error);
-        });
-
+        })
+        return data
     } catch (err) {
         console.log(err)
     }
 };
 Helper.getSubMenuPermission = async (id, userid) => {
-    UserPermissions.findAll({
-        attributes: [
-            'menu_id',
-            [sequelize.col('menu.menu_name'), 'menu_name'],
-            'isView',
-            'isCreate',
-            'isUpdate'
-        ],
-        include: [
-            {
-                model: Roles,
-                attributes: []
+    try {
+        const data=UserPermissions.findAll({
+            attributes: [
+                'menu_id',
+                [sequelize.col('menu.menu_name'), 'menu_name'],
+                'isView',
+                'isCreate',
+                'isUpdate'
+            ],
+            include: [
+                {
+                    model: Roles,
+                    attributes: []
+                },
+                {
+                    model: Menus,
+                    attributes: []
+                }
+            ],
+            where: {
+                userid: userid,
+                submenu_id: id
             },
-            {
-                model: Menus,
-                attributes: []
-            }
-        ],
-        where: {
-            userid: userid,
-            submenu_id: id
-        },
-
-    }).then(userpermissions => {
-        console.log("ssss", userpermissions)
-        return userpermissions
-    }).catch(error => {
-        console.error('Error fetching data:', error);
-    });
+    
+        })
+    return data
+    } catch (error) {
+        console.log(error)
+    }
+  
+   
 
 };
 
@@ -288,7 +287,7 @@ Helper.compareDate = (dates) => {
         let warranty;
 
         if (cleanCurrentDate.getTime() <= cleanDateToCompare.getTime()) {
-            warranty = false;
+            warranty = true ;
 
         } else {
             warranty = false;

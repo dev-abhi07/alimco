@@ -483,7 +483,7 @@ exports.ticketList = async (req, res) => {
     const startDate = startDatesplit.split(" ")[0] + " " + "00:00:00";
     const endDate = splitDate.split(" ")[0] + " " + "23:59:59";
      
-    if (user.user_type == 'S') {
+    if (user.user_type == 'S' || user.user_type == 'A') {
       const aasra_id = req.body.aasra_id;
 
 
@@ -1147,7 +1147,7 @@ exports.servicehistorylist = async (req, res) => {
       );
       return;
     }
-    if (user.user_type == 'S') {
+    if (user.user_type == 'S' || user.user_type == 'A') {
       const userDetails = await users.findOne({ where: { udid: req.body.udid } });
      
       if (userDetails.length === 0 ) {
@@ -1224,6 +1224,7 @@ exports.servicehistorylist = async (req, res) => {
             appointment_date: record.appointment_date,
             appointment_time: record.appointment_time,
             status: record.status == 0 ? 'Pending' : record.status == 1 ? 'Open' : 'Closed',
+            udid:req.body.udid,
             sr_no: count + 1,
           }
           ticketData.push(dataValue)
@@ -1284,6 +1285,7 @@ exports.servicehistorylist = async (req, res) => {
             appointment_time: record.appointment_time,
             status: record.status == 0 ? 'Pending' : record.status == 1 ? 'Open' : 'Closed',
             sr_no: count + 1,
+            udid:req.body.udid,
           }
           ticketData.push(dataValue)
         })

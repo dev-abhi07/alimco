@@ -22,7 +22,7 @@ const user_permission = sequelize.define('userpermission',{
     },
     submenu_id:{
         type:DataTypes.INTEGER,
-        allowNull:true,
+        allowNull:true, 
     },
     menu_id:{
         type:DataTypes.INTEGER,

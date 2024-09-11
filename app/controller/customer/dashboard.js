@@ -42,7 +42,7 @@ exports.dashboard = async (req, res) => {
             },
             where: {
                 state: req.body.state_id,
-                aasra_type: req.body.aasra_type
+                // aasra_type: req.body.aasra_type
             }
         });
 

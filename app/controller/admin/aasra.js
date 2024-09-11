@@ -10,7 +10,7 @@ const document = require("../../model/documents");
 const { default: test } = require("node:test");
 const city = require("../../model/city");
 const states = require("../../model/state");
-const { where, Op, or , fn, col } = require("sequelize");
+const { where, Op, or, fn, col } = require("sequelize");
 const spareParts = require("../../model/spareParts");
 const labour_charges = require('../../model/labour_charges');
 const aasraType = require("../../model/aasratype");
@@ -42,7 +42,7 @@ exports.registerAasraCentre = async (req, res) => {
                 transformedFields[key] = fields[key][0];
             }
 
-           
+
             const emailValidate = await users.count({
                 where: {
                     email: transformedFields.email
@@ -57,16 +57,16 @@ exports.registerAasraCentre = async (req, res) => {
 
             if (mobileValidate > 0 || emailValidate > 0) {
 
-                return Helper.response("failed",  emailValidate > 0?  'Email already exists' : 'Mobile already exists', {}, res, 200);
+                return Helper.response("failed", emailValidate > 0 ? 'Email already exists' : 'Mobile already exists', {}, res, 200);
             }
 
-           
+
             try {
 
 
 
                 const createAasra = await aasra.create({
-                    ...transformedFields                    
+                    ...transformedFields
                 });
 
                 if (createAasra) {
@@ -81,7 +81,7 @@ exports.registerAasraCentre = async (req, res) => {
                         const createUser = await users.create({
                             name: createAasra.name,
                             ref_id: createAasra.id,
-                            user_type:  'AC' ,
+                            user_type: 'AC',
                             email: createAasra.email,
                             password: Helper.encryptPassword(password),
                             pass_code: password,
@@ -247,7 +247,7 @@ exports.updateAasraCenter = async (req, res) => {
                                 }
                             }
 
-                            const updateFields = { ...transformedFieldsFile};
+                            const updateFields = { ...transformedFieldsFile };
 
                             const documentData = await document.update(
                                 updateFields,
@@ -309,23 +309,82 @@ exports.categoryWiseProduct = async (req, res) => {
 }
 
 
+// exports.productRepairList = async (req, res) => {
+//     try {
+//         const { repair_id } = req.body
+//         const product = await labour_charges.findAll()
+//         const data = product.map((f) => {
+//             const productData = {
+//                 value: f.id,
+//                 label: f.natureOfWork,
+//                 repairServiceCharge: f.labourCharges,
+//                 repairTime: f.repairTime,
+//                 repairPrice: 45,
+//                 repairGst: 0.18
+//             }
+//             return productData
+//         })
+//         Helper.response("success", "Product Found Successfully!", data, res, 200);
+//     } catch (error) {
+//         Helper.response("failed", "Server error", error, res, 200);
+//     }
+// }
+
 exports.productRepairList = async (req, res) => {
     try {
+        const token = req.headers['authorization'];
+        const string = token.split(" ");
+        const user = await users.findOne({ where: { token: string[1] } });
+        const aasras = await aasra.findOne({ where: { id: user.ref_id } })
         const { repair_id } = req.body
+        let data = [];
         const product = await labour_charges.findAll()
-        const data = product.map((f) => {
-            const productData = {
-                value: f.id,
-                label: f.natureOfWork,
-                repairServiceCharge: f.labourCharges,
-                repairTime: f.repairTime,
-                repairPrice: 45,
-                repairGst: 0.18
-            }
-            return productData
-        })
+        if(aasras == null){
+            
+            data = product.map((f) => {
+                const productData = {
+                    value: f.id,
+                    label: f.natureOfWork,
+                    repairServiceCharge: f.labourCharges,
+                    repairTime: f.repairTime,
+                    finalLabourCharges: f.finalLabourCharges,
+                    repairPrice:45,
+                    repairGst: 0.18
+                }
+                return productData
+            })
+        }
+        else if(aasras!=null && aasras.aasra_type=='RMC' || aasras.aasra_type=='PMDK' || aasras.aasra_type=='HQ' || aasras.aasra_type=='AAPC'){
+            data = product.map((f) => {
+                const productData = {
+                    value: f.id,
+                    label: f.natureOfWork,
+                    repairServiceCharge: 0,
+                    repairTime: f.repairTime,
+                    repairPrice: 0,
+                    repairGst: 0
+                }
+                return productData
+            })
+        }else{
+            data = product.map((f) => {
+                const productData = {
+                    value: f.id,
+                    label: f.natureOfWork,
+                    repairServiceCharge: f.labourCharges,
+                    repairTime: f.repairTime,
+                    finalLabourCharges: f.finalLabourCharges,
+                    repairPrice:45,
+                    repairGst: 0.18
+                }
+                return productData
+            })
+        }
+
         Helper.response("success", "Product Found Successfully!", data, res, 200);
+       
     } catch (error) {
+        console.log(error, 'eror')
         Helper.response("failed", "Server error", error, res, 200);
     }
 }
@@ -521,62 +580,62 @@ exports.aasraTypeupdate = async (req, res) => {
 
 exports.stocktransferupdate = async (req, res) => {
     try {
-        
-        const orderId =   await order.findOne({
-            where:{
-                id:req.body.order_id
+
+        const orderId = await order.findOne({
+            where: {
+                id: req.body.order_id
             }
         })
-       if(!orderId){
-         return  Helper.response(
-            "failed",
-            "Record Not Found!",
-            {},
-            res,
-            200
-        );
-       }
-        
-        const orderDetailsId = await orderDetails.findAll({
-            where:{
-                order_id:orderId.id
-            }
-        })
-        if(!orderDetailsId){
-          return  Helper.response(
-             "failed",
-             "Record Not Found!",
-             {},
-             res,
-             200
-         );
+        if (!orderId) {
+            return Helper.response(
+                "failed",
+                "Record Not Found!",
+                {},
+                res,
+                200
+            );
         }
 
-        if(orderDetailsId){
-              orderDetailsId.map(async(t) => {
+        const orderDetailsId = await orderDetails.findAll({
+            where: {
+                order_id: orderId.id
+            }
+        })
+        if (!orderDetailsId) {
+            return Helper.response(
+                "failed",
+                "Record Not Found!",
+                {},
+                res,
+                200
+            );
+        }
+
+        if (orderDetailsId) {
+            orderDetailsId.map(async (t) => {
                 await stock.create({
                     item_id: t.item_id,
                     quantity: t.quantity,
                     price: t.price,
                     item_name: t.item_name,
                     quantity: t.quantity,
-                    aasra_id:orderId.aasra_id,
-                    stock_in:t.quantity
+                    aasra_id: orderId.aasra_id,
+                    stock_in: t.quantity
                 });
-              })
+            })
         }
 
         if (orderDetailsId) {
             await order.update({
-               order_status: req.body.status
+                order_status: req.body.status
             }, {
                 where: {
                     id: req.body.order_id
                 }
             });
         }
-    
-      
+
+
         Helper.response(
             "success",
             "Record Update Successfully",
@@ -598,25 +657,25 @@ exports.importUser = async (req, res) => {
     try {
         const filePath = req.file.path;
 
-        
+
         const workbook = XLSX.readFile(filePath);
         const sheetName = workbook.SheetNames[0];
         const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
 
-  
+
         for (const row of sheetData) {
             const createAasra = await aasra.create({
-                name_of_org: row.centre_name,         
+                name_of_org: row.centre_name,
                 address: row.address,
                 state: row.state_id,
                 district: row.city_id,
                 mobile_no: row.contact_details,
                 email: row.email_id,
                 name: row.contact_person,
-                aasra_type :row.type,
+                aasra_type: row.type,
             });
 
-           
+
             const password = generate_pass.generate({
                 length: 8,
                 numbers: true,
@@ -624,20 +683,20 @@ exports.importUser = async (req, res) => {
                 lowercase: true,
             });
 
-            
+
             const createUser = await users.create({
-                name: createAasra.name_of_org ,
+                name: createAasra.name_of_org,
                 ref_id: createAasra.id,
                 user_type: 'AC',
                 email: createAasra.email,
                 password: Helper.encryptPassword(password),
                 pass_code: password,
-                mobile: createAasra.mobile_spoc ,
+                mobile: createAasra.mobile_spoc,
                 status: 1,
             });
         }
 
-        
+
         fs.unlinkSync(filePath);
 
         Helper.response(

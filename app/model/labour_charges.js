@@ -21,7 +21,7 @@ const labour_charges = sequelize.define('labour_charges', {
     finalLabourCharges: {
         type: DataTypes.INTEGER,
         allowNull: false
-    }
+    },
 });  
 
 // sequelize.sync()

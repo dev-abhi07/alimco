@@ -14,6 +14,7 @@ const user_permission = require("../../model/user_permission");
 
 
 exports.getUserList = async (req, res) => {
+
   try {
     const users = await UserModel.findAll({
       order: [["id", "DESC"]],
@@ -28,7 +29,7 @@ exports.getUserList = async (req, res) => {
 
           // console.log(district.rows[0])
           return {
-            role: role?.role ?? user.user_type,
+            role: role?.user_type,
             id: user.id,
             name: user.name,
             password: user?.pass_code,
@@ -36,7 +37,8 @@ exports.getUserList = async (req, res) => {
             user_type: role?.id,
             email: user?.email,
             password: user?.pass_code,
-            status: user?.status
+            status: user?.status,
+            unique_code:user?.unique_code
           };
         })
       );
@@ -53,7 +55,8 @@ exports.getUserList = async (req, res) => {
           user_type_id: e.user_type,
           password: e.password ? e.password : "-",
           status: e.status,
-          email: e.email
+          email: e.email,
+          unique_code:e.unique_code
         });
       });
 
@@ -70,10 +73,10 @@ exports.userCreate = async (req, res) => {
     const { email, user_type, name, mobile, status, password } = req.body
 
     if (!email || !user_type || !name || !mobile || !status || !password) {
-      return Helper.response("Failed", "All fields are required", {}, res, 200);
+      return Helper.response("failed", "All fields are required", {}, res, 200);
     }
     if (user_type != 'S' && user_type != 'A') {
-      return Helper.response("Failed", "Enter correct user type", {}, res, 200);
+      return Helper.response("failed", "Enter correct user type", {}, res, 200);
     }
 
     const userEmail = await UserModel.findOne({ where: { email: email } });
@@ -105,11 +108,30 @@ exports.userCreate = async (req, res) => {
     const encryptPassword = await Helper.encryptPassword(password)
 
     const user = await UserModel.create({ email, user_type, name, mobile, status, pass_code: password, password: encryptPassword })
-
+    const user_id = await UserModel.findOne({ where: { email: req.body.email } });
+    const getRolePermission = await role_permission.findAll({
+      where: { roleId: req.body.user_type },
+    });
+    getRolePermission.forEach(async (d) => {
+      const data = {
+        userid: user_id?.dataValues.id,
+        submenu_id: d.dataValues?.submenu_id,
+        menu_id: d.dataValues?.menu_id,
+        roleId: d.dataValues?.roleId,
+        isView: d.dataValues?.isView,
+        isCreate: d.dataValues?.isCreate,
+        isUpdate: d.dataValues?.isUpdate,
+        isDelete: d.dataValues?.isDelete,
+      };
+      const permission = await user_permission.create(data);
+      if (permission) {
+        console.log("permission is given Successfully");
+      }
+    });
     Helper.response("success", "Record Created Successfully", user, res, 200);
   } catch (error) {
     console.log(error)
-    Helper.response("failed", "Unable to create User", error?.errors[0].message, res, 200)
+    Helper.response("failed", "Unable to create User", error, res, 200)
   }
 }
 
@@ -192,7 +214,7 @@ exports.getUserPermission = async (req, res) => {
 };
 exports.rolePermission = async (req, res) => {
   try {
-    const reqData = req.body.data;
+    const reqData = req.body.permissions;
 
     const role_id = req.body.role_id;
 
@@ -257,30 +279,31 @@ exports.RoleList = async (req, res) => {
   try {
     const role = await Role.findAll({ order: [["role", "ASC"]] });
 
-        const data = [];
-        role.map((element) => {
-            const value = {
-              id: element.dataValues.id,
-              user_type: element.dataValues.user_type,
-              value: element.dataValues.id,
-              label: element.dataValues.role,
-            }
-            data.push(value)
-        });
-        
-        Helper.response(
-            "success",
-            "Record Fetched Successfully",
-            { data },
-            res,
-            200
-        );
-    
+    const data = [];
+    role.map((element) => {
+      const value = {
+        id: element.dataValues.id,
+        user_type: element.dataValues.user_type,
+        value: element.dataValues.id,
+        label: element.dataValues.role,
+      }
+      data.push(value)
+    });
+
+    Helper.response(
+      "success",
+      "Record Fetched Successfully",
+      { data },
+      res,
+      200
+    );
+
   } catch (error) {
 
     Helper.response("failed", "Record Not Found", { error }, res, 200);
   }
 };
+
 exports.getRolePermission = async (req, res) => {
   try {
     const isView = false;
@@ -369,8 +392,19 @@ exports.userPermission = async (req, res) => {
     // const user = await UserModel.getUser({ token: string[1] });
     const user_id = req.body.user_id;
 
-    const role_id = (await UserModel.findByPk(user_id)).dataValues.user_type;
+    // const role_id = (await UserModel.findByPk(user_id)).dataValues.user_type;
+    // console.log(role_id,'')
+    const role_id = await UserModel.findOne({
+      where: {
+        id: user_id
+      }
+    })
 
+    const roleId = await Role.findOne({
+      where: {
+        user_type: role_id.user_type
+      }
+    })
     const userdata = await user_permission.destroy({
       where: { userid: user_id },
     });
@@ -386,8 +420,8 @@ exports.userPermission = async (req, res) => {
 
           const updateData = {
             userid: req.body.user_id,
-            userType: role_id,
-            // roleId: role_id,
+            userType: role_id.user_type,
+            // role_id: roleId.id,
             menu_id: menu_id,
             submenu_id: submenu_id,
             isView: isView,
@@ -412,8 +446,8 @@ exports.userPermission = async (req, res) => {
 
           const updateData = {
             userid: req.body.user_id,
-            userType: role_id,
-            // roleId: role_id,
+            userType: role_id.user_type,
+            // role_id: roleId.id,
             menu_id: menu_id,
             submenu_id: submenu_id,
             isView: isView,
@@ -445,7 +479,7 @@ exports.userStatusUpdate = async (req, res) => {
       }
     })
     if (!userStatus) {
-     return Helper.response(
+      return Helper.response(
         "failed",
         "user not found!",
         {},

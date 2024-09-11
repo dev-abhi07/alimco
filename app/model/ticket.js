@@ -53,6 +53,10 @@ const ticket = sequelize.define('ticket', {
     problem: {
         type: DataTypes.STRING,
         allowNull: true,
+    },
+    job_description:{
+        type:DataTypes.TEXT,
+        allowNull:true
     }
     
     

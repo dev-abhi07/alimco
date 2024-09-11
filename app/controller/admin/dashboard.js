@@ -24,7 +24,13 @@ exports.Dashboard = (req, res) => {
 
 exports.states = async (req, res) => {
     try {
-        const state = await states.findAll()
+        const state = await states.findAll(
+            {
+                order:[
+                    ['name','ASC']
+                ]
+            }
+        )
         const stateData = [];
         state.map(async (record) => {
             const values = {
@@ -82,7 +88,6 @@ exports.repair = async (req, res) => {
     try {
 
         const aasra = req.body.aasra_id;
-        const warranty = req.body.warranty;
         const ticketDetails = await ticket.findAll({
             where: {
                 aasra_id: aasra,
@@ -101,14 +106,13 @@ exports.repair = async (req, res) => {
         }
 
         const ticketIds = ticketDetails.map(ticket => ticket.ticket_id);
-        if (warranty) {
-            var repairs = await repair.findAll({
-                where: {
-                    warranty: warranty,
-                    ticket_id: ticketIds
-                }
-            });
-        }
+        
+        var repairs = await repair.findAll({
+            where: {
+                warranty: req.body.warranty,
+                ticket_id: ticketIds
+            }
+        });
 
         Helper.response(
             "success",
