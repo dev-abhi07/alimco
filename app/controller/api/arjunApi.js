@@ -3,7 +3,7 @@ const axios = require('axios');
 const Helper = require('../../helper/helper');
 
 exports.arjunApi = (req, res, next) => {
-  const UDID = req.body.udid
+  const UDID = req.body.udid ? req.body.udid : req.body.userData.udid
 
   if (UDID.length == 12) {
     url = `https://adip.depwd.gov.in/api/CRM/GetBeneficiaryDetail?SearchType=searchAadhaar&Udid=0&UdidEnroll=0&Aadhaar=${UDID}`;

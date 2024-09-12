@@ -69,16 +69,14 @@ exports.createCustomerTicket = async (req, res) => {
 }
 
 exports.ticketList = async (req, res) => {
-    // msg = "fssdfsdf" ;
-    // var content = {
-    //     title: "Order Status",
-    //     body: msg,
-    //   };
-    //   Helper.pushNotification(req.headers['authorization'],content)
-
+   
+   
     try {
+
+      
+       
         const userId = await Helper.getUserId(req)
-        //console.log(userId)
+        
         const tickets = await ticket.findAll({
             order:[
                 ['id','DESC']
@@ -104,6 +102,7 @@ exports.ticketList = async (req, res) => {
 
                 const getAasra = await aasra.findByPk(record.aasra_id)
                 const data = {
+                    id:record.id,
                     aasraId: record.aasraId,
                     customerName: getUser?.name,
                     itemName: record.itemName,
@@ -121,7 +120,7 @@ exports.ticketList = async (req, res) => {
 
             })
         )
-        const ticketDataset = ticketData != '' ? ticketData : null
+        const ticketDataset = ticketData != '' ? ticketData.sort((a, b) => b.id - a.id) : null
         if (ticketDataset != null) {
             Helper.response(
                 "success",

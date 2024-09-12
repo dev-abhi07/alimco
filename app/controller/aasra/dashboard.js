@@ -19,6 +19,7 @@ exports.Dashboard = async (req, res) => {
     const user = await users.findOne({ where: { token: string[1] } });
     if (user.user_type == 'S') {
 
+     
       var data = [
         { id: 1, count: await ticket.count(), type: "Total Tickets", imgSrc: 'tickets.png' },
         { id: 2, count: await ticket.count({ where: { status: 0 } }), type: "Pending Tickets", imgSrc: 'tickets.png' },
@@ -30,7 +31,7 @@ exports.Dashboard = async (req, res) => {
           ['id','DESC']
         ]
       })
-      console.log(tickets)
+      console.log(tickets,34343434)
       const ticketData = [];
       var subtotal = 0
       await Promise.all(
@@ -589,6 +590,8 @@ exports.ticketList = async (req, res) => {
               discount = t.record == 1 ? 100 : 0;
             })
 
+            
+
             const dataValue = {
               aasraId: record.aasraId,
               customer_name: getUser.name,
@@ -602,6 +605,7 @@ exports.ticketList = async (req, res) => {
               ticket_id: record.ticket_id,
               aasraName: getAasra.name_of_org,
               status: record.status == 0 ? 'Pending' : record.status == 1 ? 'Open' : 'Closed',
+              job_description:record.job_description,
               sr_no: count + 1,
               ticketDetail: (record.status == 2 || record.status == 1) ? repairDataValues : null,
               payment_status: repairPayments == 0 ? false : true,
@@ -716,6 +720,7 @@ exports.ticketList = async (req, res) => {
               address:getCustomer?.district+', '+getCustomer?.state,
               aasraName: getAasra.name_of_org,
               status: record.status == 0 ? 'Pending' : record.status == 1 ? 'Open' : 'Closed',
+              job_description:record.job_description,
               sr_no: count + 1,
               ticketDetail: (record.status == 2 || record.status == 1) ? repairDataValues : null,
               payment_status: repairPayments == 0 ? false : true,
@@ -838,6 +843,7 @@ exports.ticketList = async (req, res) => {
               aadhaar:getCustomer.aadhaar,
               aasraName: getAasra.name_of_org,
               status: record.status == 0 ? 'Pending' : record.status == 1 ? 'Open' : 'Closed',
+              job_description:record.job_description,
               sr_no: count + 1,
               ticketDetail: (record.status == 2 || record.status == 1) ? repairDataValues : null,
               payment_status: repairPayments == 0 ? false : true,
@@ -935,6 +941,7 @@ exports.ticketList = async (req, res) => {
               address:getCustomer?.district+', '+getCustomer?.state,
               aasraName: getAasra.name_of_org,
               status: record.status == 0 ? 'Pending' : record.status == 1 ? 'Open' : 'Closed',
+              job_description:record.job_description,
               sr_no: count + 1,
               ticketDetail: (record.status == 2 || record.status == 1) ? repairData : null,
               payment_status: repairPayments == 0 ? false : true,

@@ -147,8 +147,8 @@ exports.createRepair = async (req, res) => {
         // var mode = []
         var ticketId = ''
         var stocks = true
-        async function validateStock(data) {
-            const msg = [];
+        const msg = [];
+        async function validateStock(data) {            
             await Promise.all(data.map(async (record) => {
                 const checkItem = await stock.findOne({
                     attributes: [
@@ -161,7 +161,7 @@ exports.createRepair = async (req, res) => {
                 })
                 const availableStock = (checkItem.dataValues.total_stock_in || 0) - (checkItem.dataValues.total_stock_out || 0);
                 if (availableStock < record.qty || availableStock < 0) {
-                    msg.push(`Insufficient stock to process this purchase for item ID ${record.productValue}.`);
+                    msg.push(`Insufficient stock to process this purchase for item ${record.productLabel}.`);
                 }
             }))
             return msg;
@@ -171,14 +171,13 @@ exports.createRepair = async (req, res) => {
         if (validationMessages.length > 0) {
             Helper.response(
                 "failed",
-                "Stock Not Available!",
+                msg[0],
                 {},
                 res,
                 200
             );
         } else {
-            const deleteCount = await repair.destroy({ where: { ticket_id: data[0].ticket_id } })
-
+            const deleteCount = await repair.destroy({ where: { ticket_id: data[0].ticket_id } })            
             if (deleteCount == 0) {
                 data.map(async (record) => {
                     totalAmount += record.price * record.qty
@@ -209,6 +208,7 @@ exports.createRepair = async (req, res) => {
                         old_manufacturer_id: record.old_manufacturer_id,
                         new_manufacturer_id: record.new_manufacturer_id
                     }
+                    await ticket.update({job_description:record.job_description},{ where:{ticket_id: record.ticket_id}})
                     repairsCreate = await repair.create(values)
                 })
                 Helper.response(
@@ -248,6 +248,7 @@ exports.createRepair = async (req, res) => {
                         old_manufacturer_id: record.old_manufacturer_id,
                         new_manufacturer_id: record.new_manufacturer_id
                     }
+                    await ticket.update({job_description:record.job_description},{ where:{ticket_id: record.ticket_id}})
                     repairsCreate = await repair.create(values)
                 })
                 Helper.response(
@@ -260,80 +261,10 @@ exports.createRepair = async (req, res) => {
             }
 
         }
-
-
-
-
-
-        // if (deleteCount === 0) {
-
-        //     data.map(async (record) => {
-        //         const checkItem = await stock.findOne({
-        //             attributes: [
-        //                 [sequelize.fn('SUM', sequelize.col('stock_in')), 'total_stock_in'],
-        //                 [sequelize.fn('SUM', sequelize.col('stock_out')), 'total_stock_out']
-        //             ],
-        //             where: {
-        //                 item_id: record.productValue
-        //             }
-        //         })
-        //         const availableStock = (checkItem.dataValues.total_stock_in || 0) - (checkItem.dataValues.total_stock_out || 0)
-
-        //         if (availableStock < record.qty || availableStock < 0) {
-        //             msg.push('Insufficient stock to process this purchase.')
-        //         } 
-        //         else{
-        // totalAmount += record.price * record.qty
-        // serviceCharge += record.repairServiceCharge
-        // ticketId = record.ticket_id
-        // const values = {
-        //     warranty: record.warranty,
-        //     categoryValue: record.categoryValue,
-        //     categoryLabel: record.categoryLabel,
-        //     productValue: record.productValue,
-        //     productLabel: record.productLabel,
-        //     productPrice: record.productPrice,
-        //     repairValue: record.repairValue,
-        //     repairLabel: record.repairLabel,
-        //     repairServiceCharge: record.repairServiceCharge,
-        //     repairTime: record.repairTime,
-        //     repairPrice: record.repairPrice,
-        //     repairGst: record.repairGst,
-        //     qty: record.qty,
-        //     price: record.price,
-        //     serviceCharge: record.serviceCharge,
-        //     gst: record.gst,
-        //     amount: record.amount,
-        //     ticket_id: record.ticket_id,
-        //     discount: discount,
-        //     old_serial_number: record.old_sr_no,
-        //     new_serial_number: record.new_sr_no,
-        //     old_manufacturer_id: record.old_manufacturer_id,
-        //     new_manufacturer_id: record.new_manufacturer_id
-        // }
-        //             repairsCreate = await repair.create(values)
-        //             msg.push('Repair Created Successfully')
-        //         } 
-        //     })
-        //     if(msg ==0){
-        //         Helper.response(
-        //             "failed",
-        //             "Stock Not Available!",
-        //             {},
-        //             res,
-        //             200
-        //         );               
-        //     }else{
-        //         Helper.response(
-        //             "success",
-        //             "Repair Created Successfully!",
-        //             {},
-        //             res,
-        //             200
-        //         );
-        //     }
-        // }      
+    
     } catch (error) {
+
+        console.log(error)
         Helper.response(
             "failed",
             "Something went wrong!",
@@ -705,8 +636,10 @@ exports.openTicket = async (req, res) => {
 exports.sentOtpWeb = async (req, res) => {
     try {
         if (res.data.length === 0) {
-            return Helper.response('failed', 'Invalid Udid!', {}, res, 200);
+            return Helper.response('failed', 'Invalid Udid or Aadhaar', {}, res, 200);
         }
+
+        
 
         const checkUdid = await users.count({
             where: {
@@ -1014,6 +947,7 @@ exports.ticketDetails = async (req, res) => {
                 appointment_date: ticketData.appointment_date,
                 appointment_time: ticketData.appointment_time,
                 status: ticketData.status == 0 ? 'Pending' : ticketData.status == 1 ? 'Open' : 'Closed',
+                job_description:ticketData.job_description,
                 aasraName: getAasra.name_of_org,
                 subtotal: subtotal,
                 serviceCharge: serviceCharge,
@@ -1126,6 +1060,7 @@ exports.ticketDetails = async (req, res) => {
                     appointment_date: ticketData.appointment_date,
                     appointment_time: ticketData.appointment_time,
                     status: ticketData.status == 0 ? 'Pending' : ticketData.status == 1 ? 'Open' : 'Closed',
+                    job_description:ticketData.job_description,
                     aasraName: getAasra.name_of_org,
                     subtotal: subtotal,
                     serviceCharge: serviceCharge,

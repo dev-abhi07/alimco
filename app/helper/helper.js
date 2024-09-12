@@ -331,4 +331,8 @@ Helper.formatISODateTime = (isoString) => {
 
     return `${formattedDate} ${formattedTime}`;
 }
+
+Helper.maskAadhaar = (digit) => {     
+    return digit.replace(/\d{8}/, '********');
+}
 module.exports = Helper
