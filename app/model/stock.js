@@ -24,8 +24,8 @@ const stock = sequelize.define('stock', {
         allowNull:false
     },
     price:{
-        type: DataTypes.INTEGER,
-        allowNull:false
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false
     },
     stock_in:{
         type:DataTypes.INTEGER,
@@ -36,7 +36,11 @@ const stock = sequelize.define('stock', {
         type:DataTypes.INTEGER,
         allowNull:false,
         defaultValue:0
-    }
+    },
+    order_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
     
 
 

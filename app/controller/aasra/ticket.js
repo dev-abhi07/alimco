@@ -17,6 +17,7 @@ const problem = require('../../model/problem');
 const manufacturer = require('../../model/manufacturer');
 const sequelize = require('../../connection/conn');
 const { Op } = require('sequelize');
+const { access } = require('fs');
 
 
 exports.ticketListDetails = async (req, res) => {
@@ -148,7 +149,7 @@ exports.createRepair = async (req, res) => {
         var ticketId = ''
         var stocks = true
         const msg = [];
-        async function validateStock(data) {            
+        async function validateStock(data) {
             await Promise.all(data.map(async (record) => {
                 const checkItem = await stock.findOne({
                     attributes: [
@@ -177,7 +178,7 @@ exports.createRepair = async (req, res) => {
                 200
             );
         } else {
-            const deleteCount = await repair.destroy({ where: { ticket_id: data[0].ticket_id } })            
+            const deleteCount = await repair.destroy({ where: { ticket_id: data[0].ticket_id } })
             if (deleteCount == 0) {
                 data.map(async (record) => {
                     totalAmount += record.price * record.qty
@@ -206,9 +207,11 @@ exports.createRepair = async (req, res) => {
                         old_serial_number: record.old_sr_no,
                         new_serial_number: record.new_sr_no,
                         old_manufacturer_id: record.old_manufacturer_id,
-                        new_manufacturer_id: record.new_manufacturer_id
+                        new_manufacturer_id: record.new_manufacturer_id,
+                        repairCheckValue :record.repairCheckValue,
+                        repairCheckLabel :record.repairCheckLabel,
                     }
-                    await ticket.update({job_description:record.job_description},{ where:{ticket_id: record.ticket_id}})
+                    await ticket.update({ job_description: record.job_description }, { where: { ticket_id: record.ticket_id } })
                     repairsCreate = await repair.create(values)
                 })
                 Helper.response(
@@ -246,9 +249,11 @@ exports.createRepair = async (req, res) => {
                         old_serial_number: record.old_sr_no,
                         new_serial_number: record.new_sr_no,
                         old_manufacturer_id: record.old_manufacturer_id,
-                        new_manufacturer_id: record.new_manufacturer_id
+                        new_manufacturer_id: record.new_manufacturer_id,
+                        repairCheckValue :record.repairCheckValue,
+                        repairCheckLabel :record.repairCheckLabel,
                     }
-                    await ticket.update({job_description:record.job_description},{ where:{ticket_id: record.ticket_id}})
+                    await ticket.update({ job_description: record.job_description }, { where: { ticket_id: record.ticket_id } })
                     repairsCreate = await repair.create(values)
                 })
                 Helper.response(
@@ -261,7 +266,7 @@ exports.createRepair = async (req, res) => {
             }
 
         }
-    
+
     } catch (error) {
 
         console.log(error)
@@ -381,7 +386,7 @@ exports.ticketOtpVerify = async (req, res) => {
     const ticketid = req.body.ticket_id
 
     try {
-       
+
         const repairDetailsList = await repair.findAll({
             where: {
                 ticket_id: ticketid
@@ -639,7 +644,7 @@ exports.sentOtpWeb = async (req, res) => {
             return Helper.response('failed', 'Invalid Udid or Aadhaar', {}, res, 200);
         }
 
-        
+
 
         const checkUdid = await users.count({
             where: {
@@ -755,8 +760,18 @@ exports.createCustomerTicketAasraAndSaveUser = async (req, res) => {
         const checkUser = await customer.findOne({ where: { beneficiary_id: req.body.userData[0].beneficiary_id } })
 
         const AasraId = await Helper.getAasraId(req)
+        const isAadhaar = /^\d{12}$/.test(req.body.userData[0].udid)
+        var user
+        if (isAadhaar) {
+            user = await users.findOne({ where: { access_code: Helper.maskAadhaar(req.body.userData[0].udid), mobile: req.body.mobile, user_type: 'C' } })
+
+        } else {
+            user = await users.findOne({ where: { udid: req.body.userData[0].udid, mobile: req.body.mobile, user_type: 'C' } })
+        }
+
+
         let userdetails = 0;
-        if (!checkUser) {
+        if (checkUser == null || user == null) {
             const createCustomer = await customer.create({
                 beneficiary_id: req.body.userData[0].beneficiary_id,
                 father_name: req.body.userData[0].father_name,
@@ -773,7 +788,8 @@ exports.createCustomerTicketAasraAndSaveUser = async (req, res) => {
                     mobile: req.body.mobile,
                     user_type: 'C',
                     udid: req.body.userData[0].udid,
-                    ref_id: createCustomer.id
+                    ref_id: createCustomer.id,
+                    access_code: req.body.userData[0].aadhaar,
                 })
                 let token = jwt.sign({ id: user.id }, process.env.SECRET_KEY, {
                     expiresIn: "365d",
@@ -843,7 +859,7 @@ exports.createCustomerTicketAasraAndSaveUser = async (req, res) => {
 
     } catch (error) {
         console.log(error)
-       
+
         Helper.response(
             "failed",
             "Something went wrong!",
@@ -871,7 +887,7 @@ exports.ticketDetails = async (req, res) => {
                 }
             )
 
-            console.log(ticketData)
+           
             let ticketDetail = await repair.findAll({
                 where: {
                     ticket_id: ticketId
@@ -947,14 +963,19 @@ exports.ticketDetails = async (req, res) => {
                 appointment_date: ticketData.appointment_date,
                 appointment_time: ticketData.appointment_time,
                 status: ticketData.status == 0 ? 'Pending' : ticketData.status == 1 ? 'Open' : 'Closed',
-                job_description:ticketData.job_description,
+                job_description: ticketData.job_description,
                 aasraName: getAasra.name_of_org,
+
+                uniquiCode: getAasra.unique_code,
+                gstNo: getAasra.gst,
+                invoiceCode: `${getAasra?.unique_code}-${ticketId || 'N/A'}`,
+                createdDate: Helper.formatDateTime(ticketData.createdAt),
+
                 subtotal: subtotal,
                 serviceCharge: serviceCharge,
                 gst: process.env.SERVICE_GST,
                 totalAmount: subtotal + serviceCharge + gst,
                 discount: 0,
-                createdDate: ticketData.createdAt,
                 payment_status: repairPayments == 0 ? false : true,
                 warranty: warranty,
                 gst: process.env.SERVICE_GST,
@@ -1060,14 +1081,14 @@ exports.ticketDetails = async (req, res) => {
                     appointment_date: ticketData.appointment_date,
                     appointment_time: ticketData.appointment_time,
                     status: ticketData.status == 0 ? 'Pending' : ticketData.status == 1 ? 'Open' : 'Closed',
-                    job_description:ticketData.job_description,
+                    job_description: ticketData.job_description,
                     aasraName: getAasra.name_of_org,
                     subtotal: subtotal,
                     serviceCharge: serviceCharge,
                     gst: process.env.SERVICE_GST,
                     totalAmount: subtotal + serviceCharge + gst,
                     discount: 0,
-                    createdDate: ticketData.createdAt,
+                    // createdDate: ticketData.createdAt,
                     payment_status: repairPayments == 0 ? false : true,
                     warranty: warranty,
                     gst: process.env.SERVICE_GST,
@@ -1075,6 +1096,11 @@ exports.ticketDetails = async (req, res) => {
                     expire_date: itemDetails?.expire_date ?? null,
                     problem: getProblem?.problem_name ?? null,
                     ticketDetail: ticketDetail ? ticketDetail : null,
+                    uniquiCode: getAasra.unique_code,
+                    gstNo: getAasra.gst,
+                    invoiceCode: `${getAasra?.unique_code}-${ticketId || 'N/A'}`,
+                    createdDate: Helper.formatDateTime(ticketData.createdAt),
+
 
                 }
                 Helper.response(

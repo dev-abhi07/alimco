@@ -34,7 +34,7 @@ exports.getUserList = async (req, res) => {
             name: user.name,
             password: user?.pass_code,
             mobile: user?.mobile,
-            user_type: role?.id,
+            user_type: user.user_type,
             email: user?.email,
             password: user?.pass_code,
             status: user?.status,
@@ -47,6 +47,7 @@ exports.getUserList = async (req, res) => {
 
       values.forEach((e) => {
 
+       
         data.push({
           name: e.name ? e.name : "",
           userTypeName: e.role ? e.role : "",

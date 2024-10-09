@@ -136,6 +136,8 @@ exports.sparePartsList = async (req, res) => {
             const vv = await uom.findOne({ where: { id: record.uom_id } });
             const values = {
                 id: record.id,
+                value:record.id,
+                label:record.part_name,
                 part_name: record.part_name,
                 part_number: record.part_number,
                 description: record.description,

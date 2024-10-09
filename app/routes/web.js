@@ -9,7 +9,7 @@ const { getUserList, userCreate, rolePermission, RoleList, getRolePermission, us
 const { Login, logout, validateToken } = require('../controller/admin/login');
 const {   states , cities , repair , revenueReport, paymentReport, partReplacementReport, inventoryWholeFormat,updateLabourCharges, createLabourCharges, destroyLabourCharges, generateNotes} = require("../controller/admin/dashboard");
 const {Admin,menuListUserPermission, aasra} = require("../middleware/middleware");
-const { registerAasraCentre, aasraList, updateAasraCenter, aasraType, aasraTypecreate, aasraTypelist, aasraTypeupdate, stocktransferupdate, importUser } = require("../controller/admin/aasra");
+const { registerAasraCentre, aasraList, updateAasraCenter, aasraType, aasraTypecreate, aasraTypelist, aasraTypeupdate, stocktransferupdate, importUser, uniqueOrderId, orderSucess, orderSucess1, orderSucess2, orderSucess3 } = require("../controller/admin/aasra");
 const { Dashboard , ticketList,getAasraRevenue, servicehistorylist } = require("../controller/aasra/dashboard");
 const { categoryWiseProduct, productRepairList , AarsaDropDown } = require("../controller/admin/aasra");
 const { OtpVerifyAasra,createRepair , ticketOtpVerify , ticketSendOtp ,aasraChatList ,aasraMessage,openTicket,sentOtpWeb,getUser , getRegisteredData, createCustomerTicketAasraAndSaveUser,ticketDetails} = require("../controller/aasra/ticket");
@@ -17,7 +17,7 @@ const { OtpVerifyAasra,createRepair , ticketOtpVerify , ticketSendOtp ,aasraChat
 const { arjunApi } = require("../controller/api/arjunApi");
 const { route } = require("./customer");
 const { otpVerify } = require("../controller/customer/register");
-
+const {paymentApi} =require("../controller/api/payment") ;
 router.post('/login', Login);
 router.post('/logout', logout)
 
@@ -106,5 +106,11 @@ router.post('/delete-labour-charges',destroyLabourCharges)
 router.post('/generate-service-note',generateNotes)
 router.post('/user-status-update',Admin,userStatusUpdate)
 
+//payment gateway
+router.post('/generate-order-number', uniqueOrderId)
 
+router.post('/razorpay/callback', orderSucess)
+router.post('/razorpay/callback-1', orderSucess1)
+router.post('/razorpay/callback-2', orderSucess2)
+router.post('/razorpay/callback-3', orderSucess3)
 module.exports = router;

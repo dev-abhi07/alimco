@@ -8,7 +8,22 @@ const uom = require('../../model/uom')
 
 
 exports.create = async (req, res) => {
-    
+
+    const catExist =  await category.findOne({
+        where:{
+            category_name: req.body.category_name,
+        }
+    })
+
+    if (catExist) {
+        return Helper.response(
+            "failed",
+            "Record already exists!",
+            {},
+            res,
+            200 
+        );
+    }
     const checkName = category.f
     const data = {
         category_name: req.body.category_name,
@@ -39,7 +54,12 @@ exports.create = async (req, res) => {
 exports.list = async (req, res) => {
 
     try {
-        const categories = await category.findAll()
+        const categories = await category.findAll({
+            where:{
+                status
+                :1
+            }
+        })
         const data = [];
         categories.map((record) => {
             const value = {
@@ -122,32 +142,46 @@ exports.destroy = async (req, res) => {
     }
 }
 
-exports.uomCreate = async (req, res) => {
+    exports.uomCreate = async (req, res) => {
+        const uomExist =  await uom.findOne({
+            where:{
+                unit_of_measurement: req.body.unit_of_measurement
+            }
+        })
+        if (uomExist) {
+            return Helper.response(
+                "failed",
+                "Record already exists!",
+                {},
+                res,
+                200 
+            );
+        }
+    
+        const checkName = uom.f
+        const data = {
+            unit_of_measurement: req.body.unit_of_measurement
+        }
 
-    const checkName = uom.f
-    const data = {
-        unit_of_measurement: req.body.unit_of_measurement
+        const create = uom.create(data);
+        if (create) {
+            Helper.response(
+                "success",
+                "Record Created Successfully",
+                {},
+                res,
+                200
+            );
+        } else {
+            Helper.response(
+                "failed",
+                "Something went wrong!",
+                {},
+                res,
+                200
+            );
+        }
     }
-
-    const create = uom.create(data);
-    if (create) {
-        Helper.response(
-            "success",
-            "Record Created Successfully",
-            {},
-            res,
-            200
-        );
-    } else {
-        Helper.response(
-            "failed",
-            "Something went wrong!",
-            {},
-            res,
-            200
-        );
-    }
-}
 
 exports.listUom = async (req, res) => {
 

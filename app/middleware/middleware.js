@@ -286,6 +286,12 @@ const menuListUserPermission = async (req, res, next) => {
                 },
                 {
                   active: false,
+                  path: `purchase/under-warranty`,
+                  title: "Under Warranty Purchase",
+                  type: "link",
+                },
+                {
+                  active: false,
                   path: `purchase/all-purchase`,
                   title: "All Purchase",
                   type: "link",

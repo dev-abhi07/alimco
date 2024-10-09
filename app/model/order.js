@@ -73,17 +73,14 @@ const order = sequelize.define('order', {
     },
     dps_value: {
         type: DataTypes.STRING,
-        allowNull: true,
-        defaultValue: 0
+        allowNull: true
     },
     dps_date: {
-        type: DataTypes.STRING,
-        allowNull: true,
-        defaultValue: null
+        type: DataTypes.TEXT,
+        allowNull: true
     },
     dps_no: {
         type: DataTypes.STRING,
-        allowNull: true,
         defaultValue: 0
     },
     image: {
@@ -102,7 +99,29 @@ const order = sequelize.define('order', {
         type: DataTypes.STRING,
         allowNull: true,
 
-    }
+    },
+    invoice_no: {
+        type: DataTypes.STRING,
+        allowNull: true,
+
+    },
+    invoice_date: {
+        type: DataTypes.STRING,
+        allowNull: true,
+
+    },
+    underWarranty: {
+        type: DataTypes.STRING,
+        allowNull: true,
+
+    },
+    creditnotetotal: {
+        type: DataTypes.STRING,
+        allowNull: true,
+
+    },
+
+
    
 })
 order.belongsTo(aasra, { foreignKey: 'aasra_id' })

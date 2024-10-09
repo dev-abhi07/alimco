@@ -20,6 +20,9 @@ const stock = require("../../model/stock");
 
 
 const XLSX = require('xlsx');
+const ticket = require("../../model/ticket");
+const transaction = require("../../model/transaction");
+const payment = require("../../model/payment");
 
 exports.registerAasraCentre = async (req, res) => {
     try {
@@ -337,52 +340,98 @@ exports.productRepairList = async (req, res) => {
         const user = await users.findOne({ where: { token: string[1] } });
         const aasras = await aasra.findOne({ where: { id: user.ref_id } })
         const { repair_id } = req.body
+
         let data = [];
         const product = await labour_charges.findAll()
-        if(aasras == null){
-            
-            data = product.map((f) => {
-                const productData = {
-                    value: f.id,
-                    label: f.natureOfWork,
-                    repairServiceCharge: f.labourCharges,
-                    repairTime: f.repairTime,
-                    finalLabourCharges: f.finalLabourCharges,
-                    repairPrice:45,
-                    repairGst: 0.18
-                }
-                return productData
-            })
-        }
-        else if(aasras!=null && aasras.aasra_type=='RMC' || aasras.aasra_type=='PMDK' || aasras.aasra_type=='HQ' || aasras.aasra_type=='AAPC'){
-            data = product.map((f) => {
-                const productData = {
-                    value: f.id,
-                    label: f.natureOfWork,
-                    repairServiceCharge: 0,
-                    repairTime: f.repairTime,
-                    repairPrice: 0,
-                    repairGst: 0
-                }
-                return productData
-            })
-        }else{
-            data = product.map((f) => {
-                const productData = {
-                    value: f.id,
-                    label: f.natureOfWork,
-                    repairServiceCharge: f.labourCharges,
-                    repairTime: f.repairTime,
-                    finalLabourCharges: f.finalLabourCharges,
-                    repairPrice:45,
-                    repairGst: 0.18
-                }
-                return productData
-            })
+        if (req.body.warranty == true) {
+            if (aasras == null) {
+
+                data = product.map((f) => {
+                    const productData = {
+                        value: f.id,
+                        label: f.natureOfWork,
+                        repairServiceCharge: 0,
+                        repairTime: f.repairTime,
+                        finalLabourCharges: f.finalLabourCharges,
+                        repairPrice: 45,
+                        repairGst: 0.18
+                    }
+                    return productData
+                })
+            }
+            else if (aasras != null && aasras.aasra_type == 'RMC' || aasras.aasra_type == 'PMDK' || aasras.aasra_type == 'HQ' || aasras.aasra_type == 'AAPC') {
+                data = product.map((f) => {
+                    const productData = {
+                        value: f.id,
+                        label: f.natureOfWork,
+                        repairServiceCharge: 0,
+                        repairTime: f.repairTime,
+                        repairPrice: 0,
+                        repairGst: 0
+                    }
+                    return productData
+                })
+            } else {
+                data = product.map((f) => {
+                    const productData = {
+                        value: f.id,
+                        label: f.natureOfWork,
+                        repairServiceCharge: 0,
+                        repairTime: f.repairTime,
+                        finalLabourCharges: f.finalLabourCharges,
+                        repairPrice: 45,
+                        repairGst: 0.18
+                    }
+                    return productData
+                })
+            }
+        } else {
+            if (aasras == null) {
+
+                data = product.map((f) => {
+                    const productData = {
+                        value: f.id,
+                        label: f.natureOfWork,
+                        repairServiceCharge: f.finalLabourCharges,
+                        repairTime: f.repairTime,
+                        finalLabourCharges: f.finalLabourCharges,
+                        repairPrice: 45,
+                        repairGst: 0.18
+                    }
+                    return productData
+                })
+            }
+            else if (aasras != null && aasras.aasra_type == 'RMC' || aasras.aasra_type == 'PMDK' || aasras.aasra_type == 'HQ' || aasras.aasra_type == 'AAPC') {
+                data = product.map((f) => {
+                    const productData = {
+                        value: f.id,
+                        label: f.natureOfWork,
+                        repairServiceCharge: 0,
+                        repairTime: f.repairTime,
+                        repairPrice: 0,
+                        repairGst: 0
+                    }
+                    return productData
+                })
+            } else {
+                data = product.map((f) => {
+                    const productData = {
+                        value: f.id,
+                        label: f.natureOfWork,
+                        repairServiceCharge: f.finalLabourCharges,
+                        repairTime: f.repairTime,
+                        finalLabourCharges: f.finalLabourCharges,
+                        repairPrice: 45,
+                        repairGst: 0.18
+                    }
+                    return productData
+                })
+            }
         }
 
+
         Helper.response("success", "Product Found Successfully!", data, res, 200);
-       
+
     } catch (error) {
         console.log(error, 'eror')
         Helper.response("failed", "Server error", error, res, 200);
@@ -579,6 +628,7 @@ exports.aasraTypeupdate = async (req, res) => {
 }
 
 exports.stocktransferupdate = async (req, res) => {
+    
     try {
 
         const orderId = await order.findOne({
@@ -620,14 +670,16 @@ exports.stocktransferupdate = async (req, res) => {
                     item_name: t.item_name,
                     quantity: t.quantity,
                     aasra_id: orderId.aasra_id,
-                    stock_in: t.quantity
+                    stock_in: t.quantity,
+                    order_id:orderId.id
                 });
             })
         }
 
         if (orderDetailsId) {
             await order.update({
-                order_status: req.body.status
+                order_status: req.body.status,
+                stock_transfer:true
             }, {
                 where: {
                     id: req.body.order_id
@@ -718,3 +770,567 @@ exports.importUser = async (req, res) => {
     }
 };
 
+exports.uniqueOrderId = async (req, res) => {
+    try {
+
+        const ticketid = req.body.ticket_id;
+        const orderid = req.body.order_id;
+        if (ticketid != null) {
+            const ticketOrder = await ticket.findOne({
+                where: {
+                    ticket_id: ticketid
+                }
+            });
+            if (ticketOrder) {
+                const randomCode = Math.floor(100000 + Math.random() * 900000);
+
+                const unique_id = `order_${ticketOrder.ticket_id}-${Helper.getFullYearForUnique(ticketOrder.createdAt)}-${randomCode}`;
+                const randomAlphaNumeric = Math.random().toString(36).substring(2, 10).toUpperCase();
+                const order_unique = `order_${randomAlphaNumeric}`;
+                Helper.response(
+                    "success",
+                    "Record Fetched Successfully",
+                    { unique_id, order_unique },
+                    res,
+                    200
+                );
+            } else {
+                console.log('Ticket not found');
+                Helper.response(
+                    "failed",
+                    "Ticket not found",
+                    {},
+                    res,
+                    200
+                );
+            }
+        }
+
+        if (orderid != null) {
+            const orderData = await order.findOne({
+                where: {
+                    id: orderid
+                }
+            });
+
+            const amount = orderData.grand_total;
+            const receipt_no = orderData.id;
+
+            const payres = await Helper.createRazorpayOrder(amount, receipt_no)
+
+
+
+            if (payres.success) {
+                const razorpayResponse = payres.data;
+                console.log(payres.data)
+
+                const existingTransaction = await transaction.findOne({
+                    where: {
+                        order_id: razorpayResponse.receipt,
+                        status: 'created'
+                    }
+                });
+
+                if (existingTransaction) {
+                    await transaction.destroy({
+                        where: {
+                            order_id: razorpayResponse.receipt,
+                            status: 'created'
+                        }
+                    });
+                }
+
+                const transactions = await transaction.create({
+                    order_id: razorpayResponse.receipt,
+                    amount: razorpayResponse.amount,
+                    order: razorpayResponse.id,
+                    receipt: razorpayResponse.receipt,
+                    status: razorpayResponse.status,
+                    time: razorpayResponse.created_at,
+                });
+
+                console.log('Transaction saved:', transactions);
+                const orderss = await order.findOne({
+                    where: { id: orderData.id }
+                });
+                const aasradata = await Helper.getAasraDetails(orderss.aasra_id)
+
+                const data = {
+                    order_id: transactions.order,
+                    amount: transactions.amount,
+                    email: aasradata.email,
+                    contact: aasradata.mobile_no,
+                    receipt: transactions.receipt,
+                }
+
+                Helper.response(
+                    "success",
+                    "Order created and transaction saved successfully",
+                    data,
+                    res,
+                    200
+                );
+            } else {
+                Helper.response("failed", "Failed to create Razorpay order", payres.error, res, 200);
+            }
+
+
+        }
+
+
+    } catch (error) {
+        console.log(error)
+        Helper.response(
+            "failed",
+            "something went wrong",
+            {},
+            res,
+            200
+        );
+    }
+
+}
+
+exports.orderSucess = async (req, res) => {
+    try {
+    
+    
+        const formData = req.body;
+       
+
+        console.log("Received Data:", formData);
+
+
+        const { razorpay_payment_id, razorpay_order_id, razorpay_signature, error_code, error_description, error } = formData;
+
+        const date = new Date();
+        const year = `${date.getFullYear()}`
+        const invoice_number = (date.getFullYear() + '-' + `${parseInt((year)?.split('0')[1]) + 1}`) + '/' + await Helper.generateNumber(10000000, 99999999)
+
+        if (error) {
+
+            const metadata = JSON.parse(error.metadata);
+            const razorpay_order = metadata.order_id;
+            const razorpay_payment = metadata.payment_id;
+            const error_getway = error.code;
+            const error_description = error.description;
+            await transaction.update({
+                status: 'failed',
+                razorpay_signature: null,
+                razorpay_payment_id: razorpay_payment,
+                description: error_description,
+            }, {
+                where: {
+                    order: razorpay_order
+                }
+            });
+
+            res.redirect(
+                `http://alimco.demoquaeretech.in/order-failed?error_code=${error_getway}&error_description=${error_description}`
+            );
+        } else {
+
+            const transactionData = await transaction.findOne({
+                where: {
+                    order: razorpay_order_id
+                }
+            });
+            const time = await Helper.convertIso(transactionData.time)
+            const orderDataDetails = await order.findOne({
+                where: {
+                    id: transactionData.order_id
+                }
+            })
+            const transactionDataDetails = await transaction.findOne({
+                where: {
+                    order: razorpay_order_id
+                }
+            })
+
+            if (orderDataDetails) {
+                const paidAmount = transactionDataDetails.amount / 100;
+                const dueAmount = orderDataDetails.grand_total - paidAmount;
+
+                await order.update({
+                    payment_status: 'Paid',
+                    payment_method: 'online',
+                    transaction_id: razorpay_payment_id,
+                    paid_amount: paidAmount,
+                    due_amount: dueAmount,
+                    payment_date: time
+                }, {
+                    where: {
+                        id: transactionData.order_id
+                    }
+                });
+            }
+
+            await payment.update({
+                invoice: 1,
+                invoice_number: invoice_number
+            },
+                {
+                    where: { order_id: transactionData.order_id }
+                })
+
+            await transaction.update({
+                status: 'success',
+                razorpay_signature: razorpay_signature,
+                razorpay_payment_id: razorpay_payment_id
+            }, {
+                where: {
+                    order: razorpay_order_id
+                }
+            });
+
+
+            res.redirect(
+                `http://alimco.demoquaeretech.in/order-success?razorpay_payment_id=${razorpay_payment_id}&razorpay_order_id=${razorpay_order_id}&razorpay_signature=${razorpay_signature}`
+            );
+        }
+
+    } catch (error) {
+        console.log(error)
+        Helper.response(
+            "failed",
+            "something went wrong",
+            {},
+            res,
+            200
+        );
+    }
+
+}
+
+exports.orderSucess1 = async (req, res) => {
+    try {
+    
+    
+        const formData = req.body;
+       
+
+        console.log("Received Data:", formData);
+
+
+        const { razorpay_payment_id, razorpay_order_id, razorpay_signature, error_code, error_description, error } = formData;
+
+        const date = new Date();
+        const year = `${date.getFullYear()}`
+        const invoice_number = (date.getFullYear() + '-' + `${parseInt((year)?.split('0')[1]) + 1}`) + '/' + await Helper.generateNumber(10000000, 99999999)
+
+        if (error) {
+
+            const metadata = JSON.parse(error.metadata);
+            const razorpay_order = metadata.order_id;
+            const razorpay_payment = metadata.payment_id;
+            const error_getway = error.code;
+            const error_description = error.description;
+            await transaction.update({
+                status: 'failed',
+                razorpay_signature: null,
+                razorpay_payment_id: razorpay_payment,
+                description: error_description,
+            }, {
+                where: {
+                    order: razorpay_order
+                }
+            });
+
+            res.redirect(
+                `http://192.168.23.177:3000/order-failed?error_code=${error_getway}&error_description=${error_description}`
+            );
+        } else {
+
+            const transactionData = await transaction.findOne({
+                where: {
+                    order: razorpay_order_id
+                }
+            });
+            const time = await Helper.convertIso(transactionData.time)
+            const orderDataDetails = await order.findOne({
+                where: {
+                    id: transactionData.order_id
+                }
+            })
+            const transactionDataDetails = await transaction.findOne({
+                where: {
+                    order: razorpay_order_id
+                }
+            })
+
+            if (orderDataDetails) {
+                const paidAmount = transactionDataDetails.amount / 100;
+                const dueAmount = orderDataDetails.grand_total - paidAmount;
+
+                await order.update({
+                    payment_status: 'Paid',
+                    payment_method: 'online',
+                    transaction_id: razorpay_payment_id,
+                    paid_amount: paidAmount,
+                    due_amount: dueAmount,
+                    payment_date: time
+                }, {
+                    where: {
+                        id: transactionData.order_id
+                    }
+                });
+            }
+
+            await payment.update({
+                invoice: 1,
+                invoice_number: invoice_number
+            },
+                {
+                    where: { order_id: transactionData.order_id }
+                })
+
+            await transaction.update({
+                status: 'success',
+                razorpay_signature: razorpay_signature,
+                razorpay_payment_id: razorpay_payment_id
+            }, {
+                where: {
+                    order: razorpay_order_id
+                }
+            });
+
+
+            res.redirect(
+                `http://192.168.23.177:3000/order-success?razorpay_payment_id=${razorpay_payment_id}&razorpay_order_id=${razorpay_order_id}&razorpay_signature=${razorpay_signature}`
+            );
+        }
+
+    } catch (error) {
+        console.log(error)
+        Helper.response(
+            "failed",
+            "something went wrong",
+            {},
+            res,
+            200
+        );
+    }
+
+}
+
+exports.orderSucess2 = async (req, res) => {
+    try {
+    
+    
+        const formData = req.body;
+       
+
+        console.log("Received Data:", formData);
+
+
+        const { razorpay_payment_id, razorpay_order_id, razorpay_signature, error_code, error_description, error } = formData;
+
+        const date = new Date();
+        const year = `${date.getFullYear()}`
+        const invoice_number = (date.getFullYear() + '-' + `${parseInt((year)?.split('0')[1]) + 1}`) + '/' + await Helper.generateNumber(10000000, 99999999)
+
+        if (error) {
+
+            const metadata = JSON.parse(error.metadata);
+            const razorpay_order = metadata.order_id;
+            const razorpay_payment = metadata.payment_id;
+            const error_getway = error.code;
+            const error_description = error.description;
+            await transaction.update({
+                status: 'failed',
+                razorpay_signature: null,
+                razorpay_payment_id: razorpay_payment,
+                description: error_description,
+            }, {
+                where: {
+                    order: razorpay_order
+                }
+            });
+
+            res.redirect(
+                `http://192.168.23.44:3000/order-failed?error_code=${error_getway}&error_description=${error_description}`
+            );
+        } else {
+
+            const transactionData = await transaction.findOne({
+                where: {
+                    order: razorpay_order_id
+                }
+            });
+            const time = await Helper.convertIso(transactionData.time)
+            const orderDataDetails = await order.findOne({
+                where: {
+                    id: transactionData.order_id
+                }
+            })
+            const transactionDataDetails = await transaction.findOne({
+                where: {
+                    order: razorpay_order_id
+                }
+            })
+
+            if (orderDataDetails) {
+                const paidAmount = transactionDataDetails.amount / 100;
+                const dueAmount = orderDataDetails.grand_total - paidAmount;
+
+                await order.update({
+                    payment_status: 'Paid',
+                    payment_method: 'online',
+                    transaction_id: razorpay_payment_id,
+                    paid_amount: paidAmount,
+                    due_amount: dueAmount,
+                    payment_date: time
+                }, {
+                    where: {
+                        id: transactionData.order_id
+                    }
+                });
+            }
+
+            await payment.update({
+                invoice: 1,
+                invoice_number: invoice_number
+            },
+                {
+                    where: { order_id: transactionData.order_id }
+                })
+
+            await transaction.update({
+                status: 'success',
+                razorpay_signature: razorpay_signature,
+                razorpay_payment_id: razorpay_payment_id
+            }, {
+                where: {
+                    order: razorpay_order_id
+                }
+            });
+
+
+            res.redirect(
+                `http://192.168.23.44:3000/order-success?razorpay_payment_id=${razorpay_payment_id}&razorpay_order_id=${razorpay_order_id}&razorpay_signature=${razorpay_signature}`
+            );
+        }
+
+    } catch (error) {
+        console.log(error)
+        Helper.response(
+            "failed",
+            "something went wrong",
+            {},
+            res,
+            200
+        );
+    }
+
+}
+
+exports.orderSucess3 = async (req, res) => {
+    try {
+    
+    
+        const formData = req.body;
+       
+
+        console.log("Received Data:", formData);
+
+
+        const { razorpay_payment_id, razorpay_order_id, razorpay_signature, error_code, error_description, error } = formData;
+
+        const date = new Date();
+        const year = `${date.getFullYear()}`
+        const invoice_number = (date.getFullYear() + '-' + `${parseInt((year)?.split('0')[1]) + 1}`) + '/' + await Helper.generateNumber(10000000, 99999999)
+
+        if (error) {
+
+            const metadata = JSON.parse(error.metadata);
+            const razorpay_order = metadata.order_id;
+            const razorpay_payment = metadata.payment_id;
+            const error_getway = error.code;
+            const error_description = error.description;
+            await transaction.update({
+                status: 'failed',
+                razorpay_signature: null,
+                razorpay_payment_id: razorpay_payment,
+                description: error_description,
+            }, {
+                where: {
+                    order: razorpay_order
+                }
+            });
+
+            res.redirect(
+                `http://192.168.23.12:3000/order-failed?error_code=${error_getway}&error_description=${error_description}`
+            );
+        } else {
+
+            const transactionData = await transaction.findOne({
+                where: {
+                    order: razorpay_order_id
+                }
+            });
+            const time = await Helper.convertIso(transactionData.time)
+            const orderDataDetails = await order.findOne({
+                where: {
+                    id: transactionData.order_id
+                }
+            })
+            const transactionDataDetails = await transaction.findOne({
+                where: {
+                    order: razorpay_order_id
+                }
+            })
+
+            if (orderDataDetails) {
+                const paidAmount = transactionDataDetails.amount / 100;
+                const dueAmount = orderDataDetails.grand_total - paidAmount;
+
+                await order.update({
+                    payment_status: 'Paid',
+                    payment_method: 'online',
+                    transaction_id: razorpay_payment_id,
+                    paid_amount: paidAmount,
+                    due_amount: dueAmount,
+                    payment_date: time
+                }, {
+                    where: {
+                        id: transactionData.order_id
+                    }
+                });
+            }
+
+            await payment.update({
+                invoice: 1,
+                invoice_number: invoice_number
+            },
+                {
+                    where: { order_id: transactionData.order_id }
+                })
+
+            await transaction.update({
+                status: 'success',
+                razorpay_signature: razorpay_signature,
+                razorpay_payment_id: razorpay_payment_id
+            }, {
+                where: {
+                    order: razorpay_order_id
+                }
+            });
+
+
+            res.redirect(
+                `http://192.168.23.12:3000/order-success?razorpay_payment_id=${razorpay_payment_id}&razorpay_order_id=${razorpay_order_id}&razorpay_signature=${razorpay_signature}`
+            );
+        }
+
+    } catch (error) {
+        console.log(error)
+        Helper.response(
+            "failed",
+            "something went wrong",
+            {},
+            res,
+            200
+        );
+    }
+
+}

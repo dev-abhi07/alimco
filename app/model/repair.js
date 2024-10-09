@@ -89,7 +89,15 @@ const repair = sequelize.define('repair', {
     productPrice:{
         type:DataTypes.DECIMAL(10,2),
         allowNull:false
-    }   
+    }   ,
+    repairCheckValue: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+    },
+    repairCheckLabel: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+    },
 })
 
 // sequelize.sync()
