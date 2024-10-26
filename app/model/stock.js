@@ -41,7 +41,15 @@ const stock = sequelize.define('stock', {
         type: DataTypes.INTEGER,
         allowNull: true
     },
-    
+    unit_price: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: true
+    },
+    type: {
+        type: DataTypes.STRING,
+        allowNull: true,
+
+    },
 
 
 })

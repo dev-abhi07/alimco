@@ -47,6 +47,8 @@ exports.createParts = async (req, res) => {
                         made_by: fields.made_by[0],
                         hsn_code: fields.hsn_code[0],
                         uom_id: fields.uom_id[0],
+                        type:fields.type_value[0],
+                        type_label:fields.type_label[0],
                         image: newpath,
                     }).then(() => {
                         Helper.response(
@@ -75,50 +77,7 @@ exports.createParts = async (req, res) => {
     }
 }
 
-// exports.sparePartsList = async (req, res) => {
-//     try {
-//         const list = await spareParts.findAll({
-//             include: [{
-//                 model: category,
-//                 as: 'categories',
-//                 attributes: ['category_name']
-//             }]
-//         });
-//         const data = []
-//         list.map((record) => {
-//             const values = {
-//                 id: record.id,
-//                 part_name: record.part_name,
-//                 part_number: record.part_number,
-//                 description: record.description,
-//                 category: record.categories.category_name,
-//                 category_id: record.category,
-//                 manufacturer: record.manufacturer,
-//                 unit_price: record.unit_price,
-//                 quantity_in_stock: record.quantity_in_stock,
-//                 reorder_point: record.reorder_point,
-//                 max_stock_level: record.max_stock_level,
-//                 image: record?.image?.split("/")[1],
-//                 serial_no: record.serial_no,
-//                 base_price: record.base_price,
-//                 gst: record.gst,
-//                 made_by: record.made_by,
-//                 hsn_code: record.hsn_code,
-//             }
 
-//             data.push(values)
-//         })
-//         Helper.response(
-//             "success",
-//             "Record Found Successfully",
-//             { data },
-//             res,
-//             200
-//         );
-//     } catch (error) {
-//         console.log(error)
-//     }
-// }
 
 exports.sparePartsList = async (req, res) => {
     try {
@@ -152,7 +111,9 @@ exports.sparePartsList = async (req, res) => {
                 made_by: record.made_by,
                 hsn_code: record.hsn_code,
                 uom_value: record.uom_id,
-                uom_name: vv ? vv.unit_of_measurement : '-'
+                uom_name: vv ? vv.unit_of_measurement : '-',
+                type:record.type,
+                label:"RTU"
             };
 
             
@@ -237,6 +198,7 @@ exports.updateSpareParts = async (req, res) => {
                                 made_by: fields.made_by[0],
                                 hsn_code: fields.hsn_code[0],
                                 uom_id: fields.uom_id[0],
+                                type:fields.type[0],
                                 image: newpath,
                             },
                             {
@@ -276,6 +238,7 @@ exports.updateSpareParts = async (req, res) => {
                         gst: fields.gst[0],
                         made_by: fields.made_by[0],
                         hsn_code: fields.hsn_code[0],
+                        type:fields.type[0],
                     },
                     {
                         where: { id: fields.id?.[0] }

@@ -18,6 +18,8 @@ const manufacturer = require('../../model/manufacturer');
 const sequelize = require('../../connection/conn');
 const { Op } = require('sequelize');
 const { access } = require('fs');
+const saleDetail = require('../../model/saleDetails');
+const sale = require('../../model/sale');
 
 
 exports.ticketListDetails = async (req, res) => {
@@ -204,6 +206,8 @@ exports.createRepair = async (req, res) => {
                         amount: record.amount,
                         ticket_id: record.ticket_id,
                         discount: discount,
+                        discountRsn: record.discountRsn,
+                        discountRec: record.discountRec,
                         old_serial_number: record.old_sr_no,
                         new_serial_number: record.new_sr_no,
                         old_manufacturer_id: record.old_manufacturer_id,
@@ -246,6 +250,8 @@ exports.createRepair = async (req, res) => {
                         amount: record.amount,
                         ticket_id: record.ticket_id,
                         discount: discount,
+                        discountRsn: record.discountRsn,
+                        discountRec: record.discountRec,
                         old_serial_number: record.old_sr_no,
                         new_serial_number: record.new_sr_no,
                         old_manufacturer_id: record.old_manufacturer_id,
@@ -437,7 +443,8 @@ exports.ticketOtpVerify = async (req, res) => {
                             item_name: repairDetails.productLabel,
                             aasra_id: user.ref_id,
                             quantity: 0,
-                            price: item_id.unit_price,
+                            price: item_id.base_price,
+                            unit_price: item_id.unit_price,
                             stock_in: 0,
                             stock_out: repairDetails.qty
                         });
@@ -466,7 +473,8 @@ exports.ticketOtpVerify = async (req, res) => {
                         item_name: repairDetails.productLabel,
                         aasra_id: user.ref_id,
                         quantity: 0,
-                        price: item_id.unit_price,
+                        price: item_id.base_price,
+                        unit_price: item_id.unit_price,
                         stock_in: 0,
                         stock_out: repairDetails.qty
                     });
@@ -894,6 +902,15 @@ exports.ticketDetails = async (req, res) => {
                 }
             })
 
+            const repairDataDiscount = await repair.findOne({
+                where: {
+                  ticket_id: ticketId
+                },
+                order: [
+                  ['id', 'DESC']
+                ]
+              })
+
             const getUser = await users.findOne({
                 where: {
                     ref_id: ticketData.user_id,
@@ -984,6 +1001,9 @@ exports.ticketDetails = async (req, res) => {
                 problem: getProblem?.problem_name ?? null,
                 ticketDetail: ticketDetail ? ticketDetail : null,
 
+                additionalDiscount :repairDataDiscount?.discountRec || 0,
+                discountReason :repairDataDiscount?.discountRsn || 0,
+
             }
             Helper.response(
                 "success",
@@ -1011,7 +1031,14 @@ exports.ticketDetails = async (req, res) => {
                         ticket_id: ticketId
                     }
                 })
-
+                const repairDataDiscount = await repair.findOne({
+                    where: {
+                      ticket_id: ticketId
+                    },
+                    order: [
+                      ['id', 'DESC']
+                    ]
+                  })
                 const getUser = await users.findOne({
                     where: {
                         ref_id: ticketData.user_id,
@@ -1100,6 +1127,9 @@ exports.ticketDetails = async (req, res) => {
                     gstNo: getAasra.gst,
                     invoiceCode: `${getAasra?.unique_code}-${ticketId || 'N/A'}`,
                     createdDate: Helper.formatDateTime(ticketData.createdAt),
+                    additionalDiscount :repairDataDiscount?.discountRec || 0,
+                    discountReason :repairDataDiscount?.discountRsn || 0,
+    
 
 
                 }
@@ -1120,3 +1150,384 @@ exports.ticketDetails = async (req, res) => {
         console.log(error)
     }
 }
+
+
+
+exports.createRtoSell = async (req, res) => {
+    try {
+        const token = req.headers['authorization'];
+        const string = token.split(" ");
+        const user = await users.findOne({ where: { token: string[1] } });
+        const aasras = await aasra.findOne({ where: { id: user.ref_id } });
+
+        const data = req.body;
+console.log(data)
+
+        let msg = [];
+        
+        // Stock validation function
+        async function validateStock(data) {
+            await Promise.all(data.items.map(async (record) => {
+                const checkItem = await stock.findOne({
+                    attributes: [
+                        [sequelize.fn('SUM', sequelize.col('stock_in')), 'total_stock_in'],
+                        [sequelize.fn('SUM', sequelize.col('stock_out')), 'total_stock_out']
+                    ],
+                    where: { item_id: record.productValue }
+                });
+                const availableStock = (checkItem.dataValues.total_stock_in || 0) - (checkItem.dataValues.total_stock_out || 0);
+                if (availableStock < record.qty || availableStock < 0) {
+                    msg.push(`Insufficient stock to process this purchase for item ${record.productLabel}.`);
+                }
+            }));
+            return msg;
+        }
+
+        // Validate stock for the items
+        const validationMessages = await validateStock(data);
+        if (validationMessages.length > 0) {
+            return Helper.response(
+                "failed",
+                msg[0],
+                {},
+                res,
+                200
+            );
+        }
+
+        // Sale creation data
+        const saleData = {
+            name: data.name,
+            mobile_no: data.mobile_no,
+            aasra_id: aasras.id,
+            email: data.email,
+            address: data.address,
+            totalSpareCost: data.totalSpareCost,
+            gstAmount: data.gstAmount,
+            grandTotal: data.grandTotal,
+            gstPercent: data.gstPercent
+        };
+
+        // Create sale
+        const sales = await sale.create(saleData);
+
+        if (sales) {
+            
+            await Promise.all(data.items.map(async (record) => {
+                const values = {
+                    job_description: record.job_description,
+                    sale_id: sales.id,  
+                    categoryValue: record.categoryValue,
+                    categoryLabel: record.categoryLabel,
+                    productValue: record.productValue,
+                    productLabel: record.productLabel,
+                    productPrice: record.productPrice,
+                    qty: record.qty,
+                    basePrice: record.basePrice,
+                    unitPrice: record.unitPrice,
+                    amount: record.amount,
+                    newPart_sr_no: record.newPart_sr_no,
+                    new_manufacturer_id: record.new_manufacturer_id,
+                };
+                await saleDetail.create(values);
+            }));
+
+            const repairDetailsList = await saleDetail.findAll({
+                where: {
+                    sale_id: sales.id
+                }
+            });
+            for (const repairDetails of repairDetailsList) {
+                const item_id = await spareParts.findByPk(repairDetails.productValue);
+      
+                        const stockDetails = await stock.findOne({
+                            where: {
+                                item_id: repairDetails.productValue,
+                                aasra_id: aasras.id
+                            }
+                        });
+      
+      
+                        if (stockDetails) {
+                            await stock.create({
+                                item_id: repairDetails.productValue,
+                                item_name: repairDetails.productLabel,
+                                aasra_id: aasras.id,
+                                quantity: 0,
+                                price: repairDetails.basePrice,
+                                unit_price: repairDetails.unitPrice,
+                                stock_in: 0,
+                                type:'rtu',
+                                stock_out: repairDetails.qty
+                            });
+                        }
+      
+                    }      
+                
+            return Helper.response(
+                "success",
+                "Sale Created Successfully!",
+                {},
+                res,
+                200
+            );
+        }
+
+    } catch (error) {
+
+        console.log(error)
+        return Helper.response(
+            "failed",
+            "Something went wrong!",
+            {},
+            res,
+            200
+        );
+    }
+};
+
+
+exports.rtoList = async (req, res) => {
+    try {
+     
+        const token = req.headers["authorization"];
+        const string = token.split(" ");
+        const user = await users.findOne({ where: { token: string[1] } });
+        const ticketData = [];
+    
+    
+        const start = await Helper.getMonth(req.body.startDate);
+        const end = await Helper.getMonth(req.body.endDate);
+        const startDatesplit = await Helper.formatDate(new Date(req.body.startDate));
+        const splitDate = await Helper.formatDate(new Date(req.body.endDate));
+        const startDate = startDatesplit.split(" ")[0] + " " + "00:00:00";
+        const endDate = splitDate.split(" ")[0] + " " + "23:59:59";
+    
+        if (user.user_type == 'AC') {
+            if (JSON.stringify(req.body) === '{}') {
+                var tickets = await sale.findAll({
+                  where: {
+                    aasra_id: user.ref_id
+                  },
+                  order: [
+                    ['id', 'DESC']
+                  ]
+                })
+        
+                await Promise.all(
+                  tickets.map(async (record, count = 1) => {
+                    // const getUser = await users.findByPk(record.user_id)
+                    const getAasra = await aasra.findByPk(record.aasra_id)
+                    const repairData = await saleDetail.findAll({
+                      where: {
+                        sale_id: record.id,
+                      },
+                      order: [
+                        ['id', 'DESC']
+                      ]
+                    })
+                    
+                    const repairDataValues = await Promise.all(repairData.map(async (records) => {
+                      
+        
+                      const newManufacture = await manufacturer.findOne({
+                        where: {
+                          id: records.new_manufacturer_id
+                        }
+                      });
+                      return {
+                        ...records.dataValues,
+                        new_manufacture_name: newManufacture?.manufacturer_code ?? null,
+        
+                      }
+                    }))
+        
+                    const dataValue = {
+                      id:record.id,
+                      aasra_id: record.aasra_id,
+                      name: record.name,
+                      mobile_no: record.mobile_no,
+                      email: record.email,
+                      address: record.address,
+                      totalSpareCost: record.totalSpareCost,
+                      gstAmount: record.gstAmount,
+                      gstPercent: record.gstPercent,
+                      grandTotal: record.grandTotal,
+                      aasraName: getAasra.name_of_org,
+                      ticketDetail:  repairDataValues,
+        
+                    }
+                    ticketData.push(dataValue)
+                  })
+                )
+              } else {
+                var tickets = await sale.findAll({
+                    where: {
+                      aasra_id: user.ref_id
+                    },
+                    createdAt: {
+                        [Op.between]: [startDate, endDate]
+                      },
+                    order: [
+                      ['id', 'DESC']
+                    ]
+                  })
+                if (tickets.length === 0) {
+                  Helper.response(
+                    "failed",
+                    "Record Not Found!",
+                    {},
+                    res,
+                    200
+                  );
+                  return;
+                }
+        
+                await Promise.all(
+                    tickets.map(async (record, count = 1) => {
+                      // const getUser = await users.findByPk(record.user_id)
+                      const getAasra = await aasra.findByPk(record.aasra_id)
+                      const repairData = await saleDetail.findAll({
+                        where: {
+                          sale_id: record.id,
+                        },
+                        order: [
+                          ['id', 'DESC']
+                        ]
+                      })
+                      
+                      const repairDataValues = await Promise.all(repairData.map(async (records) => {
+                        
+          
+                        const newManufacture = await manufacturer.findOne({
+                          where: {
+                            id: records.new_manufacturer_id
+                          }
+                        });
+                        return {
+                          ...records.dataValues,
+                          new_manufacture_name: newManufacture?.manufacturer_code ?? null,
+          
+                        }
+                      }))
+          
+                      const dataValue = {
+                        id:record.id,
+                        aasra_id: record.aasra_id,
+                        name: record.name,
+                        mobile_no: record.mobile_no,
+                        email: record.email,
+                        address: record.address,
+                        totalSpareCost: record.totalSpareCost,
+                        gstAmount: record.gstAmount,
+                        gstPercent: record.gstPercent,
+                        grandTotal: record.grandTotal,
+                        aasraName: getAasra.name_of_org,
+                        ticketDetail:  repairDataValues,
+          
+                      }
+                      ticketData.push(dataValue)
+                    })
+                  )
+        
+              }
+    
+        } else{
+                const aasras = req.body.aasra_id ;
+                console.log(req.body)
+                // return false 
+                if(aasras !== null){
+                    var tickets = await sale.findAll({
+                        where: {
+                          aasra_id: aasras
+                        },
+                        createdAt: {
+                            [Op.between]: [startDate, endDate]
+                          },
+                        order: [
+                          ['id', 'DESC']
+                        ]
+                      })
+                }else{
+                    var tickets = await sale.findAll({
+                        createdAt: {
+                            [Op.between]: [startDate, endDate]
+                          },
+                        order: [
+                          ['id', 'DESC']
+                        ]
+                      })
+                }
+               
+                await Promise.all(
+                  tickets.map(async (record, count = 1) => {
+                    // const getUser = await users.findByPk(record.user_id)
+                    const getAasra = await aasra.findByPk(record.aasra_id)
+                    const repairData = await saleDetail.findAll({
+                      where: {
+                        sale_id: record.id,
+                      },
+                      order: [
+                        ['id', 'DESC']
+                      ]
+                    })
+                    
+                    const repairDataValues = await Promise.all(repairData.map(async (records) => {
+                      
+        
+                      const newManufacture = await manufacturer.findOne({
+                        where: {
+                          id: records.new_manufacturer_id
+                        }
+                      });
+                      return {
+                        ...records.dataValues,
+                        new_manufacture_name: newManufacture?.manufacturer_code ?? null,
+        
+                      }
+                    }))
+        
+                    const dataValue = {
+                      id:record.id,
+                      aasra_id: record.aasra_id,
+                      name: record.name,
+                      mobile_no: record.mobile_no,
+                      email: record.email,
+                      address: record.address,
+                      totalSpareCost: record.totalSpareCost,
+                      gstAmount: record.gstAmount,
+                      gstPercent: record.gstPercent,
+                      grandTotal: record.grandTotal,
+                      aasraName: getAasra.name_of_org,
+                      ticketDetail:  repairDataValues,
+        
+                    }
+                    ticketData.push(dataValue)
+                  })
+                )
+              
+        }
+          
+    
+        
+        Helper.response(
+          "success",
+          "Record Found Successfully!",
+          {
+            saleDate: ticketData,
+          },
+          res,
+          200
+        );
+      } catch (error) {
+         console.log(error,'drsdf')
+         
+        Helper.response(
+          "failed",
+          "Something went wrong!",
+          { error },
+          res,
+          200
+        );
+      }
+};

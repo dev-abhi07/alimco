@@ -298,6 +298,25 @@ const menuListUserPermission = async (req, res, next) => {
                 },
               ],
             },
+            {
+              title: "Sales",
+              icon: "fa fa-shopping-cart fa-1x",
+              type: "sub",
+              children: [
+                {
+                  active: false,
+                  path: `sales/create-sell`,
+                  title: "Create sales",
+                  type: "link",
+                },
+                {
+                  active: false,
+                  path: `sales/sales-list`,
+                  title: "All Sales",
+                  type: "link",
+                },
+              ],
+            },
           ],
         },
       ];

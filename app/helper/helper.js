@@ -300,7 +300,7 @@ Helper.compareDate = (dates) => {
         let warranty;
 
         if (cleanCurrentDate.getTime() <= cleanDateToCompare.getTime()) {
-            warranty = true;
+            warranty = true ;
 
         } else {
             warranty = false;
@@ -364,10 +364,11 @@ Helper.getAasraDetails = async (parameter) => {
 Helper.createRazorpayOrder = async (amount, receipt_no) => {
     try {
 
-        const rupees = amount;
+        const rupees = amount.toFixed(2);
         const amount_data = rupees * 100;
 
 
+        console.log(amount, 'amount')
         console.log(amount_data, 'amount_data')
 
         const receipt_data = String(receipt_no);
@@ -399,11 +400,11 @@ Helper.createRazorpayOrder = async (amount, receipt_no) => {
         // Making the API request
         const response = await axios.request(config);
 
-
+        console.log(response, 'response')
         return { success: true, data: response.data };
     }
     catch (error) {
-
+        console.log(error, 'error')
         return { success: false, error: error.response?.data || error.message };
     }
 };

@@ -23,7 +23,7 @@ const XLSX = require('xlsx');
 const ticket = require("../../model/ticket");
 const transaction = require("../../model/transaction");
 const payment = require("../../model/payment");
-
+const partSerialNo = require("../../model/partSerialNo");
 exports.registerAasraCentre = async (req, res) => {
     try {
         const form = new formidable.IncomingForm();
@@ -287,6 +287,7 @@ exports.updateAasraCenter = async (req, res) => {
 
 exports.categoryWiseProduct = async (req, res) => {
     try {
+       
         const getProduct = await spareParts.findAll({
             where: {
                 category: req.body.category_id
@@ -312,26 +313,40 @@ exports.categoryWiseProduct = async (req, res) => {
 }
 
 
-// exports.productRepairList = async (req, res) => {
-//     try {
-//         const { repair_id } = req.body
-//         const product = await labour_charges.findAll()
-//         const data = product.map((f) => {
-//             const productData = {
-//                 value: f.id,
-//                 label: f.natureOfWork,
-//                 repairServiceCharge: f.labourCharges,
-//                 repairTime: f.repairTime,
-//                 repairPrice: 45,
-//                 repairGst: 0.18
-//             }
-//             return productData
-//         })
-//         Helper.response("success", "Product Found Successfully!", data, res, 200);
-//     } catch (error) {
-//         Helper.response("failed", "Server error", error, res, 200);
-//     }
-// }
+exports.categoryRtoWiseProduct = async (req, res) => {
+    try {
+        const token = req.headers['authorization'];
+        const string = token.split(" ");
+        const user = await users.findOne({ where: { token: string[1] } });
+        const aasras = await aasra.findOne({ where: { id: user.ref_id } })
+        const gstno = aasras?.gst
+        const getProduct = await spareParts.findAll({
+            where: {
+                category: req.body.category_id,
+                type:"rtu"
+            }
+        })
+        const productData = [];
+        getProduct.map((record) => {
+            const data = {
+                value: record.id,
+                label: record.part_number + '-' + record.part_name,
+                productPrice: parseFloat(record.unit_price),
+                basePrice:record.base_price,
+                id: record.id
+            }
+
+            productData.push(data)
+        })
+        //console.log(productData)
+        Helper.response("success", "Product Found Successfully!", { productData ,gstno}, res, 200);
+    } catch (error) {
+        console.log(error)
+        Helper.response("success", "Product Found Successfully!", { productData }, res, 200);
+    }
+}
+
+
 
 exports.productRepairList = async (req, res) => {
     try {
@@ -628,7 +643,6 @@ exports.aasraTypeupdate = async (req, res) => {
 }
 
 exports.stocktransferupdate = async (req, res) => {
-    
     try {
 
         const orderId = await order.findOne({
@@ -670,16 +684,14 @@ exports.stocktransferupdate = async (req, res) => {
                     item_name: t.item_name,
                     quantity: t.quantity,
                     aasra_id: orderId.aasra_id,
-                    stock_in: t.quantity,
-                    order_id:orderId.id
+                    stock_in: t.quantity
                 });
             })
         }
 
         if (orderDetailsId) {
             await order.update({
-                order_status: req.body.status,
-                stock_transfer:true
+                order_status: req.body.status
             }, {
                 where: {
                     id: req.body.order_id
@@ -705,70 +717,7 @@ exports.stocktransferupdate = async (req, res) => {
         );
     }
 }
-exports.importUser = async (req, res) => {
-    try {
-        const filePath = req.file.path;
 
-
-        const workbook = XLSX.readFile(filePath);
-        const sheetName = workbook.SheetNames[0];
-        const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
-
-
-        for (const row of sheetData) {
-            const createAasra = await aasra.create({
-                name_of_org: row.centre_name,
-                address: row.address,
-                state: row.state_id,
-                district: row.city_id,
-                mobile_no: row.contact_details,
-                email: row.email_id,
-                name: row.contact_person,
-                aasra_type: row.type,
-            });
-
-
-            const password = generate_pass.generate({
-                length: 8,
-                numbers: true,
-                uppercase: true,
-                lowercase: true,
-            });
-
-
-            const createUser = await users.create({
-                name: createAasra.name_of_org,
-                ref_id: createAasra.id,
-                user_type: 'AC',
-                email: createAasra.email,
-                password: Helper.encryptPassword(password),
-                pass_code: password,
-                mobile: createAasra.mobile_spoc,
-                status: 1,
-            });
-        }
-
-
-        fs.unlinkSync(filePath);
-
-        Helper.response(
-            "success",
-            "file data insert Successfully",
-            {},
-            res,
-            200
-        );
-    } catch (error) {
-        console.error('Error importing users:', error);
-        Helper.response(
-            "failed",
-            "something went wrong",
-            {},
-            res,
-            200
-        );
-    }
-};
 
 exports.uniqueOrderId = async (req, res) => {
     try {
@@ -1117,10 +1066,10 @@ exports.orderSucess2 = async (req, res) => {
     try {
     
     
-        const formData = req.body;
+        const formData = req.body;  
        
 
-        console.log("Received Data:", formData);
+        console.log("Received Data1:", formData);
 
 
         const { razorpay_payment_id, razorpay_order_id, razorpay_signature, error_code, error_description, error } = formData;
@@ -1131,24 +1080,24 @@ exports.orderSucess2 = async (req, res) => {
 
         if (error) {
 
-            const metadata = JSON.parse(error.metadata);
-            const razorpay_order = metadata.order_id;
-            const razorpay_payment = metadata.payment_id;
-            const error_getway = error.code;
-            const error_description = error.description;
+            const metadata = error?.metadata && JSON?.parse(error?.metadata);
+            const razorpay_order = metadata?.order_id;
+            const razorpay_payment = metadata?.payment_id;
+            const error_getway = error?.code;
+            const error_description = error?.description;
             await transaction.update({
                 status: 'failed',
                 razorpay_signature: null,
-                razorpay_payment_id: razorpay_payment,
-                description: error_description,
+                razorpay_payment_id: razorpay_payment||"",
+                description: error_description||"",
             }, {
                 where: {
-                    order: razorpay_order
+                    order: razorpay_order||""
                 }
             });
 
             res.redirect(
-                `http://192.168.23.44:3000/order-failed?error_code=${error_getway}&error_description=${error_description}`
+                `http://192.168.23.44:3000/order-failed?error_code=${error_getway||error}&error_description=${error_description||""}`
             );
         } else {
 
@@ -1332,5 +1281,141 @@ exports.orderSucess3 = async (req, res) => {
             200
         );
     }
+
+}
+
+
+
+
+exports.importpartSerial = async (req, res) => {
+    try {
+   
+       
+        const filePath = req.file.path;
+
+  
+        const workbook = XLSX.readFile(filePath);
+        const sheetName = workbook.SheetNames[0];
+        const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+        
+        for (const row of sheetData) {
+            const createpart = await partSerialNo.create({
+                moterTriSerialNo: row.moterTriSerialNo,
+                hubDriveMoter: row.hubDriveMoter,
+                batteryOne: row.batteryOne,
+                batterytwo: row.batterytwo,
+                charger: row.charger,
+                controller: row.controller,
+            });
+        }
+
+
+        fs.unlinkSync(filePath);
+
+        Helper.response(
+            "success",
+            "file data insert Successfully",
+            {},
+            res,
+            200
+        );
+    } catch (error) {
+        console.error('Error importing users:', error);
+        Helper.response(
+            "failed",
+            "something went wrong",
+            {},
+            res,
+            200
+        );
+    }
+};
+
+exports.listpartSerialno = async (req, res) => {
+
+    try {
+
+        const token = req.headers["authorization"];
+        const string = token.split(" ");
+        const user = await users.findOne({ where: { token: string[1] } });
+        const ticketData = [];
+    
+    
+        const start = await Helper.getMonth(req.body.startDate);
+        const end = await Helper.getMonth(req.body.endDate);
+        const startDatesplit = await Helper.formatDate(new Date(req.body.startDate));
+        const splitDate = await Helper.formatDate(new Date(req.body.endDate));
+        const startDate = startDatesplit.split(" ")[0] + " " + "00:00:00";
+        const endDate = splitDate.split(" ")[0] + " " + "23:59:59";
+    
+        if (user.user_type == 'S' || user.user_type == 'A') {
+            if(req.body.moterTriSerialNo != null){
+                var tickets = await partSerialNo.findAll({
+                    where: {
+                      moterTriSerialNo: req.body.moterTriSerialNo,
+                      createdAt: {
+                        [Op.between]: [startDate, endDate]
+                      },
+                    },
+                    order: [
+                      ['id', 'DESC']
+                    ]
+                  })
+            }else{
+                var tickets = await partSerialNo.findAll()
+            }
+          
+    
+            if (tickets.length === 0) {
+              Helper.response(
+                "failed",
+                "Record Not Found!",
+                {},
+                res,
+                200
+              );
+              return;
+            }
+    
+            await Promise.all(
+              tickets.map(async (record) => {
+    
+                const dataValue = {
+                    id:record.id,
+                    moterTriSerialNo: record.moterTriSerialNo,
+                    hubDriveMoter:record.hubDriveMoter,
+                    batteryOne: record.batteryOne,
+                    batterytwo:record.batterytwo,
+                    charger: record.charger,
+                    controller: record.controller,
+                }
+                ticketData.push(dataValue)
+              })
+            )
+    
+        
+          }
+    
+        
+        Helper.response(
+          "success",
+          "Record Found Successfully!",
+          {
+            partSerialNo: ticketData,
+          },
+          res,
+          200
+        );
+      } catch (error) {
+         console.log(error,'drsdf')
+         
+        Helper.response(
+          "failed",
+          "Something went wrong!",
+          { error },
+          res,
+          200
+        );
+      }
 
 }

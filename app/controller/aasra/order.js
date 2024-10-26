@@ -25,7 +25,11 @@ const invoicecopy = require("../../model/invoicecopy");
 exports.productApi = async (req, res) => {
 
     try {
-        const parts = await spareParts.findAll()
+        const parts = await spareParts.findAll({
+            where:{
+                type:null 
+            }
+        })
         const partsData = [];
 
         parts.map((record) => {
@@ -33,6 +37,33 @@ exports.productApi = async (req, res) => {
                 value: record.id,
                 label: record.part_number + '-' + record.part_name,
                 itemPrice: record.base_price,
+                itemUnitPrice: record.unit_price,
+                id: record.id
+            }
+            partsData.push(values)
+        })
+        Helper.response("success", "record found successfully", { partsData }, res, 200)
+    } catch (error) {
+        Helper.response("success", "Something went wrong!", { error }, res, 200)
+    }
+}
+
+exports.productRtuApi = async (req, res) => {
+
+    try {
+        const parts = await spareParts.findAll({
+            where:{
+                type:'rtu'
+            }
+        })
+        const partsData = [];
+
+        parts.map((record) => {
+            const values = {
+                value: record.id,
+                label: record.part_number + '-' + record.part_name,
+                itemPrice: record.base_price,
+                itemUnitPrice: record.unit_price,
                 id: record.id
             }
             partsData.push(values)
@@ -44,11 +75,10 @@ exports.productApi = async (req, res) => {
 }
 exports.createOrder = async (req, res) => {
     try {
-     
         const token = req.headers['authorization'];
         const string = token.split(" ");
         const user = await users.findOne({ where: { token: string[1] } });
-        const { products, gst, discount, shipping, orderStatus, supplier_name, subtotal, orderTaxAmount, grandTotal, notes, underWarranty } = req.body
+        const { products, gst, discount, shipping, orderStatus, supplier_name, subtotal, orderTaxAmount, grandTotal, notes, underWarranty ,type} = req.body
 
         const total_order = {}
 
@@ -61,6 +91,8 @@ exports.createOrder = async (req, res) => {
         total_order['shipping_charges'] = shipping
         total_order['order_status'] = orderStatus.label
         total_order['supplier_name'] = supplier_name.label
+        total_order['type'] = type.value || null
+        total_order['type_label'] = type.label || null
         total_order['underWarranty'] = underWarranty?.label || null
       
         total_order['order_date'] = new Date().toISOString().slice(0, 10),
@@ -82,7 +114,8 @@ exports.createOrder = async (req, res) => {
                 products['item_name'] = f.label
                 products['quantity'] = f.qty
                 products['price'] = f.itemPrice
-
+                products['unit_price'] = f.itemUnitPrice
+                products['type'] = type.value || null
                 const data = await orderDetails.create(products).then(async () => {
 
                 }).catch((err) => {
@@ -201,7 +234,7 @@ exports.orderList = async (req, res) => {
         
             const sparePartPartial = sparePartMap[stock.item_id];
 
-            const gstPricePartial = sparePartPartial ? (stock.quantity * sparePartPartial.unit_price) : 0;
+            const gstPricePartial = sparePartPartial ? (stock.quantity * stock.unit_price) : 0;
 
       
             
@@ -210,6 +243,7 @@ exports.orderList = async (req, res) => {
                 item_id: stock.item_id,
                 item_name: stock.item_name,
                 quantity: stock.quantity,
+                itemUnitPrice: stock.unit_price,
                 price: stock.price,
                 order_id: stock.order_id,
                 sparePartPartial: sparePartPartial
@@ -228,7 +262,7 @@ exports.orderList = async (req, res) => {
             }
 
             const sparePart = sparePartMap[detail.item_id];
-            const gstPrice = sparePart ? (detail.quantity * sparePart.unit_price) : 0;
+            const gstPrice = sparePart ? (detail.quantity * detail.unit_price) : 0;
 
     
 
@@ -238,6 +272,7 @@ exports.orderList = async (req, res) => {
                 item_name: detail.item_name,
                 quantity: detail.quantity,
                 price: detail.price,
+                itemUnitPrice: detail.unit_price,
                 order_id: detail.order_id,
                 image: detail.image,
                 gstpercent:sparePart,
@@ -304,7 +339,10 @@ exports.orderList = async (req, res) => {
                 stockData: stockMap[order.id] || [], 
                 creditnotetotal: order.creditnotetotal,
                 totalGstPricePartial:totalGstPricePartial,
-
+                startDate: Helper.formatISODateTime(order.startDate),
+                endDate: Helper.formatISODateTime(order.endDate),
+                type: order.type,
+                type_label: order.type_label,
                 payment: paymentMap[order.id] ? {
                     id: paymentMap[order.id].id,
                     order_id: paymentMap[order.id].order_id,
@@ -325,6 +363,7 @@ exports.orderList = async (req, res) => {
         Helper.response("failed", "Something went wrong", error, res, 200);
     }
 };
+
 
 
 
@@ -574,7 +613,7 @@ exports.updateOrderPayment = async (req, res) => {
         Helper.response("error", "Something went wrong", error, res, 200)
     }
 }
-
+ 
 
 exports.orderDetails = async (req, res) => {
     try {
@@ -643,6 +682,8 @@ exports.orderDetails = async (req, res) => {
             stock_transfer: orderWithImageUrls.stock_transfer,
             discount: orderWithImageUrls.discount,
             creditnotetotal: orderWithImageUrls.creditnotetotal,
+            type: orderWithImageUrls.type,
+            type_label: orderWithImageUrls.type_label,
             cgst: cgst,
             sgst: sgst,
             gstNo: aasraData.gst,
@@ -694,7 +735,7 @@ exports.orderDetails = async (req, res) => {
 
            
             const itemGst = sparePart.gst;
-            const gstPrice = detail.quantity * sparePart.unit_price; 
+            const gstPrice = detail.quantity * detail.unit_price; 
 
             order.total_gst_price += gstPrice;
             return {
@@ -703,6 +744,7 @@ exports.orderDetails = async (req, res) => {
                 item_name: detail.item_name,
                 quantity: detail.quantity,
                 price: detail.price,
+                itemUnitPrice: detail.unit_price,
                 order_id: detail.order_id,
                 image: detail.image,
                 hsn_code: sparePart.hsn_code,
@@ -730,6 +772,7 @@ exports.orderDetails = async (req, res) => {
                 item_name: detail.item_name,
                 quantity: detail.quantity,
                 price: detail.price,
+                itemUnitPrice: detail.unit_price,
                 order_id: detail.order_id,
                 image: detail.image,
                 hsn_code: sparePart.hsn_code,
@@ -739,7 +782,7 @@ exports.orderDetails = async (req, res) => {
                 
             };
         }));
-        const adjustedTotalBill =  order.total_gst_price - order.total_bill  ;
+        const adjustedTotalBill = order.total_gst_price - order.total_bill  ;
         const orderWithDetails = {
             ...order,
             orderData: flattenedOrderDetails,
@@ -1200,7 +1243,11 @@ exports.updateOrderDetails = async (req, res) => {
                 dpsValue = [],
                 dpsDate = [],
                 dpsNo = [],
-                notes = []
+                notes = [],
+                startDate = [],
+                endDate = [],
+                type_value =[],
+                type_label =[],
             } = fields;
 
             const products = [];
@@ -1212,7 +1259,8 @@ exports.updateOrderDetails = async (req, res) => {
                     itemPrice: fields[`products[${i}][itemPrice]`],
                     qty: fields[`products[${i}][qty]`],
                     gst: fields[`products[${i}][gst]`],
-                    subtotal: fields[`products[${i}][subtotal]`]
+                    subtotal: fields[`products[${i}][subtotal]`],
+                    unit_price: fields[`products[${i}][itemUnitPrice]`]
                 });
             }
 
@@ -1247,7 +1295,11 @@ exports.updateOrderDetails = async (req, res) => {
                             dps_date: dpsDate[0],
                             dps_no: dpsNo[0],
                             image: newPath || null,
-                            notes: notes[0]
+                            notes: notes[0],
+                            startDate:startDate[0],
+                            endDate: endDate[0],
+                            type: type_value[0] || null,
+                            type_label: type_label[0] || null,
                         };
 
                         await orderModel.update(total_order, { where: { id: order_id[0] } });
@@ -1266,7 +1318,9 @@ exports.updateOrderDetails = async (req, res) => {
                                     item_name: f.label[index],
                                     quantity: f.qty[index],
                                     price: f.itemPrice[index],
-                                    image: newPath
+                                    unit_price: f.unit_price[index],
+                                    image: newPath,
+                                    type: type_value[0] || null 
                                 };
                             });
                             return Promise.all(productDataArray.map(productData => orderDetails.create(productData)));
@@ -1291,7 +1345,11 @@ exports.updateOrderDetails = async (req, res) => {
                     dps_value: dpsValue[0],
                     dps_date: dpsDate[0],
                     dps_no: dpsNo[0],
-                    notes: notes[0]
+                    notes: notes[0],
+                    startDate:startDate[0],
+                    endDate: endDate[0],
+                    type: type_value[0] || null,
+                    type_label: type_label[0] || null,
                 };
 
                 // Update the order
@@ -1311,7 +1369,9 @@ exports.updateOrderDetails = async (req, res) => {
                             item_name: f.label[index],
                             quantity: f.qty[index],
                             price: f.itemPrice[index],
-                            image: null
+                            unit_price: f.unit_price[index],
+                            image: null,
+                            type: type_value[0] || null
                         };
                     });
                     return Promise.all(productDataArray.map(productData => orderDetails.create(productData)));
@@ -1440,7 +1500,8 @@ exports.bultiStockTransfer = async (req, res) => {
                 dpsNo = [],
                 notes = [],
                 invoice_no = [],
-                invoice_date = []
+                invoice_date = [],
+                type_value =[]
             } = fields;
 
             const products = [];
@@ -1452,7 +1513,8 @@ exports.bultiStockTransfer = async (req, res) => {
                     itemPrice: fields[`products[${i}][itemPrice]`],
                     qty: fields[`products[${i}][qty]`],
                     gst: fields[`products[${i}][gst]`],
-                    subtotal: fields[`products[${i}][subtotal]`]
+                    subtotal: fields[`products[${i}][subtotal]`],
+                    unit_price: fields[`products[${i}][itemUnitPrice]`],
                 });
             }
 
@@ -1508,8 +1570,10 @@ exports.bultiStockTransfer = async (req, res) => {
                             item_name: f.label[index],
                             quantity: f.qty[index],
                             price: f.itemPrice[index],
+                            unit_price: f.unit_price[index],
                             stock_in: f.qty[index],
-                            aasra_id: aasra_id
+                            aasra_id: aasra_id,
+                            type: type_value[0]
                         };
                     });
                     return Promise.all(productDataArray.map(productData => stock.create(productData)));
@@ -1534,12 +1598,132 @@ exports.bultiStockTransfer = async (req, res) => {
                             item_name: f.label[index],
                             quantity: f.qty[index],
                             price: f.itemPrice[index],
+                            unit_price: f.unit_price[index],
                             stock_in: f.qty[index],
-                            aasra_id: aasra_id
+                            aasra_id: aasra_id,
+                            type: type_value[0]
                         };
                     });
                     return Promise.all(productDataArray.map(productData => stock.create(productData)));
                 }));
+
+                return Helper.response("success", "Order Updated and Stock Transferred successfully", total_order, res, 200);
+            }
+        } catch (error) {
+            console.log(error);
+            Helper.response("failed", "Something went wrong", error, res, 200);
+        }
+    });
+};
+
+
+exports.nrmlStockTransfer = async (req, res) => {
+    const form = new formidable.IncomingForm();
+
+    form.parse(req, async (err, fields, files) => {
+        if (err) {
+            console.log(err);
+            return Helper.response("failed", "Failed to parse form data", err, res, 200);
+        }
+
+        const token = req.headers['authorization'];
+        const string = token.split(" ");
+        const user = await users.findOne({ where: { token: string[1] } });
+
+        try {
+            // Extract form fields
+            const {
+                gst = [],
+                discount = [],
+                shipping = [],
+                orderStatus = [],
+                supplier_name = [],
+                subtotal = [],
+                orderTaxAmount = [],
+                grandTotal = [],
+                order_id = [],
+                dpsValue = [],
+                dpsDate = [],
+                dpsNo = [],
+                notes = [],
+                invoice_no = [],
+                invoice_date = []
+            } = fields;
+
+           
+        
+            const orderDetail = await orderModel.findOne({ where: { id: order_id[0] } });
+            const aasra_id = orderDetail.aasra_id;
+
+            if (Object.keys(files.invoice_copy).length > 0) {
+                const imagePaths = [];
+
+                await Promise.all(Object.values(files.invoice_copy).map(async (imageFile) => {
+                    console.log("File path is undefined for:", imageFile);
+                   
+                    const ext = path.extname(imageFile.originalFilename);  
+                    const oldPath = imageFile.filepath;  
+                    const newPath = path.join('public/', imageFile.originalFilename);  
+                    const normalizedPath = newPath.replace(/\\/g, '/');
+                    try {
+                        await fs.promises.rename(oldPath, normalizedPath);  // Save the file with the normalized path
+                        imagePaths.push(normalizedPath);
+            
+
+                        await invoicecopy.create({
+                            order_id: order_id[0],
+                            image: normalizedPath  
+                        });
+                    } catch (err) {
+                        console.log(err);
+                        return Helper.response("failed", "Failed to upload invoice copy", err, res, 200);
+                    }
+                }));
+
+                const total_order = {
+                    invoice_no: invoice_no[0],
+                    invoice_date: invoice_date[0],
+                    stock_transfer: 1
+                };
+
+                await orderModel.update(total_order, { where: { id: order_id[0] } });
+
+              
+                const itemsAddToStock = await orderDetails.findAll({ where: { order_id: order_id[0] } })
+
+                const data = await Promise.all(itemsAddToStock.map(async (f) => {
+    
+                    await stock.create({
+                        ...f.dataValues,
+                        aasra_id: aasra_id,
+                        stock_in: f.quantity,
+                    }).catch((err) => {
+                        console.log(err)
+                    })
+                }))
+                return Helper.response("success", "Order and Invoice Updated, Stock Transferred successfully", total_order, res, 200);
+            } else {
+                const total_order = {
+                    invoice_no: invoice_no[0],
+                    invoice_date: invoice_date[0],
+                    stock_transfer: 1
+                };
+
+                await orderModel.update(total_order, { where: { id: order_id[0] } });
+
+             
+                const itemsAddToStock = await orderDetails.findAll({ where: { order_id: order_id[0] } })
+
+                const data = await Promise.all(itemsAddToStock.map(async (f) => {
+    
+                    await stock.create({
+                        ...f.dataValues,
+                        aasra_id: aasra_id,
+                        stock_in: f.quantity,
+                    }).catch((err) => {
+                        console.log(err)
+                    })
+                }))
 
                 return Helper.response("success", "Order Updated and Stock Transferred successfully", total_order, res, 200);
             }

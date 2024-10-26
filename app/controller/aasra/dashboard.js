@@ -47,6 +47,17 @@ exports.Dashboard = async (req, res) => {
               ticket_id: record.ticket_id
             }
           })
+
+          const repairDataDiscount = await repair.findOne({
+            where: {
+              ticket_id: record.ticket_id
+            }
+            ,
+            order: [
+              ['id', 'DESC']
+            ]
+          })
+
           const getUser = await users.findOne({
             where: {
               ref_id: record.user_id,
@@ -61,14 +72,34 @@ exports.Dashboard = async (req, res) => {
           })
 
 
+          const repairDataValues = await Promise.all(repairData.map(async (records) => {
+            const oldManufacture = await manufacturer.findOne({
+              where: {
+                id: records.old_manufacturer_id
+              }
+            });
 
+            const newManufacture = await manufacturer.findOne({
+              where: {
+                id: records.new_manufacturer_id
+              }
+            });
+            return {
+              ...records.dataValues,
+              old_manufacture_name: oldManufacture?.manufacturer_code ?? null,
+              new_manufacture_name: newManufacture?.manufacturer_code ?? null,
+              old_manufacture_id: oldManufacture?.id ?? null,
+              new_manufacture_id: newManufacture?.id ?? null,
+
+            }
+          }))
 
           const itemDetails = await items.findOne({
             where: {
               user_id: record.user_id
             }
           })
-          const warranty = await Helper.compareDate(itemDetails?.expire_date);
+         
 
           const getproblem = await problem.findOne({
             where: {
@@ -82,50 +113,133 @@ exports.Dashboard = async (req, res) => {
             }
           })
 
-
-
           var subtotal = 0
           var serviceCharge = 0
           var gst = 0
           var discount = 0
+         var discountAmt = 0 ;
+          var subtotalPurchase = 0
+          var serviceChargePurchase = 0
+          var gstPurchase = 0
+          var discountPurchase = 0
           repairData.map((t) => {
-            subtotal += t.productPrice * t.qty;
-            serviceCharge += t.repairServiceCharge + t.repairPrice;
-            gst = subtotal * 18 / 100;
-            discount = t.record == 1 ? 100 : 0;
+            if(t.repairCheckValue == "Repair/Replace"){
+              if(t.warranty == 1){
+                subtotal += t.productPrice * t.qty;
+                serviceCharge += t.repairServiceCharge ;
+                gst = subtotal * 18 / 100;
+               
+              }else{
+                subtotal += t.productPrice * t.qty;
+                serviceCharge += t.repairServiceCharge ;
+                gst = subtotal * 18 / 100;
+              }
+              
+            }
+            if(t.repairCheckValue == "Purchase"){
+              subtotalPurchase += t.productPrice * t.qty;
+              serviceChargePurchase += t.repairServiceCharge ;
+            }
+            
           })
-
+          const warranty = await Helper.compareDate(itemDetails?.expire_date);
+            
+            if(warranty == 1){
+              discountAmt = subtotal + serviceCharge;
+            }else{
+              discountAmt = 0;
+            }
+          var amtgst = 0 ;
+            if(getAasra.gst != null){
+              amtgst=     ((subtotal + serviceCharge + subtotalPurchase - discountAmt) * 18) / 100
+            }else{
+              amtgst = 0 
+            }
 
           const dataValue = {
+            id:record.id,
             aasraId: record.aasraId,
             customer_name: getUser.name,
-            mobile: getUser.mobile,
             product_name: record.itemName,
             itemId: record.itemId,
             description: record.description,
             appointment_date: record.appointment_date,
             appointment_time: record.appointment_time,
             address: getCustomer?.district + ', ' + getCustomer?.state,
-            aadhaar: getCustomer.aadhaar,
             ticket_id: record.ticket_id,
+            aadhaar: getCustomer.aadhaar,
             aasraName: getAasra.name_of_org,
             status: record.status == 0 ? 'Pending' : record.status == 1 ? 'Open' : 'Closed',
+            job_description: record.job_description,
             sr_no: count + 1,
-            ticketDetail: (record.status == 2 || record.status == 1) ? repairData : null,
-            subtotal: subtotal,
-            serviceCharge: serviceCharge,
-            gst: process.env.SERVICE_GST,
-            totalAmount: subtotal + serviceCharge,
-            discount: 0,
-            createdAt: record.createdAt,
+            ticketDetail: (record.status == 2 || record.status == 1) ? repairDataValues : null,
             payment_status: repairPayments == 0 ? false : true,
+            gst: process.env.SERVICE_GST,
             warranty: warranty,
             dstDate: itemDetails?.distributed_date ?? null,
             expire_date: itemDetails?.expire_date ?? null,
             problem: getproblem?.problem_name ?? null,
+            subtotal: subtotal,
+            serviceCharge: serviceCharge,
+            total : subtotal + serviceCharge + subtotalPurchase,
+             totalAmount: (subtotal + serviceCharge + subtotalPurchase) - discountAmt  - (repairDataDiscount?.dataValues?.discountRec || 0),
+              additionalDiscount :repairDataDiscount?.dataValues?.discountRec || 0,
+            discount: discountAmt,
             mobile: getUser.mobile ?? null,
+            createdAt: Helper.formatDateTime(record.createdAt) ,
+            
+            gstAmount : amtgst ,
+
+            uniquiCode : getAasra.unique_code,
+            gstNo :getAasra.gst,
+
+            invoiceCode : `${getAasra?.unique_code}-${record.ticket_id || 'N/A'}` 
+
           }
           ticketData.push(dataValue)
+
+          // var subtotal = 0
+          // var serviceCharge = 0
+          // var gst = 0
+          // var discount = 0
+          // repairData.map((t) => {
+          //   subtotal += t.productPrice * t.qty;
+          //   serviceCharge += t.repairServiceCharge + t.repairPrice;
+          //   gst = subtotal * 18 / 100;
+          //   discount = t.record == 1 ? 100 : 0;
+          // })
+
+
+          // const dataValue = {
+          //   aasraId: record.aasraId,
+          //   customer_name: getUser.name,
+          //   mobile: getUser.mobile,
+          //   product_name: record.itemName,
+          //   itemId: record.itemId,
+          //   description: record.description,
+          //   appointment_date: record.appointment_date,
+          //   appointment_time: record.appointment_time,
+          //   address: getCustomer?.district + ', ' + getCustomer?.state,
+          //   aadhaar: getCustomer.aadhaar,
+          //   ticket_id: record.ticket_id,
+          //   aasraName: getAasra.name_of_org,
+          //   status: record.status == 0 ? 'Pending' : record.status == 1 ? 'Open' : 'Closed',
+          //   sr_no: count + 1,
+          //   ticketDetail: (record.status == 2 || record.status == 1) ? repairData : null,
+          //   subtotal: subtotal,
+          //   serviceCharge: serviceCharge,
+          //   gst: process.env.SERVICE_GST,
+          //   totalAmount: subtotal + serviceCharge,
+          //   discount: 0,
+          //   createdAt: record.createdAt,
+          //   payment_status: repairPayments == 0 ? false : true,
+          //   warranty: warranty,
+          //   dstDate: itemDetails?.distributed_date ?? null,
+          //   expire_date: itemDetails?.expire_date ?? null,
+          //   problem: getproblem?.problem_name ?? null,
+          //   mobile: getUser.mobile ?? null,
+          // }
+          // ticketData.push(dataValue)
         })
       )
 
@@ -170,6 +284,16 @@ exports.Dashboard = async (req, res) => {
               ticket_id: record.ticket_id
             }
           })
+
+          const repairDataDiscount = await repair.findOne({
+            where: {
+              ticket_id: record.ticket_id
+            }
+            ,
+            order: [
+              ['id', 'DESC']
+            ]
+          })
           const getUser = await users.findOne({
             where: {
               ref_id: record.user_id,
@@ -183,7 +307,27 @@ exports.Dashboard = async (req, res) => {
             }
           })
 
+          const repairDataValues = await Promise.all(repairData.map(async (records) => {
+            const oldManufacture = await manufacturer.findOne({
+              where: {
+                id: records.old_manufacturer_id
+              }
+            });
 
+            const newManufacture = await manufacturer.findOne({
+              where: {
+                id: records.new_manufacturer_id
+              }
+            });
+            return {
+              ...records.dataValues,
+              old_manufacture_name: oldManufacture?.manufacturer_code ?? null,
+              new_manufacture_name: newManufacture?.manufacturer_code ?? null,
+              old_manufacture_id: oldManufacture?.id ?? null,
+              new_manufacture_id: newManufacture?.id ?? null,
+
+            }
+          }))
 
 
           const itemDetails = await items.findOne({
@@ -191,7 +335,7 @@ exports.Dashboard = async (req, res) => {
               user_id: record.user_id
             }
           })
-          const warranty = await Helper.compareDate(itemDetails?.expire_date);
+        
 
           const getproblem = await problem.findOne({
             where: {
@@ -206,49 +350,91 @@ exports.Dashboard = async (req, res) => {
           })
 
 
-
           var subtotal = 0
           var serviceCharge = 0
           var gst = 0
           var discount = 0
+         var discountAmt = 0 ;
+          var subtotalPurchase = 0
+          var serviceChargePurchase = 0
+          var gstPurchase = 0
+          var discountPurchase = 0
           repairData.map((t) => {
-            subtotal += t.productPrice * t.qty;
-            serviceCharge += t.repairServiceCharge + t.repairPrice;
-            gst = subtotal * 18 / 100;
-            discount = t.record == 1 ? 100 : 0;
+            if(t.repairCheckValue == "Repair/Replace"){
+              if(t.warranty == 1){
+                subtotal += t.productPrice * t.qty;
+                serviceCharge += t.repairServiceCharge ;
+                gst = subtotal * 18 / 100;
+               
+              }else{
+                subtotal += t.productPrice * t.qty;
+                serviceCharge += t.repairServiceCharge ;
+                gst = subtotal * 18 / 100;
+              }
+              
+            }
+            if(t.repairCheckValue == "Purchase"){
+              subtotalPurchase += t.productPrice * t.qty;
+              serviceChargePurchase += t.repairServiceCharge ;
+            }
+            
           })
-
+          const warranty = await Helper.compareDate(itemDetails?.expire_date);
+            
+            if(warranty == 1){
+              discountAmt = subtotal + serviceCharge;
+            }else{
+              discountAmt = 0;
+            }
+          var amtgst = 0 ;
+            if(getAasra.gst != null){
+              amtgst=     ((subtotal + serviceCharge + subtotalPurchase - discountAmt) * 18) / 100
+            }else{
+              amtgst = 0 
+            }
 
           const dataValue = {
+            id:record.id,
             aasraId: record.aasraId,
             customer_name: getUser.name,
-            mobile: getUser.mobile,
             product_name: record.itemName,
             itemId: record.itemId,
             description: record.description,
             appointment_date: record.appointment_date,
             appointment_time: record.appointment_time,
             address: getCustomer?.district + ', ' + getCustomer?.state,
-            aadhaar: getCustomer.aadhaar,
             ticket_id: record.ticket_id,
+            aadhaar: getCustomer.aadhaar,
             aasraName: getAasra.name_of_org,
             status: record.status == 0 ? 'Pending' : record.status == 1 ? 'Open' : 'Closed',
+            job_description: record.job_description,
             sr_no: count + 1,
-            ticketDetail: (record.status == 2 || record.status == 1) ? repairData : null,
-            subtotal: subtotal,
-            serviceCharge: serviceCharge,
-            gst: process.env.SERVICE_GST,
-            totalAmount: subtotal + serviceCharge,
-            discount: 0,
-            createdAt: record.createdAt,
+            ticketDetail: (record.status == 2 || record.status == 1) ? repairDataValues : null,
             payment_status: repairPayments == 0 ? false : true,
+            gst: process.env.SERVICE_GST,
             warranty: warranty,
             dstDate: itemDetails?.distributed_date ?? null,
             expire_date: itemDetails?.expire_date ?? null,
             problem: getproblem?.problem_name ?? null,
+            subtotal: subtotal,
+            serviceCharge: serviceCharge,
+            total : subtotal + serviceCharge + subtotalPurchase,
+            totalAmount: (subtotal + serviceCharge + subtotalPurchase) - discountAmt  - (repairDataDiscount?.dataValues?.discountRec || 0),
+            additionalDiscount :repairDataDiscount?.dataValues?.discountRec || 0,
+            discount: discountAmt,
             mobile: getUser.mobile ?? null,
+            createdAt: Helper.formatDateTime(record.createdAt) ,
+            
+            gstAmount : amtgst ,
+
+            uniquiCode : getAasra.unique_code,
+            gstNo :getAasra.gst,
+
+            invoiceCode : `${getAasra?.unique_code}-${record.ticket_id || 'N/A'}` 
+
           }
           ticketData.push(dataValue)
+        
         })
       )
 
@@ -297,6 +483,16 @@ exports.Dashboard = async (req, res) => {
             }
           })
 
+          const repairDataDiscount = await repair.findOne({
+            where: {
+              ticket_id: record.ticket_id
+            }
+            ,
+            order: [
+              ['id', 'DESC']
+            ]
+          })
+
           const repairDataValues = await Promise.all(repairData.map(async (records) => {
             const oldManufacture = await manufacturer.findOne({
               where: {
@@ -341,52 +537,92 @@ exports.Dashboard = async (req, res) => {
             }
           })
 
-          const warranty = await Helper.compareDate(itemDetails?.expire_date);
-
           var subtotal = 0
           var serviceCharge = 0
           var gst = 0
           var discount = 0
+         var discountAmt = 0 ;
+          var subtotalPurchase = 0
+          var serviceChargePurchase = 0
+          var gstPurchase = 0
+          var discountPurchase = 0
           repairData.map((t) => {
-            subtotal += t.productPrice * t.qty;
-            serviceCharge += t.repairServiceCharge + t.price;
-            gst = subtotal * 18 / 100;
-            discount = t.record == 1 ? 100 : 0;
+            if(t.repairCheckValue == "Repair/Replace"){
+              if(t.warranty == 1){
+                subtotal += t.productPrice * t.qty;
+                serviceCharge += t.repairServiceCharge ;
+                gst = subtotal * 18 / 100;
+               
+              }else{
+                subtotal += t.productPrice * t.qty;
+                serviceCharge += t.repairServiceCharge ;
+                gst = subtotal * 18 / 100;
+              }
+              
+            }
+            if(t.repairCheckValue == "Purchase"){
+              subtotalPurchase += t.productPrice * t.qty;
+              serviceChargePurchase += t.repairServiceCharge ;
+            }
+            
           })
-
+          const warranty = await Helper.compareDate(itemDetails?.expire_date);
+            
+          if(warranty == 1){
+            discountAmt = subtotal + serviceCharge;
+          }else{
+            discountAmt = 0;
+          }
+          var amtgst = 0 ;
+            if(getAasra.gst != null){
+              amtgst=     ((subtotal + serviceCharge + subtotalPurchase - discountAmt) * 18) / 100
+            }else{
+              amtgst = 0 
+            }
 
           const dataValue = {
-            aasraId: record.aasra_id,
+            id:record.id,
+            aasraId: record.aasraId,
             customer_name: getUser.name,
-            mobile: getUser.mobile,
             product_name: record.itemName,
             itemId: record.itemId,
             description: record.description,
-            address: getCustomer?.district + ', ' + getCustomer?.state,
-            aadhaar: getCustomer.aadhaar,
             appointment_date: record.appointment_date,
             appointment_time: record.appointment_time,
+            address: getCustomer?.district + ', ' + getCustomer?.state,
             ticket_id: record.ticket_id,
+            aadhaar: getCustomer.aadhaar,
             aasraName: getAasra.name_of_org,
             status: record.status == 0 ? 'Pending' : record.status == 1 ? 'Open' : 'Closed',
+            job_description: record.job_description,
             sr_no: count + 1,
             ticketDetail: (record.status == 2 || record.status == 1) ? repairDataValues : null,
-            subtotal: subtotal,
-            serviceCharge: serviceCharge,
-            gst: process.env.SERVICE_GST,
-            totalAmount: subtotal + serviceCharge,
-            discount: discount,
-            createdDate: record.createdAt,
             payment_status: repairPayments == 0 ? false : true,
+            gst: process.env.SERVICE_GST,
             warranty: warranty,
             dstDate: itemDetails?.distributed_date ?? null,
             expire_date: itemDetails?.expire_date ?? null,
             problem: getproblem?.problem_name ?? null,
+            subtotal: subtotal,
+            serviceCharge: serviceCharge,
+            total : subtotal + serviceCharge + subtotalPurchase,
+            totalAmount: (subtotal + serviceCharge + subtotalPurchase) - discountAmt  - (repairDataDiscount?.dataValues?.discountRec || 0),
+            additionalDiscount :repairDataDiscount?.dataValues?.discountRec || 0,
+            discount: discountAmt,
             mobile: getUser.mobile ?? null,
-            createdAt: record.createdAt
-          }
+            createdAt: Helper.formatDateTime(record.createdAt) ,
+            
+            gstAmount : amtgst ,
 
+            uniquiCode : getAasra.unique_code,
+            gstNo :getAasra.gst,
+
+            invoiceCode : `${getAasra?.unique_code}-${record.ticket_id || 'N/A'}` 
+
+          }
           ticketData.push(dataValue)
+
+        
         })
 
       )
@@ -520,7 +756,19 @@ exports.ticketList = async (req, res) => {
             const repairData = await repair.findAll({
               where: {
                 ticket_id: record.ticket_id
-              }
+              },
+              order: [
+                ['id', 'DESC']
+              ]
+            })
+
+            const repairDataDiscount = await repair.findOne({
+              where: {
+                ticket_id: record.ticket_id
+              },
+              order: [
+                ['id', 'DESC']
+              ]
             })
 
             const repairDataValues = await Promise.all(repairData.map(async (records) => {
@@ -575,24 +823,54 @@ exports.ticketList = async (req, res) => {
                 id: getUser.ref_id,
               }
             })
-            const warranty = await Helper.compareDate(itemDetails?.expire_date);
-
+          
 
 
             var subtotal = 0
             var serviceCharge = 0
             var gst = 0
             var discount = 0
+            var discountAmt = 0 ;
+            var subtotalPurchase = 0
+            var serviceChargePurchase = 0
+            var gstPurchase = 0
+            var discountPurchase = 0
             repairData.map((t) => {
-              subtotal += t.productPrice * t.qty;
-              serviceCharge += t.repairServiceCharge + t.repairPrice;
-              gst = subtotal * 18 / 100;
-              discount = t.record == 1 ? 100 : 0;
+              if(t.repairCheckValue == "Repair/Replace"){
+                if(t.warranty == 1){
+                  subtotal += t.productPrice * t.qty;
+                  serviceCharge += t.repairServiceCharge ;
+                  gst = subtotal * 18 / 100;
+                 
+                }else{
+                  subtotal += t.productPrice * t.qty;
+                  serviceCharge += t.repairServiceCharge ;
+                  gst = subtotal * 18 / 100;
+                }
+                
+              }
+              if(t.repairCheckValue == "Purchase"){
+                subtotalPurchase += t.productPrice * t.qty;
+                serviceChargePurchase += t.repairServiceCharge ;
+              }
+              
             })
-
-
+            const warranty = await Helper.compareDate(itemDetails?.expire_date);
+            
+            if(warranty == 1){
+              discountAmt = subtotal + serviceCharge;
+            }else{
+              discountAmt = 0;
+            }
+            var amtgst = 0 ;
+            if(getAasra.gst != null){
+              amtgst=     ((subtotal + serviceCharge + subtotalPurchase - discountAmt) * 18) / 100
+            }else{
+              amtgst = 0 
+            }
 
             const dataValue = {
+              id:record.id,
               aasraId: record.aasraId,
               customer_name: getUser.name,
               product_name: record.itemName,
@@ -601,30 +879,34 @@ exports.ticketList = async (req, res) => {
               appointment_date: record.appointment_date,
               appointment_time: record.appointment_time,
               address: getCustomer?.district + ', ' + getCustomer?.state,
-              aadhaar: getCustomer.aadhaar,
               ticket_id: record.ticket_id,
+              aadhaar: getCustomer.aadhaar,
               aasraName: getAasra.name_of_org,
-
-              uniquiCode : getAasra.unique_code,
-              gstNo :getAasra.gst,
-              invoiceCode : `${getAasra?.unique_code}-${record.ticket_id || 'N/A'}` ,
-
               status: record.status == 0 ? 'Pending' : record.status == 1 ? 'Open' : 'Closed',
               job_description: record.job_description,
               sr_no: count + 1,
               ticketDetail: (record.status == 2 || record.status == 1) ? repairDataValues : null,
               payment_status: repairPayments == 0 ? false : true,
-              subtotal: subtotal,
-              serviceCharge: serviceCharge,
               gst: process.env.SERVICE_GST,
-              totalAmount: subtotal + serviceCharge,
-              discount: 0,
               warranty: warranty,
               dstDate: itemDetails?.distributed_date ?? null,
               expire_date: itemDetails?.expire_date ?? null,
               problem: getproblem?.problem_name ?? null,
+              subtotal: subtotal,
+              serviceCharge: serviceCharge,
+              total : subtotal + serviceCharge + subtotalPurchase,
+              totalAmount: (subtotal + serviceCharge + subtotalPurchase) - discountAmt  - (repairDataDiscount?.dataValues?.discountRec || 0),
+              additionalDiscount :repairDataDiscount?.dataValues?.discountRec || 0,
+              discount: discountAmt,
               mobile: getUser.mobile ?? null,
-              createdAt:  Helper.formatDateTime(record.createdAt) 
+              createdAt: Helper.formatDateTime(record.createdAt) ,
+
+              gstAmount : amtgst ,
+              
+              uniquiCode : getAasra.unique_code,
+              gstNo :getAasra.gst,
+
+              invoiceCode : `${getAasra?.unique_code}-${record.ticket_id || 'N/A'}` 
 
             }
             ticketData.push(dataValue)
@@ -647,8 +929,42 @@ exports.ticketList = async (req, res) => {
             const repairData = await repair.findAll({
               where: {
                 ticket_id: record.ticket_id
-              }
+              },
+              
+              order: [
+                ['id', 'DESC']
+              ]
             })
+            const repairDataDiscount = await repair.findOne({
+              where: {
+                ticket_id: record.ticket_id
+              },
+              
+              order: [
+                ['id', 'DESC']
+              ]
+            })
+            const repairDataValues = await Promise.all(repairData.map(async (records) => {
+              const oldManufacture = await manufacturer.findOne({
+                where: {
+                  id: records.old_manufacturer_id
+                }
+              });
+
+              const newManufacture = await manufacturer.findOne({
+                where: {
+                  id: records.new_manufacturer_id
+                }
+              });
+              return {
+                ...records.dataValues,
+                old_manufacture_name: oldManufacture?.manufacturer_code ?? null,
+                new_manufacture_name: newManufacture?.manufacturer_code ?? null,
+                old_manufacture_id: oldManufacture?.id ?? null,
+                new_manufacture_id: newManufacture?.id ?? null,
+
+              }
+            }))
             const getUser = await users.findOne({
               where: {
                 ref_id: record.user_id,
@@ -677,42 +993,51 @@ exports.ticketList = async (req, res) => {
                 id: record.problem
               }
             })
-            const warranty = await Helper.compareDate(itemDetails?.expire_date);
-
             var subtotal = 0
             var serviceCharge = 0
             var gst = 0
             var discount = 0
+           var discountAmt = 0 ;
+            var subtotalPurchase = 0
+            var serviceChargePurchase = 0
+            var gstPurchase = 0
+            var discountPurchase = 0
             repairData.map((t) => {
-              subtotal += t.productPrice * t.qty;
-              serviceCharge += t.repairServiceCharge + t.repairPrice;
-              gst = subtotal * 18 / 100;
-              discount = t.record == 1 ? 100 : 0;
-            })
-
-            const repairDataValues = await Promise.all(repairData.map(async (records) => {
-              const oldManufacture = await manufacturer.findOne({
-                where: {
-                  id: records.old_manufacturer_id
+              if(t.repairCheckValue == "Repair/Replace"){
+                if(t.warranty == 1){
+                  subtotal += t.productPrice * t.qty;
+                  serviceCharge += t.repairServiceCharge ;
+                  gst = subtotal * 18 / 100;
+                 
+                }else{
+                  subtotal += t.productPrice * t.qty;
+                  serviceCharge += t.repairServiceCharge ;
+                  gst = subtotal * 18 / 100;
                 }
-              });
-
-              const newManufacture = await manufacturer.findOne({
-                where: {
-                  id: records.new_manufacturer_id
-                }
-              });
-              return {
-                ...records.dataValues,
-                old_manufacture_name: oldManufacture?.manufacturer_code ?? null,
-                new_manufacture_name: newManufacture?.manufacturer_code ?? null,
-                old_manufacture_id: oldManufacture?.id ?? null,
-                new_manufacture_id: newManufacture?.id ?? null,
-
+                
               }
-            }))
+              if(t.repairCheckValue == "Purchase"){
+                subtotalPurchase += t.productPrice * t.qty;
+                serviceChargePurchase += t.repairServiceCharge ;
+              }
+              
+            })
+            const warranty = await Helper.compareDate(itemDetails?.expire_date);
+            
+            if(warranty == 1){
+              discountAmt = subtotal + serviceCharge;
+            }else{
+              discountAmt = 0;
+            }
+            var amtgst = 0 ;
+            if(getAasra.gst != null){
+              amtgst=     ((subtotal + serviceCharge + subtotalPurchase - discountAmt) * 18) / 100
+            }else{
+              amtgst = 0 
+            }
 
             const dataValue = {
+              id:record.id,
               aasraId: record.aasraId,
               customer_name: getUser.name,
               product_name: record.itemName,
@@ -720,31 +1045,35 @@ exports.ticketList = async (req, res) => {
               description: record.description,
               appointment_date: record.appointment_date,
               appointment_time: record.appointment_time,
-              aadhaar: getCustomer.aadhaar,
-              ticket_id: record.ticket_id,
               address: getCustomer?.district + ', ' + getCustomer?.state,
+              ticket_id: record.ticket_id,
+              aadhaar: getCustomer.aadhaar,
               aasraName: getAasra.name_of_org,
-
-              uniquiCode : getAasra.unique_code,
-              gstNo :getAasra.gst,
-              invoiceCode : `${getAasra?.unique_code}-${record.ticket_id || 'N/A'}` ,
-
               status: record.status == 0 ? 'Pending' : record.status == 1 ? 'Open' : 'Closed',
               job_description: record.job_description,
               sr_no: count + 1,
               ticketDetail: (record.status == 2 || record.status == 1) ? repairDataValues : null,
               payment_status: repairPayments == 0 ? false : true,
-              subtotal: subtotal,
-              serviceCharge: serviceCharge,
               gst: process.env.SERVICE_GST,
-              totalAmount: subtotal + serviceCharge,
-              discount: 0,
               warranty: warranty,
               dstDate: itemDetails?.distributed_date ?? null,
               expire_date: itemDetails?.expire_date ?? null,
               problem: getproblem?.problem_name ?? null,
+              subtotal: subtotal,
+              serviceCharge: serviceCharge,
+              total : subtotal + serviceCharge + subtotalPurchase,
+              totalAmount: (subtotal + serviceCharge + subtotalPurchase) - discountAmt  - (repairDataDiscount?.dataValues?.discountRec || 0),
+              additionalDiscount :repairDataDiscount?.dataValues?.discountRec || 0,
+              discount: discountAmt,
               mobile: getUser.mobile ?? null,
-              createdAt: Helper.formatDateTime(record.createdAt) 
+              createdAt: Helper.formatDateTime(record.createdAt) ,
+
+              gstAmount : amtgst ,
+              
+              uniquiCode : getAasra.unique_code,
+              gstNo :getAasra.gst,
+
+              invoiceCode : `${getAasra?.unique_code}-${record.ticket_id || 'N/A'}` 
 
             }
             ticketData.push(dataValue)
@@ -772,8 +1101,19 @@ exports.ticketList = async (req, res) => {
             const getAasra = await aasra.findByPk(record.aasra_id)
             const repairData = await repair.findAll({
               where: {
-                ticket_id: record.ticket_id
-              }
+                ticket_id: record.ticket_id,
+              },
+              order: [
+                ['id', 'DESC']
+              ]
+            })
+            const repairDataDiscount = await repair.findOne({
+              where: {
+                ticket_id: record.ticket_id,
+              },
+              order: [
+                ['id', 'DESC']
+              ]
             })
             const getUser = await users.findOne({
               where: {
@@ -831,16 +1171,49 @@ exports.ticketList = async (req, res) => {
             var serviceCharge = 0
             var gst = 0
             var discount = 0
+           var discountAmt = 0 ;
+            var subtotalPurchase = 0
+            var serviceChargePurchase = 0
+            var gstPurchase = 0
+            var discountPurchase = 0
             repairData.map((t) => {
-              subtotal += t.productPrice * t.qty;
-              serviceCharge += t.repairServiceCharge + t.repairPrice;
-              gst = subtotal * 18 / 100;
-              discount = t.record == 1 ? 100 : 0;
+              if(t.repairCheckValue == "Repair/Replace"){
+                if(t.warranty == 1){
+                  subtotal += t.productPrice * t.qty;
+                  serviceCharge += t.repairServiceCharge ;
+                  gst = subtotal * 18 / 100;
+                 
+                }else{
+                  subtotal += t.productPrice * t.qty;
+                  serviceCharge += t.repairServiceCharge ;
+                  gst = subtotal * 18 / 100;
+                }
+                
+              }
+              if(t.repairCheckValue == "Purchase"){
+                subtotalPurchase += t.productPrice * t.qty;
+                serviceChargePurchase += t.repairServiceCharge ;
+              }
+              
             })
-
             const warranty = await Helper.compareDate(itemDetails?.expire_date);
 
+            if(warranty == 1){
+              discountAmt = subtotal + serviceCharge;
+            }else{
+              discountAmt = 0;
+            }
+          
+           
+            var amtgst = 0 ;
+              if(getAasra.gst != null){
+                amtgst= ((subtotal + serviceCharge + subtotalPurchase - discountAmt) * 18) / 100
+              }else{
+                amtgst = 0 
+              }
+            
             const dataValue = {
+              id:record.id,
               aasraId: record.aasraId,
               customer_name: getUser.name,
               product_name: record.itemName,
@@ -864,13 +1237,19 @@ exports.ticketList = async (req, res) => {
               problem: getproblem?.problem_name ?? null,
               subtotal: subtotal,
               serviceCharge: serviceCharge,
-              totalAmount: subtotal + serviceCharge,
-              discount: 0,
+              total : subtotal + serviceCharge + subtotalPurchase,
+              totalAmount: (subtotal + serviceCharge + subtotalPurchase) - discountAmt  - (repairDataDiscount?.dataValues?.discountRec || 0),
+              additionalDiscount :repairDataDiscount?.dataValues?.discountRec || 0,
+              discount: discountAmt,
+             
               mobile: getUser.mobile ?? null,
               createdAt: Helper.formatDateTime(record.createdAt) ,
+              
+              gstAmount : amtgst ,
 
               uniquiCode : getAasra.unique_code,
               gstNo :getAasra.gst,
+
               invoiceCode : `${getAasra?.unique_code}-${record.ticket_id || 'N/A'}` 
 
             }
@@ -904,12 +1283,53 @@ exports.ticketList = async (req, res) => {
         await Promise.all(
           tickets.map(async (record, count = 1) => {
 
+            // const getAasra = await aasra.findByPk(record.aasra_id)
+            // const repairData = await repair.findAll({
+            //   where: {
+            //     ticket_id: record.ticket_id
+            //   }
+            // })
             const getAasra = await aasra.findByPk(record.aasra_id)
             const repairData = await repair.findAll({
               where: {
                 ticket_id: record.ticket_id
               }
+              ,
+              order: [
+                ['id', 'DESC']
+              ]
             })
+            const repairDataDiscount = await repair.findOne({
+              where: {
+                ticket_id: record.ticket_id
+              }
+              ,
+              order: [
+                ['id', 'DESC']
+              ]
+            })
+
+             const repairDataValues = await Promise.all(repairData.map(async (records) => {
+              const oldManufacture = await manufacturer.findOne({
+                where: {
+                  id: records.old_manufacturer_id
+                }
+              });
+
+              const newManufacture = await manufacturer.findOne({
+                where: {
+                  id: records.new_manufacturer_id
+                }
+              });
+              return {
+                ...records.dataValues,
+                old_manufacture_name: oldManufacture?.manufacturer_code ?? null,
+                new_manufacture_name: newManufacture?.manufacturer_code ?? null,
+                old_manufacture_id: oldManufacture?.id ?? null,
+                new_manufacture_id: newManufacture?.id ?? null,
+
+              }
+            }))
             const getUser = await users.findOne({
               where: {
                 ref_id: record.user_id,
@@ -937,12 +1357,56 @@ exports.ticketList = async (req, res) => {
                 id: getUser.ref_id,
               }
             })
-            var subtotal = 0
-            var serviceCharge = 0
+           
 
-            const warranty = await Helper.compareDate(itemDetails?.expire_date);
+              var subtotal = 0
+            var serviceCharge = 0
+            var gst = 0
+            var discount = 0
+           var discountAmt = 0 ;
+            var subtotalPurchase = 0
+            var serviceChargePurchase = 0
+            var gstPurchase = 0
+            var discountPurchase = 0
+            repairData.map((t) => {
+              if(t.repairCheckValue == "Repair/Replace"){
+                if(t.warranty == 1){
+                  subtotal += t.productPrice * t.qty;
+                  serviceCharge += t.repairServiceCharge ;
+                  gst = subtotal * 18 / 100;
+                 
+                }else{
+                  subtotal += t.productPrice * t.qty;
+                  serviceCharge += t.repairServiceCharge ;
+                  gst = subtotal * 18 / 100;
+                }
+                
+              }
+              if(t.repairCheckValue == "Purchase"){
+                subtotalPurchase += t.productPrice * t.qty;
+                serviceChargePurchase += t.repairServiceCharge ;
+              }
+              
+            })
+             const warranty = await Helper.compareDate(itemDetails?.expire_date);
+            
+            if(warranty == 1){
+              discountAmt = subtotal + serviceCharge;
+            }else{
+              discountAmt = 0;
+            }
+
+            var amtgst = 0 ;
+            console.log(getAasra,'e')
+            
+            if(getAasra.gst != null){
+              amtgst=     ((subtotal + serviceCharge + subtotalPurchase - discountAmt) * 18) / 100
+            }else{
+              amtgst = 0 
+            }
 
             const dataValue = {
+              id:record.id,
               aasraId: record.aasraId,
               customer_name: getUser.name,
               product_name: record.itemName,
@@ -950,27 +1414,36 @@ exports.ticketList = async (req, res) => {
               description: record.description,
               appointment_date: record.appointment_date,
               appointment_time: record.appointment_time,
-              aadhaar: getCustomer.aadhaar,
-              ticket_id: record.ticket_id,
               address: getCustomer?.district + ', ' + getCustomer?.state,
+              ticket_id: record.ticket_id,
+              aadhaar: getCustomer.aadhaar,
               aasraName: getAasra.name_of_org,
               status: record.status == 0 ? 'Pending' : record.status == 1 ? 'Open' : 'Closed',
               job_description: record.job_description,
               sr_no: count + 1,
-              ticketDetail: (record.status == 2 || record.status == 1) ? repairData : null,
+              ticketDetail: (record.status == 2 || record.status == 1) ? repairDataValues : null,
               payment_status: repairPayments == 0 ? false : true,
               gst: process.env.SERVICE_GST,
               warranty: warranty,
               dstDate: itemDetails?.distributed_date ?? null,
               expire_date: itemDetails?.expire_date ?? null,
               problem: getproblem?.problem_name ?? null,
-              totalAmount: subtotal + serviceCharge,
+              subtotal: subtotal,
+              serviceCharge: serviceCharge,
+              total : subtotal + serviceCharge + subtotalPurchase,
+              totalAmount: (subtotal + serviceCharge + subtotalPurchase) - discountAmt  - (repairDataDiscount?.dataValues?.discountRec || 0),
+              additionalDiscount :repairDataDiscount?.dataValues?.discountRec || 0,
+              discount: discountAmt,
               mobile: getUser.mobile ?? null,
-
               createdAt: Helper.formatDateTime(record.createdAt) ,
+
+              gstAmount : amtgst ,
+              
               uniquiCode : getAasra.unique_code,
               gstNo :getAasra.gst,
+
               invoiceCode : `${getAasra?.unique_code}-${record.ticket_id || 'N/A'}` 
+
             }
             ticketData.push(dataValue)
           })
@@ -989,7 +1462,8 @@ exports.ticketList = async (req, res) => {
       200
     );
   } catch (error) {
-
+     console.log(error,'drsdf')
+     
     Helper.response(
       "failed",
       "Something went wrong!",
