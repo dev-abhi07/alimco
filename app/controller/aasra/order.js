@@ -25,11 +25,20 @@ const invoicecopy = require("../../model/invoicecopy");
 exports.productApi = async (req, res) => {
 
     try {
+        // const parts = await spareParts.findAll({
+        //     type: {
+        //         [Op.ne]: "rtu" // Type not equal to 'rto'
+        //     }
+        // })
         const parts = await spareParts.findAll({
-            where:{
-                type:null 
+            where: {
+                [Op.or]: [
+                    { type: { [Op.ne]: "rtu" } }, // Type not equal to 'rtu'
+                    { type: null }               // OR Type is NULL
+                ]
             }
-        })
+        });
+        console.log(parts)
         const partsData = [];
 
         parts.map((record) => {
@@ -78,7 +87,7 @@ exports.createOrder = async (req, res) => {
         const token = req.headers['authorization'];
         const string = token.split(" ");
         const user = await users.findOne({ where: { token: string[1] } });
-        const { products, gst, discount, shipping, orderStatus, supplier_name, subtotal, orderTaxAmount, grandTotal, notes, underWarranty ,type} = req.body
+        const { products, gst, discount, shipping, orderStatus, supplier_name, subtotal, orderTaxAmount, grandTotal, notes, underWarranty ,type,gstAmount} = req.body
 
         const total_order = {}
 
@@ -94,6 +103,7 @@ exports.createOrder = async (req, res) => {
         total_order['type'] = type.value || null
         total_order['type_label'] = type.label || null
         total_order['underWarranty'] = underWarranty?.label || null
+        total_order['gstAmount'] = gstAmount
       
         total_order['order_date'] = new Date().toISOString().slice(0, 10),
             total_order['notes'] = notes
@@ -115,6 +125,7 @@ exports.createOrder = async (req, res) => {
                 products['quantity'] = f.qty
                 products['price'] = f.itemPrice
                 products['unit_price'] = f.itemUnitPrice
+                products['gst'] = f.gst
                 products['type'] = type.value || null
                 const data = await orderDetails.create(products).then(async () => {
 
@@ -168,16 +179,31 @@ exports.orderList = async (req, res) => {
         const orderIds = orderWithImageUrls.map(order => order.id);
         const aasraIds = orderWithImageUrls.map(order => order.aasra_id);
 
+        const usersWithAasraId = await users.findAll({
+            where: {
+                ref_id: aasraIds,
+                user_type: 'AC',
+            },
+        });
+       
         // Fetch all related data in batches
         const [transactions, aasras, payments, orderDetail, stateDetails,invoiceCopies, stockData] = await Promise.all([
             transaction.findAll({ where: { order_id: orderIds, status: 'success' } }),
             aasra.findAll({ where: { id: aasraIds } }),
+            
             payment.findAll({ where: { order_id: orderIds } }),
             orderDetails.findAll({ where: { order_id: orderIds } }),
             states.findAll({ attributes: ['id', 'name'] }),
             invoicecopy.findAll({ where: { order_id: orderIds } }), // Fetch multiple invoice copies
-            stock.findAll({ where: { order_id: orderIds } }) //
+            stock.findAll({ where: { order_id: orderIds } }) 
+            
         ]);
+
+
+        const userMap = usersWithAasraId.reduce((acc, user) => {
+            acc[user.ref_id] = user;
+            return acc;
+        }, {});
 
         const sparePartIds = orderDetail.map(detail => detail.item_id);
 
@@ -298,6 +324,7 @@ exports.orderList = async (req, res) => {
             const totalGstPricePartial = stockMap[order.id]?.total_gst_price_partial - order.creditnotetotal  || 0;
 
          
+            const aasraUser = userMap[order.aasra_id];
 
             return {
                 id: order.id,
@@ -305,6 +332,8 @@ exports.orderList = async (req, res) => {
                 total_bill: order.total_bill,
                 total_tax: order.total_tax,
                 grand_total: order.grand_total,
+                // grand_total_gst: order.grand_total + totalGstPrice,
+                grand_total_gst: order.grand_total,
                 gst: order.gst,
                 supplier_name: order.supplier_name,
                 order_status: order.order_status,
@@ -316,9 +345,9 @@ exports.orderList = async (req, res) => {
                 transaction_id: order.transaction_id,
                 paid_amount: order.paid_amount,
                 due_amount: order.due_amount,
-                payment_date: Helper.formatISODateTime(order.payment_date),
+                payment_date: Helper.istDateFormate(order.payment_date),
                 dps_value: order.dps_value,
-                dps_date: Helper.istDateFormate(order.dps_date),
+                dps_date: Helper.formatISODateTime(order.dps_date),
                 dps_no: order.dps_no,
                 notes: order.notes,
                 stock_transfer: order.stock_transfer,
@@ -326,7 +355,8 @@ exports.orderList = async (req, res) => {
                 image: order.image ? order.image.replace('public/', '') : null,
                 sgst: sgst,
                 cgst: cgst,
-                gst_price: totalGstPrice,
+                // gst_price: totalGstPrice,
+                gst_price: order.gstAmount,
                 order_id_online: transactionMap[order.id]?.order || null,
                 online_razorpay_payment_id: transactionMap[order.id]?.razorpay_payment_id || null,
                 online_razorpay_signature: transactionMap[order.id]?.razorpay_signature || null,
@@ -334,11 +364,12 @@ exports.orderList = async (req, res) => {
                 orderData: orderDetailsMap[order.id]?.items || [],
 
                 invoice_no: order.invoice_no,
-                invoice_date: Helper.istDateFormate(order.invoice_date) ,
+                invoice_date: Helper.formatISODateTime(order.invoice_date) ,
                 invoicecopies: invoiceCopyMap[order.id] || [], 
                 stockData: stockMap[order.id] || [], 
                 creditnotetotal: order.creditnotetotal,
                 totalGstPricePartial:totalGstPricePartial,
+                grand_total_gst_partial : (parseFloat(order.creditnotetotal) || 0) + (totalGstPricePartial || 0),
                 startDate: Helper.formatISODateTime(order.startDate),
                 endDate: Helper.formatISODateTime(order.endDate),
                 type: order.type,
@@ -353,6 +384,9 @@ exports.orderList = async (req, res) => {
                     createdAt: Helper.formatISODateTime(paymentMap[order.id].createdAt),
                 } : {},
                 aasra: aasraMap[order.aasra_id] || {},
+                aasraUser: aasraUser ? {
+                    unique_code: aasraUser.unique_code,
+                } : null,
             };
         });
 
@@ -567,15 +601,28 @@ exports.orderTransfer = async (req, res) => {
 
 exports.updateOrderPayment = async (req, res) => {
     try {
+        console.log(req.body.transaction_id,'updateOrderPayment')
+        console.log(req.body,'body')
+   
         const { order_id } = req.body
-
+        
         const token = req.headers['authorization'];
         const string = token.split(" ");
         const date = new Date();
         const year = `${date.getFullYear()}`
         const user = await users.findOne({ where: { token: string[1] } });
 
-        const invoice_number = (date.getFullYear() + '-' + `${parseInt((year)?.split('0')[1]) + 1}`) + '/' + await Helper.generateNumber(10000000, 99999999)
+        const currentYear = date.getFullYear();
+        const yearSuffix = parseInt((currentYear.toString().split('0')[1]) || '0') + 1;
+        const generatedNumber = await Helper.generateNumber(10000000, 99999999);
+
+        // const invoice_number = (date.getFullYear() + '-' + `${parseInt((year)?.split('0')[1]) + 1}`) + '/' + await Helper.generateNumber(10000000, 99999999)
+       
+
+            const invoice_number = req.body.transaction_id ;
+                               
+                                
+                                
         const order = await orderModel.update(
             {
                 ...req.body,
@@ -583,16 +630,15 @@ exports.updateOrderPayment = async (req, res) => {
             },
             {
                 where: {
-                    aasra_id: user.ref_id,
-                    id: req.body.order_id
+                    id: req.body.id
                 }
             }
         );
 
         const orderUpdated = await orderModel.findOne({
             where: {
-                aasra_id: user.ref_id,
-                id: req.body.order_id
+               
+                id: req.body.id
             }
         })
 
@@ -601,11 +647,11 @@ exports.updateOrderPayment = async (req, res) => {
         if (orderUpdated.due_amount == 0) {
             await orderModel.update({ payment_status: 'Paid' }, {
                 where: {
-                    aasra_id: user.ref_id,
-                    id: req.body.order_id
+                   
+                    id: req.body.id
                 }
             })
-            await payment.update({ invoice: 1, invoice_number: invoice_number }, { where: { order_id: order_id } })
+            await payment.update({ invoice: 1, invoice_number: invoice_number }, { where: { order_id: req.body.id } })
         }
         Helper.response("success", "Order updated", order, res, 200)
     } catch (error) {
@@ -645,7 +691,11 @@ exports.orderDetails = async (req, res) => {
         }
 
         const aasraData = await aasra.findOne({ where: { id: orderWithImageUrls.aasra_id } });
+        const aasrauserDetails = await users.findOne({ where: { 
+            ref_id: orderWithImageUrls.aasra_id,
+            user_type:'AC'
 
+         } });
         const stateDetails = await states.findOne({ where: { id: aasraData.state } })
         let cgst = 0;
         var sgst = 0;
@@ -687,6 +737,11 @@ exports.orderDetails = async (req, res) => {
             cgst: cgst,
             sgst: sgst,
             gstNo: aasraData.gst,
+            unique_code:aasrauserDetails.unique_code,
+            gstAmount: orderWithImageUrls.gstAmount,
+            invoice_no: orderWithImageUrls.invoice_no,
+            invoice_date: Helper.formatISODateTime(orderWithImageUrls.invoice_date) ,
+
             total_gst_price: 0,
             orderData: [],
             partialData:[],
@@ -751,6 +806,7 @@ exports.orderDetails = async (req, res) => {
                 description: sparePart.description,
                 part_number: sparePart.part_number,
                 gst: itemGst,
+                gstDetails:detail.gst,
                 gst_price: gstPrice
             };
           }));
@@ -782,7 +838,8 @@ exports.orderDetails = async (req, res) => {
                 
             };
         }));
-        const adjustedTotalBill = order.total_gst_price - order.total_bill  ;
+        // const adjustedTotalBill = order.total_gst_price - order.total_bill  ;
+        const adjustedTotalBill = order.gstAmount   ;
         const orderWithDetails = {
             ...order,
             orderData: flattenedOrderDetails,
@@ -822,16 +879,23 @@ exports.addStock = async (req, res) => {
         if (payment_status.payment_status == 'Paid') {
 
             const itemsAddToStock = await orderDetails.findAll({ where: { order_id: order_id } })
-
+            console.log(order_id,'order_id')
+           console.log(itemsAddToStock,'dd')
             const data = await Promise.all(itemsAddToStock.map(async (f) => {
-
-                await stock.create({
-                    ...f.dataValues,
+                console.log(f.quantity,'f.quantity')
+                return  stock.create({
+                    type:f.type,
+                    item_id: f.item_id,
+                    item_name: f.item_name,
                     aasra_id: payment_status.aasra_id,
+                    unit_price:f.unit_price,
+                    price:f.price,
+                    quantity: f.quantity,
                     stock_in: f.quantity,
+                  
                 }).catch((err) => {
                     console.log(err)
-                })
+                })  
             }))
             if (data) {
                 Helper.response("success", "Stock added successfully", {}, res, 200)
@@ -846,8 +910,13 @@ exports.addStock = async (req, res) => {
             const data = await Promise.all(itemsAddToStock.map(async (f) => {
 
                 await stock.create({
-                    ...f.dataValues,
+                    type:f.type,
+                    item_id: f.item_id,
+                    item_name: f.item_name,
                     aasra_id: payment_status.aasra_id,
+                    unit_price:f.unit_price,
+                    price:f.price,
+                    quantity: f.quantity,
                     stock_in: f.quantity,
                 }).catch((err) => {
                     console.log(err)
@@ -1248,6 +1317,7 @@ exports.updateOrderDetails = async (req, res) => {
                 endDate = [],
                 type_value =[],
                 type_label =[],
+                gstAmount = []
             } = fields;
 
             const products = [];
@@ -1300,6 +1370,7 @@ exports.updateOrderDetails = async (req, res) => {
                             endDate: endDate[0],
                             type: type_value[0] || null,
                             type_label: type_label[0] || null,
+                            gstAmount : gstAmount[0]
                         };
 
                         await orderModel.update(total_order, { where: { id: order_id[0] } });
@@ -1320,7 +1391,9 @@ exports.updateOrderDetails = async (req, res) => {
                                     price: f.itemPrice[index],
                                     unit_price: f.unit_price[index],
                                     image: newPath,
-                                    type: type_value[0] || null 
+                                    type: type_value[0] || null ,
+                                    gst: f.gst[index],
+                                    
                                 };
                             });
                             return Promise.all(productDataArray.map(productData => orderDetails.create(productData)));
@@ -1350,6 +1423,7 @@ exports.updateOrderDetails = async (req, res) => {
                     endDate: endDate[0],
                     type: type_value[0] || null,
                     type_label: type_label[0] || null,
+                    gstAmount : gstAmount[0]
                 };
 
                 // Update the order
@@ -1370,6 +1444,7 @@ exports.updateOrderDetails = async (req, res) => {
                             quantity: f.qty[index],
                             price: f.itemPrice[index],
                             unit_price: f.unit_price[index],
+                            gst: f.gst[index],
                             image: null,
                             type: type_value[0] || null
                         };

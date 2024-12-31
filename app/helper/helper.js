@@ -12,7 +12,7 @@ const users = require("../model/users");
 const ticket = require("../model/ticket");
 
 const transaction = require("../model/transaction")
-
+const path = require('path');
 
 Helper.response = (status, message, data = [], res, statusCode) => {
     res.status(statusCode).json({
@@ -23,33 +23,57 @@ Helper.response = (status, message, data = [], res, statusCode) => {
 };
 
 Helper.encryptPassword = (password) => {
+    console.log("Password:", password);
     var pass = CryptoJS.AES.encrypt(password, process.env.SECRET_KEY).toString();
     return pass;
 };
 
 Helper.decryptPassword = (password) => {
+
     var bytes = CryptoJS.AES.decrypt(password, process.env.SECRET_KEY);
     var originalPassword = bytes.toString(CryptoJS.enc.Utf8);
     return originalPassword;
 };
 
 Helper.formatDateTime = (time) => {
+    // const dateObject = new Date(time);
+
+    // const day = dateObject.getDate();
+    // const month = dateObject.getMonth() + 1;
+    // const year = dateObject.getFullYear();
+    // const hours = dateObject.getHours();
+    // const minutes = dateObject.getMinutes();
+    // const ampm = hours >= 12 ? "PM" : "AM";
+
+
+    // const formattedDay = day < 10 ? `0${day}` : day;
+    // const formattedMonth = month < 10 ? `0${month}` : month;
+    // const formattedMinutes = minutes < 10 ? `0${minutes}` : minutes;
+
+
+    // const formattedDate = `${formattedDay}-${formattedMonth}-${year} ${hours}:${formattedMinutes} ${ampm}`;
+
+    // return formattedDate;
+
     const dateObject = new Date(time);
 
     const day = dateObject.getDate();
     const month = dateObject.getMonth() + 1;
     const year = dateObject.getFullYear();
-    const hours = dateObject.getHours();
+    let hours = dateObject.getHours();
     const minutes = dateObject.getMinutes();
     const ampm = hours >= 12 ? "PM" : "AM";
 
+    // Convert 24-hour time to 12-hour time
+    hours = hours % 12;
+    hours = hours ? hours : 12; // the hour '0' should be '12'
 
     const formattedDay = day < 10 ? `0${day}` : day;
     const formattedMonth = month < 10 ? `0${month}` : month;
+    const formattedHours = hours < 10 ? `0${hours}` : hours;
     const formattedMinutes = minutes < 10 ? `0${minutes}` : minutes;
 
-
-    const formattedDate = `${formattedDay}-${formattedMonth}-${year} ${hours}:${formattedMinutes} ${ampm}`;
+    const formattedDate = `${formattedDay}-${formattedMonth}-${year} ${formattedHours}:${formattedMinutes} ${ampm}`;
 
     return formattedDate;
 };
@@ -365,15 +389,21 @@ Helper.createRazorpayOrder = async (amount, receipt_no) => {
     try {
 
         const rupees = amount.toFixed(2);
-        const amount_data = rupees * 100;
+        const amount_data = Math.round(rupees * 100)
 
+       
 
-        console.log(amount, 'amount')
+        console.log(amount,'amount')
+        console.log(rupees, 'rupees')
         console.log(amount_data, 'amount_data')
 
-        const receipt_data = String(receipt_no);
-        const razorpayKeyId = 'rzp_test_tgWgOfXw8Z4eKf';
-        const razorpayKeySecret = 'AXI7G5GhhOOotCn5rTlitO7a';
+        const receipt_data = String(receipt_no);    
+        // const razorpayKeyId = 'rzp_test_tgWgOfXw8Z4eKf';  
+        // const razorpayKeySecret = 'AXI7G5GhhOOotCn5rTlitO7a';
+
+        const razorpayKeyId = 'rzp_live_YFpcXeQgXfT1pv';
+        const razorpayKeySecret = '8ia8oy0oXlVWdinMFGSjonwb';
+
         const url = `https://api.razorpay.com/v1/orders`;
 
         const data = {
@@ -409,6 +439,34 @@ Helper.createRazorpayOrder = async (amount, receipt_no) => {
     }
 };
 
+Helper.fetchPaymentsForOrder = async (orderId) => {
+    const url = `https://api.razorpay.com/v1/orders/${orderId}/payments`;
+
+    try {
+        // const response = await axios.get(url, {
+        //     auth: {
+        //         username: 'rzp_test_tgWgOfXw8Z4eKf',  
+        //         password: 'AXI7G5GhhOOotCn5rTlitO7a' 
+        //     }
+        // });
+
+        const response = await axios.get(url, {
+            auth: {
+                username: 'rzp_live_YFpcXeQgXfT1pv',  
+                password: '8ia8oy0oXlVWdinMFGSjonwb' 
+            }
+        });
+        
+       
+       
+        console.log('Response:', response.data);
+        return response.data; 
+    } catch (error) {
+        // Handle errors
+        console.error('Error fetching payments:', error.response?.data || error.message);
+        throw error;
+    }
+};
 Helper.convertIso = (time) => {
 
     const timestampInMilliseconds = time * 1000;
@@ -421,7 +479,8 @@ Helper.convertIso = (time) => {
 Helper.istDateFormate = (time) => {
     const date = new Date(time);
 
-    if (time == null) {
+
+    if (time == null || time == 0 ) {
         return '';
     } else {
         // Extract the day, month, and year
@@ -444,5 +503,62 @@ Helper.istDateFormate = (time) => {
     }
 }
 
+Helper.validateImage = (file) => {
+    const fileExtension = path.extname(file.originalFilename).toLowerCase(); // Get the file extension
+    const mimeType = file.mimetype.toLowerCase(); // Get the MIME type
+
+    // Define allowed file extensions and MIME types
+    const allowedExtensions = ['.jpeg', '.jpg', '.png'];
+    const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+
+    // Check if the extension is valid
+    if (!allowedExtensions.includes(fileExtension)) {
+        return {
+            valid: false,
+            message: "Invalid file extension. Only JPEG, JPG, and PNG files are allowed."
+        };
+    }
+
+    // Check if the MIME type matches the file extension
+    if (!allowedMimeTypes.includes(mimeType)) {
+        return {
+            valid: false,
+            message: "MIME type does not match the file extension. Only JPEG, JPG, and PNG files are allowed."
+        };
+    }
+
+    return { valid: true };
+};
+
+
+/**
+ * Send message via API.
+ * @param {string} mobile - Recipient's mobile number.
+ * @param {string} message - Message to be sent.
+ * @returns {Promise<Object>} - API response.
+ */
+
+Helper.sendMessage = async (mobile,otp) => {
+    try {
+        const url = 'https://gateway.leewaysoftech.com/xml-transconnectunicode-api.php';
+        const message = `Your OTP is ${otp} for ALIMCO AASRA user registration.`;
+        const params = {
+            username: 'alimcocrm',
+            password: '!hd5gq!x',
+            mobile: mobile,
+            message: message,
+            senderid: 'ALIMCO',
+            peid: '1001465796180149699',
+            contentid: '1707172302650427656'
+        };
+
+        const response = await axios.get(url, { params });
+        console.log(response,'res') // Await works here because the function is now async
+        return response.data; // Return API response data
+    } catch (error) {
+        console.error('Error sending message:', error.message);
+        throw new Error('Failed to send message');
+    }
+};
 
 module.exports = Helper

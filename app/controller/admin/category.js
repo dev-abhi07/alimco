@@ -3,12 +3,29 @@ const category = require('../../model/category')
 const manufacturer = require('../../model/manufacturer')
 const problem = require('../../model/problem')
 const uom = require('../../model/uom')
-
-
+const Joi = require('joi');
+const CryptoJS = require("crypto-js");
 
 
 exports.create = async (req, res) => {
+    
+    const schema = Joi.object({
+        category_name: Joi.string().pattern(/^[a-zA-Z0-9\s]+$/).required(),// Only letters, numbers, and spaces allowed
+        category_description: Joi.string().pattern(/^[a-zA-Z0-9\s]+$/).required(),// Only letters, numbers, and spaces allowed
+        status: Joi.boolean().required() 
+    });
 
+  
+    const { error } = schema.validate(req.body);    
+    if (error) {
+        return Helper.response(
+            "failed",
+            error.details[0].message,
+            {},
+            res,
+            200
+        );
+    }
     const catExist =  await category.findOne({
         where:{
             category_name: req.body.category_name,
@@ -90,20 +107,52 @@ exports.list = async (req, res) => {
 }
 
 exports.update = async (req, res) => {
+
+    const schema = Joi.object({
+        id: Joi.required(), 
+        category_name: Joi.string().pattern(/^[a-zA-Z0-9\s]+$/).required(),
+        category_description: Joi.string().pattern(/^[a-zA-Z0-9\s]+$/).required(),
+        status: Joi.boolean().required() ,
+       
+    });
+
+  
+    const { error } = schema.validate(req.body);    
+    if (error) {
+        return Helper.response(
+            "failed",
+            error.details[0].message,
+            {},
+            res,
+            200
+        );
+    }
+
     try {
+        
+        const a = CryptoJS.AES.decrypt(req.body.id, process.env.SECRET_KEY);
+        const b = JSON.parse(a.toString(CryptoJS.enc.Utf8));
+     
+          const requestData = {
+            id: b.id,
+            key:b.key,
+          };
+     
+        const key = requestData.key ;
+       console.log(requestData)
         const update = await category.update({
             category_name: req.body.category_name,
             description: req.body.category_description,
             status: req.body.status
         }, {
             where: {
-                id: req.body.id,
+                id: requestData.id,
             }
         })
         Helper.response(
             "success",
             "Record Update Successfully",
-            {},
+            {key},
             res,
             200
         );
@@ -143,6 +192,23 @@ exports.destroy = async (req, res) => {
 }
 
     exports.uomCreate = async (req, res) => {
+
+        const schema = Joi.object({
+            unit_of_measurement: Joi.string().min(1).max(100000).pattern(/^[a-zA-Z0-9\s]+$/).required(),// Only letters, numbers, and spaces allowed
+        });
+    
+      
+        const { error } = schema.validate(req.body);    
+        if (error) {
+            return Helper.response(
+                "failed",
+                error.details[0].message,
+                {},
+                res,
+                200
+            );
+        }
+
         const uomExist =  await uom.findOne({
             where:{
                 unit_of_measurement: req.body.unit_of_measurement
@@ -219,13 +285,40 @@ exports.listUom = async (req, res) => {
 }
 
 exports.updateUom = async (req, res) => {
+    const schema = Joi.object({
+        id: Joi.required(),
+        unit_of_measurement: Joi.string().min(1).max(10000000).pattern(/^[a-zA-Z0-9\s]+$/).required(),// Only letters, numbers, and spaces allowed
+    });
+
+  
+    const { error } = schema.validate(req.body);    
+    if (error) {
+        return Helper.response(
+            "failed",
+            error.details[0].message,
+            {},
+            res,
+            200
+        );
+    }
     try {
+
+        const a = CryptoJS.AES.decrypt(req.body.id, process.env.SECRET_KEY);
+        const b = JSON.parse(a.toString(CryptoJS.enc.Utf8));
+     
+          const requestData = {
+            id: b.id,
+            key:b.key,
+          };
+     
+        const key = requestData.key ;
+       
         const update = await uom.update({
             unit_of_measurement: req.body.unit_of_measurement
 
         }, {
             where: {
-                id: req.body.id,
+                id: requestData.id,
             }
         })
 
@@ -242,11 +335,12 @@ exports.updateUom = async (req, res) => {
         Helper.response(
             "success",
             "Record Update Successfully",
-            {},
+            {key},
             res,
             200
         );
     } catch (error) {
+      
         Helper.response(
             "failed",
             "Something went wrong!",
@@ -258,7 +352,21 @@ exports.updateUom = async (req, res) => {
 }
 
 exports.problemCreate = async (req, res) => {
+    const schema = Joi.object({
+        problem_name: Joi.string().pattern(/^[a-zA-Z0-9\s()/\-]+$/).required(),// Only letters, numbers, and spaces allowed
+    });
 
+  
+    const { error } = schema.validate(req.body);    
+    if (error) {
+        return Helper.response(
+            "failed",
+            error.details[0].message,
+            {},
+            res,
+            200
+        );
+    }
     const checkName = problem.f
     const data = {
         problem_name: req.body.problem_name
@@ -285,13 +393,39 @@ exports.problemCreate = async (req, res) => {
 }
 
 exports.updateProblem = async (req, res) => {
+    const schema = Joi.object({
+        id: Joi.required(), 
+        problem_name: Joi.string().pattern(/^[a-zA-Z0-9\s()/\-]+$/).required(),// Only letters, numbers, and spaces allowed
+    });
+
+  
+    const { error } = schema.validate(req.body);    
+    if (error) {
+        return Helper.response(
+            "failed",
+            error.details[0].message,
+            {},
+            res,
+            200
+        );
+    }
     try {
+        const a = CryptoJS.AES.decrypt( req.body.id, process.env.SECRET_KEY);
+        const b = JSON.parse(a.toString(CryptoJS.enc.Utf8));
+     
+          const requestData = {
+            id: b.id,
+            key:b.key,
+          };
+     
+        const key = requestData.key ;
+       
         const update = await problem.update({
             problem_name: req.body.problem_name
 
         }, {
             where: {
-                id: req.body.id,
+                id: requestData.id,
             }
         })
 
@@ -308,7 +442,7 @@ exports.updateProblem = async (req, res) => {
         Helper.response(
             "success",
             "Record Update Successfully",
-            {},
+            {key},
             res,
             200
         );
@@ -359,7 +493,22 @@ exports.listProblem = async (req, res) => {
 
 
 exports.manufacturerCreate = async (req, res) => {
+    const schema = Joi.object({
+        manufacturer_name: Joi.string().pattern(/^[a-zA-Z0-9\s&\/\-,.\(\)'"]+$/).required(),// Only letters, numbers, and spaces allowed
+        manufacturer_code: Joi.string().pattern(/^[a-zA-Z0-9\s&\/\-,.\(\)'"]+$/).required(),
+    });
 
+  
+    const { error } = schema.validate(req.body);    
+    if (error) {
+        return Helper.response(
+            "failed",
+            error.details[0].message,
+            {},
+            res,
+            200
+        );
+    }
     const checkName = manufacturer.f
     const data = {
         manufacturer_name: req.body.manufacturer_name,
@@ -387,7 +536,35 @@ exports.manufacturerCreate = async (req, res) => {
 }
 
 exports.updateManufacturer = async (req, res) => {
+    const schema = Joi.object({
+        id: Joi.required(), 
+        manufacturer_name: Joi.string().pattern(/^[a-zA-Z0-9\s&\/\-,.\(\)'"]+$/).required(),// Only letters, numbers, and spaces allowed
+        manufacturer_code: Joi.string().pattern(/^[a-zA-Z0-9\s&\/\-,.\(\)'"]+$/).required(),
+    });
+
+  
+    const { error } = schema.validate(req.body);    
+    if (error) {
+        return Helper.response(
+            "failed",
+            error.details[0].message,
+            {},
+            res,
+            200
+        );
+    }
     try {
+
+        const a = CryptoJS.AES.decrypt(req.body.id, process.env.SECRET_KEY);
+        const b = JSON.parse(a.toString(CryptoJS.enc.Utf8));
+     
+          const requestData = {
+            id: b.id,
+            key:b.key,
+          };
+     
+        const key = requestData.key ;
+       
         const update = await manufacturer.update({
             manufacturer_name: req.body.manufacturer_name,
             manufacturer_code: req.body.manufacturer_code
@@ -395,7 +572,7 @@ exports.updateManufacturer = async (req, res) => {
 
         }, {
             where: {
-                id: req.body.id,
+                id: requestData.id,
             }
         })
 
@@ -412,7 +589,7 @@ exports.updateManufacturer = async (req, res) => {
         Helper.response(
             "success",
             "Record Update Successfully",
-            {},
+            {key},
             res,
             200
         );

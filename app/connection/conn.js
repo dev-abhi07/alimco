@@ -13,6 +13,7 @@ const sequelize = new Sequelize({
 sequelize.authenticate().then(() => {
   console.log('connected');
 }).catch((error) => {
+ 
   console.error('Error syncing database:', error);
 });
 

@@ -20,7 +20,9 @@ const { Op } = require('sequelize');
 const { access } = require('fs');
 const saleDetail = require('../../model/saleDetails');
 const sale = require('../../model/sale');
-
+const Joi = require('joi');
+const CryptoJS = require("crypto-js");
+const moment = require('moment-timezone');
 
 exports.ticketListDetails = async (req, res) => {
     try {
@@ -135,12 +137,31 @@ exports.createRepair = async (req, res) => {
 
     try {
 
+      
+
         const token = req.headers['authorization'];
         const string = token.split(" ");
         const user = await users.findOne({ where: { token: string[1] } });
         const aasras = await aasra.findOne({ where: { id: user.ref_id } })
 
         const data = req.body;
+        console.log(req.body)
+
+        const jobDescriptions = req.body.map(item => item.job_description);
+
+        // Example: Validate each job_description
+        jobDescriptions.forEach((description, index) => {
+            const { error } = Joi.string().pattern(/^[a-zA-Z0-9\s&\/\-,.\(\)'"]+$/).validate(description);
+            if (error) {
+                return Helper.response(
+                    "failed",
+                    `Error in job_description at index: ${error.details[0].message}`,
+                    {},
+                    res,
+                    200
+                );
+            }
+        });
 
 
         // return false;
@@ -171,6 +192,9 @@ exports.createRepair = async (req, res) => {
         }
 
         const validationMessages = await validateStock(data);
+
+        
+
         if (validationMessages.length > 0) {
             Helper.response(
                 "failed",
@@ -287,7 +311,7 @@ exports.createRepair = async (req, res) => {
 }
 
 exports.ticketSendOtp = async (req, res) => {
-
+      
     try {
         const userId = await Helper.getUserDetails(req)
         const getTicket = await ticket.findOne({
@@ -304,16 +328,86 @@ exports.ticketSendOtp = async (req, res) => {
                 200
             );
         }
+        const checkuserDetails =    await users.findOne({
+                where:{
+                    ref_id:getTicket.user_id,
+                    user_type:'C'
+                }
+            })
+
+       
 
         if (getTicket) {
-            const data = otp.create({
-                mobile: userId.mobile,
-                otp: 1234
-            })
-            Helper.response('success', 'OTP Sent Successfully', {}, res, 200);
+
+             const expireTime = new Date();
+          
+
+             expireTime.setMinutes(expireTime.getMinutes() + 1);
+             const hours = expireTime.getHours();
+
+             const formattedExpireTime =  moment().tz('Asia/Kolkata').add(1, 'minute').format('YYYY-MM-DD HH:mm:ss');
+           
+             const currentTime = new Date();
+            
+             currentTime.setMinutes(currentTime.getMinutes());
+             const formattedcurrentTime = moment().tz('Asia/Kolkata').format('YYYY-MM-DD HH:mm:ss');
+
+                const checkTime = await otp.findOne({
+                    where:{
+                        mobile: checkuserDetails.mobile,
+                        status:1
+                    },
+                    order: [['id', 'DESC']]
+                })
+   
+           
+            if(checkTime != null ){
+                if(formattedcurrentTime < checkTime.expire_time){
+                  return  Helper.response('failed', `Otp Not Expired. Expires at ${checkTime.expire_time}`, {}, res, 200);
+                }else{
+
+                    const update = await otp.update({
+                        status: 0,
+                    },
+                        {
+                            where: {
+                                mobile: checkuserDetails.mobile,
+                                status: 1
+                            }
+                        }
+                    )
+                    
+                    if(update){
+                        const otpValue = Math.floor(1000 + Math.random() * 9000); 
+                        const otpDetails = await Helper.sendMessage(checkuserDetails.mobile, otpValue);
+                        const data = otp.create({   
+                            mobile: checkuserDetails.mobile,
+                            otp: otpValue,
+                            expire_time: formattedExpireTime,
+                            status:1
+                        })
+                        Helper.response('success', 'OTP Sent Successfully', {}, res, 200);
+                    }
+                }
+            
+            }else{
+              
+                const otpValue1 = Math.floor(1000 + Math.random() * 9000); 
+                 const otpDetails = await Helper.sendMessage(checkuserDetails.mobile, otpValue1);
+                 
+                const data = otp.create({   
+                    mobile: checkuserDetails.mobile,
+                    otp: otpValue1,
+                    expire_time: formattedExpireTime,
+                    status:1
+                })
+                Helper.response('success', 'OTP Sent Successfully', {}, res, 200);
+            }
+
+           
         }
     } catch (error) {
-        console.log(error)
+      
         Helper.response(
             "failed",
             "Something went wrong!",
@@ -325,14 +419,38 @@ exports.ticketSendOtp = async (req, res) => {
 }
 
 exports.OtpVerifyAasra = async (req, res) => {
+    
+        const a = CryptoJS.AES.decrypt(req.body.key, process.env.SECRET_KEY);
+        const b =  JSON.parse(a.toString(CryptoJS.enc.Utf8));
 
-
+          
+           
     try {
+        const getTicket = await ticket.findOne({
+            where: {
+                ticket_id: req.body.ticket_id
+            }
+        })
+        if (!getTicket) {
+            return Helper.response(
+                "failed",
+                "Ticket not found!",
+                {},
+                res,
+                200
+            );
+        }
+        const checkuserDetails =    await users.findOne({
+                where:{
+                    ref_id:getTicket.user_id,
+                    user_type:'C'
+                }
+            })
 
         const userId = await Helper.getUserDetails(req)
         const verify = await otp.findOne({
             where: {
-                mobile: userId.mobile,
+                mobile: checkuserDetails.mobile,
                 status: 1
             }
         })
@@ -366,13 +484,13 @@ exports.OtpVerifyAasra = async (req, res) => {
             },
                 {
                     where: {
-                        mobile: userId.mobile,
+                        mobile: checkuserDetails.mobile,
                         otp: req.body.otp,
                         status: 1
                     }
                 }
             )
-            Helper.response('success', 'Otp verify successfully!', { receipt_no: newReceiptNo }, res, 200);
+            Helper.response('success', 'Otp verify successfully!', { receipt_no: newReceiptNo ,key:b}, res, 200);
 
         } else {
             return Helper.response('failed', 'OTP does not match!', { error }, res, 200);
@@ -459,7 +577,17 @@ exports.ticketOtpVerify = async (req, res) => {
                         ticket_id: req.body.ticket_id,
                     }
                 });
-
+                    const totalAmount = repairDetails.price * repairDetails.qty;
+                    const serviceCharge = repairDetails.repairServiceCharge;
+                    await repairPayment.create({
+                        ticket_id: ticketid,
+                        discount: totalAmount + serviceCharge,
+                        total_amount: totalAmount,
+                        serviceCharge: serviceCharge,
+                        aasra_id: user.ref_id,
+                        payment_mode: req.body.mode || null,
+                        receipt_no: req.body.receipt_no
+                    });
                 const stockDetails = await stock.findOne({
                     where: {
                         item_id: repairDetails.productValue,
@@ -652,13 +780,13 @@ exports.sentOtpWeb = async (req, res) => {
             return Helper.response('failed', 'Invalid Udid or Aadhaar', {}, res, 200);
         }
 
-
-
+        
         const checkUdid = await users.count({
             where: {
                 udid: req.body.udid
             }
         })
+       
         if (checkUdid == 1) {
             const mobile = await users.findOne({
                 where: {
@@ -666,27 +794,150 @@ exports.sentOtpWeb = async (req, res) => {
                 }
             })
             if (mobile.mobile != req.body.mobile) {
-                Helper.response('failed', 'Please enter registered no.', {}, res, 200);
+               
+               return  Helper.response('failed', 'Please enter registered no.', {}, res, 200);
             } else {
                 const mobile = validator.isMobilePhone(req.body.mobile, 'en-IN');
                 const udid = validator.isAlphanumeric(req.body.udid, 'en-IN');
                 if (mobile === true && udid === true) {
-                    const data = otp.create({
-                        mobile: req.body.mobile,
-                        otp: 1234
+
+
+                     const expireTime = new Date();
+                     expireTime.setMinutes(expireTime.getMinutes() + 1);
+                     const hours = expireTime.getHours();
+                     const formattedExpireTime = moment().tz('Asia/Kolkata').add(1, 'minute').format('YYYY-MM-DD HH:mm:ss');
+                   
+                     const currentTime = new Date();
+                     currentTime.setMinutes(currentTime.getMinutes());
+                     const formattedcurrentTime = moment().tz('Asia/Kolkata').format('YYYY-MM-DD HH:mm:ss');
+        
+                    const checkTime = await otp.findOne({
+                        where:{
+                            mobile: req.body.mobile,
+                            status:1
+                        },
+                        order: [['id', 'DESC']]
                     })
-                    Helper.response('success', 'OTP Sent Successfully', {}, res, 200);
+                   
+                    
+                    
+                    if(checkTime != null){
+                      
+                        
+                        const formattedCurrentDate = new Date(formattedcurrentTime);
+                        const expireDate = new Date(checkTime.expire_time);
+                        
+                      if(formattedCurrentDate < expireDate){
+                      return  Helper.response('failed', `Otp Not Expired. Expires at ${checkTime.expire_time}`, {}, res, 200);
+                      }else{
+
+                        const update = await otp.update({
+                            status: 0,
+                        },
+                            {
+                                where: {
+                                    mobile: req.body.mobile,
+                                    status: 1
+                                }
+                            }
+                        )
+                       if(update){
+                        const otpValue = Math.floor(1000 + Math.random() * 9000); 
+                        const otpDetails = await Helper.sendMessage(req.body.mobile, otpValue);
+                  
+                        const data = otp.create({
+                            mobile: req.body.mobile,
+                            otp: otpValue,
+                            status:1,
+                            expire_time: formattedExpireTime,
+                        })
+                       }
+                       Helper.response('success', 'OTP Sent Successfully', {}, res, 200);
+                      }
+                    }else{
+                        const otpValue1 = Math.floor(1000 + Math.random() * 9000); 
+                        const otpDetails1 = await Helper.sendMessage(req.body.mobile, otpValue1);
+                        const data = otp.create({
+                            mobile: req.body.mobile,
+                            otp: otpValue1,
+                            status:1,
+                            expire_time: formattedExpireTime,
+                        })
+                        console.log(data,'data')
+                        
+                        Helper.response('success', 'OTP Sent Successfully', {}, res, 200);
+                    }
+
+
+                   
+
                 }
             }
         } else {
             const mobile = validator.isMobilePhone(req.body.mobile, 'en-IN');
             const udid = validator.isAlphanumeric(req.body.udid, 'en-IN');
             if (mobile === true && udid === true) {
-                const data = otp.create({
-                    mobile: req.body.mobile,
-                    otp: 1234
-                })
-                Helper.response('success', 'OTP Sent Successfully', {}, res, 200);
+              
+                const expireTime = new Date();
+                    expireTime.setMinutes(expireTime.getMinutes() + 1);
+                     const hours = expireTime.getHours();
+                    const formattedExpireTime =  moment().tz('Asia/Kolkata').add(1, 'minute').format('YYYY-MM-DD HH:mm:ss');
+                   
+                    const currentTime = new Date();
+                    currentTime.setMinutes(currentTime.getMinutes());
+                     const formattedcurrentTime = moment().tz('Asia/Kolkata').format('YYYY-MM-DD HH:mm:ss');
+       
+                    const checkTime = await otp.findOne({
+                        where:{
+                            mobile: req.body.mobile,
+                            status:1
+                        },
+                        order: [['id', 'DESC']]
+                    })
+                   
+                    
+                    if(checkTime != null){
+                        
+                        const formattedCurrentDate = new Date(formattedcurrentTime);
+                        const expireDate = new Date(checkTime.expire_time);
+                      if(formattedCurrentDate < expireDate){
+                        return Helper.response('failed', `Otp Not Expired. Expires at ${checkTime.expire_time}`, {}, res, 200);
+                      }else{
+
+                        const update = await otp.update({
+                            status: 0,
+                        },
+                            {
+                                where: {
+                                    mobile:req.body.mobile,
+                                    status: 1
+                                }
+                            }
+                        )
+                       if(update){
+                        const otpValue2 = Math.floor(1000 + Math.random() * 9000); 
+                        const otpDetails = await Helper.sendMessage(req.body.mobile, otpValue2);
+                        const data = otp.create({
+                            mobile: req.body.mobile,
+                            otp: otpValue2,
+                            status:1,
+                            expire_time: formattedExpireTime,
+                        })
+                       }
+                       Helper.response('success', 'OTP Sent Successfully', {}, res, 200);
+                      }
+                    }else{
+                        const otpValue3 = Math.floor(1000 + Math.random() * 9000); 
+                        const otpDetails = await Helper.sendMessage(req.body.mobile, otpValue3);
+                        const data = otp.create({
+                            mobile: req.body.mobile,
+                            otp: otpValue3,
+                            status:1,
+                            expire_time: formattedExpireTime,
+                        })
+                        Helper.response('success', 'OTP Sent Successfully', {}, res, 200);
+                    }
+
             }
         }
     } catch (error) {
@@ -696,7 +947,11 @@ exports.sentOtpWeb = async (req, res) => {
 }
 
 exports.getUser = async (req, res) => {
-
+        
+        const a = CryptoJS.AES.decrypt(req.body.key, process.env.SECRET_KEY);
+        const b =  JSON.parse(a.toString(CryptoJS.enc.Utf8));
+    
+       
     try {
 
         if (res.data.length === 0) {
@@ -746,7 +1001,7 @@ exports.getUser = async (req, res) => {
             if (update) {
                 const slots = await Helper.createTimeSlots('09:00', '18:00', '13:00', '14:00', '40')
                 const userData = { beneficiary_id: beneficiary[1], name: beneficiary[0], father_name: res.data.res[0].fatherName, dob: res.data.res[0].dob, gender: res.data.res[0].gender, district: res.data.res[0].campVenueDistrict, state: res.data.res[0].campVenueState, aadhaar: res.data.res[0].aadhaar, udid: req.body.udid, userItem: userItem };
-                Helper.response('success', 'OTP Verified Successfully!', { mobile: req.body.mobile, userData: [userData], slots: slots }, res, 200);
+                Helper.response('success', 'OTP Verified Successfully!', { mobile: req.body.mobile, userData: [userData], slots: slots ,key:b }, res, 200);
             }
 
         } else {
@@ -762,6 +1017,7 @@ exports.getRegisteredData = async (req, res) => {
 }
 
 exports.createCustomerTicketAasraAndSaveUser = async (req, res) => {
+    
     try {
 
 
@@ -777,8 +1033,19 @@ exports.createCustomerTicketAasraAndSaveUser = async (req, res) => {
             user = await users.findOne({ where: { udid: req.body.userData[0].udid, mobile: req.body.mobile, user_type: 'C' } })
         }
 
+       
+
+        // const mobile = await users.findOne({
+        //     where: {
+        //         udid: req.body.userData[0].udid
+        //     }
+        // })
+        // if (mobile.mobile != req.body.mobile) {
+        //    return  Helper.response('failed', 'Please enter registered no.', {}, res, 200);
+        // } 
 
         let userdetails = 0;
+       
         if (checkUser == null || user == null) {
             const createCustomer = await customer.create({
                 beneficiary_id: req.body.userData[0].beneficiary_id,
@@ -827,10 +1094,140 @@ exports.createCustomerTicketAasraAndSaveUser = async (req, res) => {
             appointment_time: req.body.userData.appointment_time.split('-')[1].trim(),
             itemName: req.body.product.name,
             itemId: req.body.product.label,
-            itemExpiry: req.body.product.value,
+            itemExpiry: req.body.product.expiryDate,
             description: req.body.description ?? '-',
             user_id: checkUser?.dataValues?.id ?? userdetails,
             aasra_id: await Helper.getAasraId(req),
+            problem: req.body.problem.id,
+
+        });
+        if (createRecord) {
+            const checkItem = items.findOne({
+                where: {
+                    user_id: checkUser?.dataValues?.id ?? userdetails
+                }
+            })
+            if (checkItem != null) {
+                const createItem = await items.create({
+                    item_name: req.body.userData[0].userItem[0].itemName,
+                    item_id: req.body.userData[0].userItem[0].itemId,
+                    rate: req.body.userData[0].userItem[0].rate,
+                    amount: req.body.userData[0].userItem[0].amount,
+                    user_id: checkUser?.dataValues?.id ?? userdetails,
+                    distributed_date: req.body.userData[0].userItem[0].dstDate,
+                    expire_date: req.body.userData[0].userItem[0].expiryDate,
+                    campName: req.body.userData[0].userItem[0].campName,
+                    campVenue: req.body.userData[0].userItem[0].campVenue,
+                })
+
+            }
+
+        }
+
+        Helper.response(
+            "success",
+            "Ticket Created Successfully!",
+            { createRecord },
+            res,
+            200
+        );
+
+    } catch (error) {
+        console.log(error)
+
+        Helper.response(
+            "failed",
+            "Something went wrong!",
+            { error },
+            res,
+            200
+        );
+    }
+}
+
+exports.createCustomerTicketAasraAndSaveUserCallCenter = async (req, res) => {
+    
+    try {
+
+    console.log(req.body)
+   
+        const checkUser = await customer.findOne({ where: { beneficiary_id: req.body.userData[0].beneficiary_id } })
+
+        const AasraId = await Helper.getAasraId(req)
+        const isAadhaar = /^\d{12}$/.test(req.body.userData[0].udid)
+        var user
+        if (isAadhaar) {
+            user = await users.findOne({ where: { access_code: Helper.maskAadhaar(req.body.userData[0].udid), mobile: req.body.mobile, user_type: 'C' } })
+
+        } else {
+            user = await users.findOne({ where: { udid: req.body.userData[0].udid, mobile: req.body.mobile, user_type: 'C' } })
+        }
+
+        
+
+        // const mobile = await users.findOne({
+        //     where: {
+        //         udid: req.body.userData[0].udid
+        //     }
+        // })
+        // if (mobile.mobile != req.body.mobile) {
+        //    return  Helper.response('failed', 'Please enter registered no.', {}, res, 200);
+        // } 
+
+        let userdetails = 0;
+        console.log(checkUser)
+        if (checkUser == null || user == null) {
+            const createCustomer = await customer.create({
+                beneficiary_id: req.body.userData[0].beneficiary_id,
+                father_name: req.body.userData[0].father_name,
+                dob: req.body.userData[0].dob,
+                gender: req.body.userData[0].gender,
+                district: req.body.userData[0].district,
+                state: req.body.userData[0].state,
+                aadhaar: req.body.userData[0].aadhaar,
+                udid: req.body.userData[0].udid,
+            })
+            if (createCustomer) {
+                const user = await users.create({
+                    name: req.body.userData[0].name,
+                    mobile: req.body.mobile,
+                    user_type: 'C',
+                    udid: req.body.userData[0].udid,
+                    ref_id: createCustomer.id,
+                    access_code: req.body.userData[0].aadhaar,
+                })
+                let token = jwt.sign({ id: user.id }, process.env.SECRET_KEY, {
+                    expiresIn: "365d",
+                });
+                await users.update({ token: token, ref_id: createCustomer.id }, { where: { id: user.id } });
+                userdetails = createCustomer.id
+            }
+
+
+        }
+
+        var ticketId = await Helper.generateNumber(100000, 999999);
+        const checkTicketId = await ticket.count({
+            where: {
+                ticket_id: ticketId
+            }
+        });
+
+        if (checkTicketId == 0) {
+            ticketId = await Helper.generateNumber(10000, 99999);
+        }
+
+        aasraUniqueId = await Helper.getAasra(AasraId)
+        const createRecord = await ticket.create({
+            ticket_id: ticketId,
+            appointment_date: req.body.appointment_date,
+            appointment_time: req.body.userData.appointment_time.split('-')[1].trim(),
+            itemName: req.body.product.name,
+            itemId: req.body.product.label,
+            itemExpiry: req.body.product.expiryDate,
+            description: req.body.description ?? '-',
+            user_id: checkUser?.dataValues?.id ?? userdetails,
+            aasra_id: req.body.aasra_id,
             problem: req.body.problem.id,
 
         });
@@ -1161,8 +1558,8 @@ exports.createRtoSell = async (req, res) => {
         const aasras = await aasra.findOne({ where: { id: user.ref_id } });
 
         const data = req.body;
-console.log(data)
-
+            console.log(data)
+          
         let msg = [];
         
         // Stock validation function
@@ -1195,6 +1592,28 @@ console.log(data)
             );
         }
 
+        const schema = Joi.object({
+            name: Joi.string().pattern(/^[a-zA-Z0-9\s\/\+]+$/).required(),
+            mobile_no: Joi.number().integer().required(),
+            aasra_id: Joi.number().integer().min(1).max(100000).required(),
+            email: Joi.string().email({ tlds: { allow: false } }).required(),
+            address: Joi.string().pattern(/^[a-zA-Z0-9\s&\/\-,.\(\)'"]+$/).required(),
+            gstAmount: Joi.number().positive().precision(5).required(),
+            grandTotal: Joi.number().positive().precision(5).required(),
+            gstPercent: Joi.number().positive().precision(5).required(),
+        });
+        
+        
+        const { error } = schema.validate(req.body);    
+        if (error) {
+            return Helper.response(
+                "failed",
+                error.details[0].message,
+                {},
+                res,
+                200
+            );
+        }
         // Sale creation data
         const saleData = {
             name: data.name,

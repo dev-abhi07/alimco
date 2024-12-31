@@ -43,11 +43,11 @@ const sale = sequelize.define('sale', {
 
 // sequelize.sync()
 
-//     .then(() => {
-//         console.log('Database & tables created!');
-//     })
-//     .catch(error => {
-//         console.error('Error creating database & tables:', error);
-//     });
+    // .then(() => {
+    //     console.log('Database & tables created!');
+    // })
+    // .catch(error => {
+    //     console.error('Error creating database & tables:', error);
+    // });
 
 module.exports = sale;

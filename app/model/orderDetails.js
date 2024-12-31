@@ -42,6 +42,11 @@ const orderDetails = sequelize.define("orderDetail",{
         allowNull: true,
 
     },
+    gst: {
+        type: DataTypes.STRING,
+        allowNull: true,
+
+    },
    
 
 

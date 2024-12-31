@@ -50,6 +50,11 @@ const stock = sequelize.define('stock', {
         allowNull: true,
 
     },
+    importby: {
+        type: DataTypes.STRING,
+        allowNull: true,
+
+    },
 
 
 })

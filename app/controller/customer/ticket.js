@@ -367,6 +367,15 @@ exports.ticketCustomerdetails = async (req, res) => {
             }
         })
 
+
+        const repairData = await repair.findAll({
+            where: {
+              ticket_id: ticketid
+            }
+           
+          })
+
+
         const getUser = await users.findOne({
             where: {
                 ref_id: ticketData.user_id,
@@ -391,12 +400,64 @@ exports.ticketCustomerdetails = async (req, res) => {
                 id: ticketData.problem
             }
         })
-        const warranty = Helper.compareDate(itemDetails?.expire_date);
+
+
+        const repairDataDiscount = await repair.findOne({
+            where: {
+              ticket_id:ticketid
+            }
+            
+          })
+
+        // var subtotal = 0
+        // var serviceCharge = 0
+        // var gst = 0
+        // var discount = 0
+
 
         var subtotal = 0
         var serviceCharge = 0
         var gst = 0
         var discount = 0
+        var discountAmt = 0 ;
+        var subtotalPurchase = 0
+        var serviceChargePurchase = 0
+        var gstPurchase = 0
+        var discountPurchase = 0
+        repairData.map((t) => {
+          if(t.repairCheckValue == "Repair/Replace"){
+            if(t.warranty == 1){
+              subtotal += t.productPrice * t.qty;
+              serviceCharge += t.repairServiceCharge ;
+              gst = subtotal * 18 / 100;
+             
+            }else{
+              subtotal += t.productPrice * t.qty;
+              serviceCharge += t.repairServiceCharge ;
+              gst = subtotal * 18 / 100;
+            }
+            
+          }
+          if(t.repairCheckValue == "Purchase"){
+            subtotalPurchase += t.productPrice * t.qty;
+            serviceChargePurchase += t.repairServiceCharge ;
+          }
+          
+        })
+
+        const warranty = Helper.compareDate(itemDetails?.expire_date);
+
+        if(warranty == 1){
+            discountAmt = subtotal + serviceCharge;
+          }else{
+            discountAmt = 0;
+          }
+          var amtgst = 0 ;
+          if(getAasra.gst != null || getAasra.gst != 'null'){
+            amtgst=  ((subtotal + serviceCharge + subtotalPurchase - discountAmt) * 18) / 100
+          }else{
+            amtgst = 0 
+          }
 
         ticketDetail = await Promise.all(ticketDetail.map(async (t) => {
             const oldManufacture = await manufacturer.findOne({
@@ -411,10 +472,10 @@ exports.ticketCustomerdetails = async (req, res) => {
                 }
             });
 
-            subtotal += t.productPrice * t.qty;
-            serviceCharge += t.repairServiceCharge + t.repairPrice;
-            gst = subtotal * 18 / 100;
-            discount = t.record == 1 ? 100 : 0;
+            // subtotal += t.productPrice * t.qty;
+            // serviceCharge += t.repairServiceCharge + t.repairPrice;
+            // gst = subtotal * 18 / 100;
+            // discount = t.record == 1 ? 100 : 0;
 
             return {
                 ...t.dataValues,
@@ -438,15 +499,22 @@ exports.ticketCustomerdetails = async (req, res) => {
             appointment_time: ticketData.appointment_time,
             status: ticketData.status == 0 ? 'Pending' : ticketData.status == 1 ? 'Open' : 'Closed',
             aasraName: getAasra.name_of_org,
+
+
             subtotal: subtotal,
             serviceCharge: serviceCharge,
-            gst: process.env.SERVICE_GST,
-            totalAmount: subtotal,
-            discount: 0,
+            total : subtotal + serviceCharge + subtotalPurchase,
+            totalAmount: (subtotal + serviceCharge + subtotalPurchase) - discountAmt  - (repairDataDiscount?.dataValues?.discountRec || 0),
+            additionalDiscount :repairDataDiscount?.dataValues?.discountRec || 0,
+            discount: discountAmt,
+
+
             createdDate: ticketData.createdAt,
             payment_status: repairPayments == 0 ? false : true,
             warranty: warranty,
             gst: process.env.SERVICE_GST,
+
+
             dstDate: itemDetails?.distributed_date ?? null,
             expire_date: itemDetails?.expire_date ?? null,
             problem: getProblem?.problem_name ?? null,

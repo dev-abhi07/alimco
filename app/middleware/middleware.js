@@ -4,6 +4,7 @@ const jwt = require("jsonwebtoken");
 const Menu = require("../model/menu");
 const subMenu = require("../model/submenu");
 const { title } = require("process");
+
 const Admin = async (req, res, next) => {
 
   const token = req.headers["authorization"];
@@ -14,7 +15,8 @@ const Admin = async (req, res, next) => {
     if (
       user.user_type == "S" ||
       user.user_type == "A" ||
-      user.user_type == "AC"
+      user.user_type == "AC" ||
+      user.user_type == "CC" 
     ) {
       try {
         const tokens = jwt.verify(string[1], process.env.SECRET_KEY);
@@ -62,7 +64,7 @@ const aasra = async (req, res, next) => {
     const string = token.split(" ");
     const user = await UserModel.findOne({ where: { token: string[1] } });
 
-    if (user.user_type == "AC") {
+    if (user.user_type == "AC" || user.user_type == "CC") {
       try {
         const tokens = jwt.verify(string[1], process.env.SECRET_KEY);
         next();
@@ -299,6 +301,8 @@ const menuListUserPermission = async (req, res, next) => {
               ],
             },
             {
+
+              
               title: "Sales",
               icon: "fa fa-shopping-cart fa-1x",
               type: "sub",
@@ -322,11 +326,35 @@ const menuListUserPermission = async (req, res, next) => {
       ];
       next();
     }
+    else if (user_type == "CC") {
+      res.filteredMenu = [
+        {
+          Items: [
+            {
+              title: "Dashboards",
+              icon: "fa fa-th-large fa-1x",
+              type: "link",
+              path: "dashboard",
+            },
+            {
+              title: "Tickets",
+              icon: "fa fa-ticket fa-1x",
+              type: "link",
+              path: "tickets",
+            },
+          ],
+        },
+      ];
+      next();
+    }
   } catch (error) {
     console.log(error);
   }
 };
+
+ 
 module.exports = {
+ 
   Admin: Admin,
   customer: customer,
   aasra: aasra,

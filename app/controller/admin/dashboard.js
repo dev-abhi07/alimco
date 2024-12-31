@@ -1,4 +1,6 @@
-const { Op } = require('sequelize')
+const {  where, or, Op, and, Sequelize  } = require('sequelize')
+const sequelize = require('../../connection/conn');
+
 const Helper = require('../../helper/helper')
 const city = require('../../model/city')
 const repair = require('../../model/repair')
@@ -18,8 +20,8 @@ const sale = require('../../model/sale')
 const saleDetail = require('../../model/saleDetails')
 const aasra = require('../../model/aasra')
 const manufacturer = require('../../model/manufacturer')
-
-
+const CryptoJS = require("crypto-js");
+const Joi = require('joi');
 
 exports.Dashboard = (req, res) => {
 
@@ -760,111 +762,12 @@ exports.partReplacementReport = async (req, res) => {
     }
 }
 
-// exports.inventoryWholeFormat = async (req, res) => {
-//     try {
-//         const aasra = req.body.aasra_id !== undefined && req.body.aasra_id !== null
-//             ? req.body.aasra_id
-//             : await Helper.getAasraId(req);
-
-//         const startDatesplit = await Helper.formatDate(new Date(req.body.startDate));
-//         const splitDate = await Helper.formatDate(new Date(req.body.endDate));
-//         const startDate = startDatesplit.split(" ")[0] + " " + "00:00:00";
-//         const endDate = splitDate.split(" ")[0] + " " + "23:59:59";
-//         const dateCondition = {
-//             createdAt: {
-//                 [Op.between]: [startDate, endDate]
-//             }
-//         };
-
-
-//         let stocks;
-//         if (aasra == null) {
-//             stocks = await stock.findAll({
-//                 where: {
-//                     ...dateCondition 
-//                 }
-//             });
-//         } else {
-//             stocks = await stock.findAll({
-//                 where: {
-//                     aasra_id: aasra,
-//                     ...dateCondition 
-//                 }
-//             });
-//         }
 
 
 
-//         if (stocks.length === 0) {
-//             Helper.response(
-//                 "failed",
-//                 "Record Not Found!",
-//                 {},
-//                 res,
-//                 200
-//             );
-//             return;
-//         }
-
-//         // const getAasra = await aasras.findByPk(aasra)
-//         const aasrasDetails = await aasras.findAll({
-//             where: { id: { [Op.in]: stocks.map(t => t.aasra_id) } }
-//         });
-//         const repairAll = await repair.findAll({
-//             where: { productValue: { [Op.in]: stocks.map(t => t.item_id) } }
-//         });
-//         var labour_amount = 0;
-//         const wholeFormat = [];
-//         await Promise.all(stocks.map(async (f) => {
-
-//             const getAasra = aasrasDetails.find(a => a.id === f.aasra_id);
-
-//             // repairDetails = await repair.findOne({
-//             //     where: { : f. }
-//             // });
-//             const repairDetails = await repair.find(a => a.productValue === f.item_id);
-
-//             // console.log(repairDetails)
-
-//             const partReplacement = {
-//                 aasra_name: getAasra.name_of_org || '-',
-//                 old_material_code: repairDetails ? repairDetails.old_serial_number : '-',
-//                 sap_material_code_code: repairDetails ? repairDetails.new_serial_number : '-',
-//                 material_description: '-',
-//                 unit_of_measurement: '-',
-//                 date: Helper.formatISODateTime((f.createdAt)) || '-',
-//                 opening_stock: labour_amount || '-',
-//                 stock_in: f.stock_in || '-',
-//                 stock_out: f.stock_out || '-',
-//                 closing_stock: f.stock_in - f.stock_out || '-',
-//                 shortage_excess: '-',
-//                 physical_stock: f.stock_in + f.stock_out || '-',
-//                 item_name: f.item_name
-
-//             };
-
-//             wholeFormat.push(partReplacement);
-//         }))
 
 
-//         Helper.response(
-//             "success",
-//             "Record Found Successfully",
-//             wholeFormat,
-//             res,
-//             200
-//         );
-//     } catch (error) {
-//         console.log(error)
-//         Helper.response(
-//             "failed",
-//             "Something went wrong!",
-//             { error },
-//             res,
-//             200
-//         );
-//     }
-// }
+
 exports.inventoryWholeFormat = async (req, res) => {
     try {
         const aasra = req.body.aasra_id !== undefined && req.body.aasra_id !== null
@@ -882,14 +785,24 @@ exports.inventoryWholeFormat = async (req, res) => {
                 [Op.between]: [startDate, endDate]
             }
         };
-
+        
         let stocks;
-
+        
+        if (req.body.spare_id == null) {
+            Helper.response(
+                "failed",
+                "Please Select Spare Part",
+                {},
+                res,
+                200
+            );
+            return;
+        }
 
         if (aasra == null && req.body.spare_id == null) {
             stocks = await stock.findAll({
                 where: {
-                    ...dateCondition
+                    // ...dateCondition
                 }
             });
         } else if (aasra != null && req.body.spare_id != null) {
@@ -897,7 +810,7 @@ exports.inventoryWholeFormat = async (req, res) => {
                 where: {
                     aasra_id: aasra,
                     item_id: req.body.spare_id,
-                    ...dateCondition
+                    // ...dateCondition
                 }
             });
         }
@@ -905,7 +818,7 @@ exports.inventoryWholeFormat = async (req, res) => {
             stocks = await stock.findAll({
                 where: {
                     item_id: req.body.spare_id,
-                    ...dateCondition
+                    // ...dateCondition
                 }
             });
         }
@@ -913,7 +826,7 @@ exports.inventoryWholeFormat = async (req, res) => {
             stocks = await stock.findAll({
                 where: {
                     aasra_id: aasra,
-                    ...dateCondition
+                    // ...dateCondition
                 }
             });
         }
@@ -944,8 +857,26 @@ exports.inventoryWholeFormat = async (req, res) => {
 
         const wholeFormat = [];
         var labour_amount = 0;
-        await Promise.all(stocks.map(async (f) => {
-
+        let availableStock = 0;
+        await Promise.all(stocks.map(async (f, index) => {
+                    const checkItem = await stock.findOne({
+                        attributes: [
+                            [sequelize.fn('SUM', sequelize.col('stock_in')), 'total_stock_in']
+                        ],
+                        where: {
+                            item_id: f.item_id,
+                            aasra_id: aasra
+                        }
+                    })
+                    
+                    if (index === 0) {
+                        availableStock = checkItem
+                            ? parseInt(checkItem.dataValues.total_stock_in || 0)
+                            : 0;
+                    }
+                    availableStock = availableStock - (f.stock_out || 0);
+                  
+                    
             const getAasra = aasrasDetails.find(a => a.id === f.aasra_id);
 
 
@@ -953,9 +884,8 @@ exports.inventoryWholeFormat = async (req, res) => {
 
             const spareDetails = spareAll.find(r => r.id === f.item_id);
 
-            const closingStock = (f.stock_in || 0) - (f.stock_out || 0);
-            const physicalStock = (f.stock_in || 0) + (f.stock_out || 0);
-
+          
+           
             const partReplacement = {
                 aasra_name: getAasra ? getAasra.name_of_org : '-',
                 old_material_code: repairDetails ? repairDetails.old_serial_number : '-',
@@ -966,9 +896,9 @@ exports.inventoryWholeFormat = async (req, res) => {
                 opening_stock: labour_amount || '-',
                 stock_in: f.stock_in || '-',
                 stock_out: f.stock_out || '-',
-                closing_stock: closingStock || '-',
+                closing_stock: availableStock || '-',
                 shortage_excess: '-',
-                physical_stock: physicalStock || '-',
+                physical_stock: availableStock || '-',
                 item_name: f.item_name || '-',
                 spare_part: spareDetails.part_name,
             };
@@ -997,23 +927,56 @@ exports.inventoryWholeFormat = async (req, res) => {
 };
 
 exports.updateLabourCharges = async (req, res) => {
-
-    try {
-        const labourCharge = await labour_charges.update(
-            req.body, {
-            where: {
-                id: req.body.id
-            }
-        }
-        )
-        Helper.response(
-            "success",
-            "Record Update Successfully",
+    const schema = Joi.object({
+        ids: Joi.required(), 
+        codeNo: Joi.string().pattern(/^[a-zA-Z0-9\s\/\+]+$/).required(),
+        natureOfWork: Joi.string().pattern(/^[a-zA-Z0-9\s()/\-]+$/).required(),
+        repairTime: Joi.number().integer().min(1).max(100000).required(),
+        labourCharges: Joi.number().integer().min(1).max(100000).required(),
+        finalLabourCharges: Joi.number().integer().min(1).max(100000).required(),
+    });
+    
+    
+    const { error } = schema.validate(req.body);    
+    if (error) {
+        return Helper.response(
+            "failed",
+            error.details[0].message,
             {},
             res,
             200
         );
+    }
+    try {
+
+        const a = CryptoJS.AES.decrypt(req.body.ids, process.env.SECRET_KEY);
+        const b = JSON.parse(a.toString(CryptoJS.enc.Utf8));
+   
+          const requestData = {
+            id: b.id,
+            key:b.key,
+          };
+        
+        const key = requestData.key ;
+       
+        const labourCharge = await labour_charges.update(
+            req.body, {
+            where: {
+                id: requestData.id
+            }
+        }
+        )
+       
+      
+        Helper.response(
+            "success",
+            "Record Update Successfully",
+            {key},
+            res,
+            200
+        );
     } catch (error) {
+        console.log(error)
         Helper.response(
             "failed",
             "Something went wrong!",
@@ -1026,6 +989,26 @@ exports.updateLabourCharges = async (req, res) => {
 
 exports.createLabourCharges = async (req, res) => {
 
+    const schema = Joi.object({
+   
+        codeNo: Joi.string().pattern(/^[a-zA-Z0-9\s\+]+$/).required(),
+        natureOfWork: Joi.string().pattern(/^[a-zA-Z0-9\s\/\+]+$/).required(),
+        repairTime: Joi.number().integer().min(1).max(100000).required(),
+        labourCharges: Joi.number().integer().min(1).max(100000).required(),
+        finalLabourCharges: Joi.number().integer().min(1).max(100000).required(),
+    });
+    
+    
+    const { error } = schema.validate(req.body);    
+    if (error) {
+        return Helper.response(
+            "failed",
+            error.details[0].message,
+            {},
+            res,
+            200
+        );
+    }
     try {
         const labourCharge = await labour_charges.create(
             req.body
@@ -1100,6 +1083,8 @@ exports.generateNotes = async (req, res) => {
 
 
         const totalData = []
+        let recordFound = false;
+
         await Promise.all(getRepairs.map(async (t) => {
             const ticketData = await repair.findOne({
                 where: {
@@ -1109,14 +1094,6 @@ exports.generateNotes = async (req, res) => {
             })
 
             if (ticketData == null) {
-
-                Helper.response(
-                    "failed",
-                    "Record Not Found!",
-                    {},
-                    res,
-                    200
-                );
                 return;
             } else {
                 const tickets = await ticket.findOne({ where: { ticket_id: t.ticket_id } })
@@ -1149,7 +1126,17 @@ exports.generateNotes = async (req, res) => {
                 totalData.push(values)
             }
         }))
-
+        if (!recordFound) {
+            // Send response only if no records were found
+            Helper.response(
+                "failed",
+                "Records Not Found!",
+                {},
+                res,
+                200
+            );
+            return;
+        }
         if (totalData.length === 0) {
             Helper.response(
                 "failed",

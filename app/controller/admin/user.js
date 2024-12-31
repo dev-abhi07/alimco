@@ -32,13 +32,16 @@ exports.getUserList = async (req, res) => {
             role: role?.user_type,
             id: user.id,
             name: user.name,
-            password: user?.pass_code,
-            mobile: user?.mobile,
+            // password: user?.pass_code,
+            // mobile: user?.mobile,
+            password:'--',
+            mobile: '--',
             user_type: user.user_type,
-            email: user?.email,
-            password: user?.pass_code,
+            // email: user?.email,
+            email: '--',
             status: user?.status,
-            unique_code:user?.unique_code
+            // unique_code:user?.unique_code
+            unique_code:'--'
           };
         })
       );

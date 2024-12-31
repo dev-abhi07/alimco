@@ -5,17 +5,39 @@ const aasraType = require("../../model/aasratype");
 const problem = require("../../model/problem");
 const stock = require("../../model/stock");
 const users = require("../../model/users");
+const items = require("../../model/items");
 const { where, Op, or, fn, col } = require('sequelize')
 
 exports.dashboard = async (req, res) => {
     try {
-         
+        const userId = await Helper.getUserId(req)
         const userItem = [];
         res.data.res.map(async (record) => {
             const dataItem = {
                 itemName: record.itemName,
                 itemId: record.itemId,
                 expiryDate: await Helper.addYear(record.dstDate)
+            }
+           
+            const checkItem = items.findOne({
+                where: {
+                    user_id: userId
+                }
+            })
+
+            if (checkItem != null) {
+                const createItem = await items.create({
+                    item_name: record.itemName,
+                    item_id: record.itemId,
+                    rate: record.rate,
+                    amount: record.amount,
+                    user_id: userId,
+                    distributed_date: record.dstDate,
+                    expire_date: await Helper.addYear(record.dstDate),
+                    campName: record.campName,
+                    campVenue: record.campVenue,
+                })
+
             }
 
             userItem.push(dataItem)
@@ -42,8 +64,11 @@ exports.dashboard = async (req, res) => {
             },
             where: {
                 state: req.body.state_id,
-                // aasra_type: req.body.aasra_type
-            }
+                aasra_type: {
+                    [Op.ne]: null // Not equal condition
+                }
+            },
+            order: [[sequelize.literal('distance'), 'ASC']]
         });
 
 
@@ -78,6 +103,7 @@ exports.dashboard = async (req, res) => {
                     }
                 })
                
+                // console.log(record,252566)
                 
                 const values = {
                     centerName: record?.name_of_org,
@@ -85,8 +111,8 @@ exports.dashboard = async (req, res) => {
                     pinCode: record?.pincode ? record?.pincode : '',
                     lat: record?.lat,
                     long: record?.log,
-                    id: user.ref_id,
-                    distance:record.dataValues.distance,
+                    id: user?.ref_id,
+                    distance:record.dataValues.distance ?? '',
                     centerImage: record?.center_image ? process.env.BASE_URL : 'https://media.istockphoto.com/id/1147544807/vector/thumbnail-image-vector-graphic.jpg?s=612x612&w=0&k=20&c=rnCKVbdxqkjlcs3xH87-9gocETqpspHFXu5dIGB4wuM='
                 }
 
@@ -123,18 +149,20 @@ exports.dashboard = async (req, res) => {
 
                 stocks.forEach((stock) => {
                     const gstPercentage = 18;
-                    const gstAmount = (stock.price * gstPercentage) / 100;
+                    const gstAmount = (stock.unit_price * gstPercentage) / 100;
                     const totalPriceIncludingGST = stock.price + gstAmount;
 
                     const values = {
                         productId: stock.id,
                         productName: stock.item_name,
                         stockIn: stock.stock_in,
-                        price: stock.price,
+                        price: parseFloat(stock.price).toFixed(2),
                         gstAmount: gstAmount,
-                        totalPriceIncludingGST: totalPriceIncludingGST,
+                        totalPriceIncludingGST: parseFloat(totalPriceIncludingGST).toFixed(2),
                         centerImage: record?.center_image ? process.env.BASE_URL : 'https://media.istockphoto.com/id/1147544807/vector/thumbnail-image-vector-graphic.jpg?s=612x612&w=0&k=20&c=rnCKVbdxqkjlcs3xH87-9gocETqpspHFXu5dIGB4wuM='
                     };
+
+                    //console.log(values,2555)
 
                     productData.push(values);
                 });

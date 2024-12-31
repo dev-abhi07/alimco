@@ -14,42 +14,42 @@ const document = sequelize.define("documents",{
     },
     photoImg:{
         type:DataTypes.STRING,
-        allowNull:false,
-        field:'user_img'
+        field:'user_img',
+        allowNull: true,
     },
     panImg:{
         type:DataTypes.STRING,
-        allowNull:false,
+        allowNull: true,
         field:'pan_img'
     },
     adhaarImg:{
         type:DataTypes.STRING,
-        allowNull:false,
+        allowNull: true,
         field:'adhaar_img'
     },
     areaImgs:{
         type:DataTypes.STRING,
-        allowNull:false,
+        allowNull: true,
         field:'area_img'
     },
     marketImg:{
         type:DataTypes.STRING,
-        allowNull:false,
+        allowNull: true,
         field:'market_img'
     },
     salesImg:{
         type:DataTypes.STRING,
-        allowNull:false,
+        allowNull: true,
         field:'sales_img'
     },
     signatureImg:{
         type:DataTypes.STRING,
-        allowNull:false,
+        allowNull: true,
         field:'signature_img'
     },
     regImg:{
         type:DataTypes.STRING,
-        allowNull:false,
+        allowNull: true,
         field:'reg_img'
     }
 

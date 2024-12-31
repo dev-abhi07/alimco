@@ -140,7 +140,11 @@ const order = sequelize.define('order', {
         allowNull: true,
 
     },
+    gstAmount: {
+        type: DataTypes.STRING,
+        allowNull: true,
 
+    },
 
    
 })
