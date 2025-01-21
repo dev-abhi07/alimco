@@ -13,7 +13,12 @@ const otp = sequelize.define('otp', {
         type:DataTypes.INTEGER,
         allowNull:false,
         defaultValue:1
+    },
+    expire_time:{
+        type:DataTypes.STRING,
+        allowNull: true,
     }
+    
 }
 );
 

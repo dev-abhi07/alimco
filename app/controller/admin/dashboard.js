@@ -1,4 +1,6 @@
-const { Op } = require('sequelize')
+const {  where, or, Op, and, Sequelize  } = require('sequelize')
+const sequelize = require('../../connection/conn');
+
 const Helper = require('../../helper/helper')
 const city = require('../../model/city')
 const repair = require('../../model/repair')
@@ -14,8 +16,12 @@ const customer = require('../../model/customer')
 const repairPayments = require('../../model/repairPayment')
 const items = require('../../model/items')
 const problem = require('../../model/problem')
-
-
+const sale = require('../../model/sale')
+const saleDetail = require('../../model/saleDetails')
+const aasra = require('../../model/aasra')
+const manufacturer = require('../../model/manufacturer')
+const CryptoJS = require("crypto-js");
+const Joi = require('joi');
 
 exports.Dashboard = (req, res) => {
 
@@ -181,10 +187,9 @@ exports.repair = async (req, res) => {
 }
 
 
-
 exports.revenueReport = async (req, res) => {
     try {
-        const aasra = req.body.aasra_id !== undefined && req.body.aasra_id !== null
+        const aasraData = req.body.aasra_id !== undefined && req.body.aasra_id !== null
             ? req.body.aasra_id
             : await Helper.getAasraId(req);
 
@@ -196,70 +201,126 @@ exports.revenueReport = async (req, res) => {
         const splitDate = await Helper.formatDate(new Date(req.body.endDate));
         const startDate = startDatesplit.split(" ")[0] + " " + "00:00:00";
         const endDate = splitDate.split(" ")[0] + " " + "23:59:59";
-        let ticketDetails
-        if (aasra == null) {
-            ticketDetails = await ticket.findAll({
-                where: {
-                    status: 2,
+        if (req.body.type == 3) {
+            const aasras = req.body.aasra_id;
+            if (aasras !== null) {
+                var tickets = await sale.findAll({
+                    where: {
+                        aasra_id: aasras
+                    },
                     createdAt: {
                         [Op.between]: [startDate, endDate]
                     },
-                }
-            });
-        } else {
-            ticketDetails = await ticket.findAll({
-                where: {
-                    status: 2,
-                    aasra_id: aasra,
+                    order: [
+                        ['id', 'DESC']
+                    ]
+                })
+            } else {
+                var tickets = await sale.findAll({
                     createdAt: {
                         [Op.between]: [startDate, endDate]
                     },
-                }
-            });
-        }
+                    order: [
+                        ['id', 'DESC']
+                    ]
+                })
+            }
+
+            const ticketResponses = [];
+            await Promise.all(
+                tickets.map(async (record, count = 1) => {
+                    // const getUser = await users.findByPk(record.user_id)
+                    const getAasra = await aasra.findByPk(record.aasra_id)
+                    const repairData = await saleDetail.findAll({
+                        where: {
+                            sale_id: record.id,
+                        },
+                        order: [
+                            ['id', 'DESC']
+                        ]
+                    })
+
+                    const repairDataValues = await Promise.all(repairData.map(async (records) => {
 
 
-        if (ticketDetails.length === 0) {
+                        const newManufacture = await manufacturer.findOne({
+                            where: {
+                                id: records.new_manufacturer_id
+                            }
+                        });
+                        return {
+                            ...records.dataValues,
+                            new_manufacture_name: newManufacture?.manufacturer_code ?? null,
+
+                        }
+                    }))
+                    const dates = `${start} - ${end}`;
+                    const dataValue = {
+
+                        id: record.id,
+                        aasra_id: record.aasra_id,
+                        name: record.name,
+                        mobile_no: record.mobile_no,
+                        email: record.email,
+                        address: record.address,
+                        totalSpareCost: record.totalSpareCost,
+                        gstAmount: record.gstAmount,
+                        gstPercent: record.gstPercent,
+                        grandTotal: record.grandTotal,
+                        aasraName: getAasra.name_of_org,
+                        ticketDetail: repairDataValues,
+
+
+
+                        total_amount: record.totalSpareCost,
+                        taxable_amount: record.totalSpareCost,
+                        rate_gst: 18,
+                        gst: record.gstAmount,
+                        invoice_value: record.grandTotal,
+                        aasra_name: getAasra.name_of_org,
+                        month: dates,
+                        type: 'RTU',
+                        type_value: 3,
+                    }
+                    ticketResponses.push(dataValue)
+                })
+            )
+
+            if (ticketResponses.length === 0) {
+                Helper.response(
+                    "failed",
+                    "Record Not Found!",
+                    {},
+                    res,
+                    200
+                );
+                return;
+            }
+
+
             Helper.response(
-                "failed",
-                "Record Not Found!",
-                {},
+                "success",
+                "Record Found Successfully",
+                ticketResponses,
                 res,
                 200
             );
-            return;
-        }
-
-        // Group tickets by aasra_id
-        const ticketsGroupedByAasra = ticketDetails.reduce((acc, ticket) => {
-            if (!acc[ticket.aasra_id]) {
-                acc[ticket.aasra_id] = [];
-            }
-            acc[ticket.aasra_id].push(ticket);
-            return acc;
-        }, {});
-
-        const aasraResponses = [];
-
-        // Iterate over each group of aasra_id
-        for (const [aasraId, tickets] of Object.entries(ticketsGroupedByAasra)) {
-            const ticketIds = tickets.map(ticket => ticket.ticket_id);
-
-            let repairs;
-            if (warranty == null) {
-                repairs = await repair.findAll({
+        } else {
+            let ticketDetails;
+            if (aasraData == null) {
+                ticketDetails = await ticket.findAll({
                     where: {
-                        ticket_id: ticketIds,
+                        status: 2,
                         createdAt: {
                             [Op.between]: [startDate, endDate]
                         },
                     }
                 });
             } else {
-                repairs = await repair.findAll({
+                ticketDetails = await ticket.findAll({
                     where: {
-                        ticket_id: ticketIds,
-                        warranty: warranty,
+                        status: 2,
+                        aasra_id: aasraData,
                         createdAt: {
                             [Op.between]: [startDate, endDate]
                         },
@@ -267,76 +328,180 @@ exports.revenueReport = async (req, res) => {
                 });
             }
 
-            if (repairs.length > 0) {
-                const getAasra = await aasras.findByPk(aasraId);
-                const dates = `${start} - ${end}`;
+            if (ticketDetails.length === 0) {
+                Helper.response(
+                    "failed",
+                    "Record Not Found!",
+                    {},
+                    res,
+                    200
+                );
+                return;
+            }
 
-                if (req.body.type == 2) {
-                    const totalAmount = repairs.reduce((sum, record) => sum + record.amount, 0);
-                    const labourDetails = {
-                        total_amount: totalAmount,
-                        taxable_amount: 0,
-                        aasra_name: getAasra.name_of_org,
-                        month: dates,
-                        type: 'Labour',
-                        rate_gst: 0,
-                        gst: 0,
-                        invoice_value: totalAmount,
-                    };
-                    aasraResponses.push(labourDetails);
-                } else if (req.body.type == 1) {
-                    let total_amount = 0;
-                    let price;
-                    await Promise.all(repairs.map(async (f) => {
-                        price = await spareParts.findByPk(f.productValue);
-                        total_amount += price.unit_price * f.qty;
-                    }));
-                    const gst_amount = price.unit_price - price.base_price;
-                    const sellDetails = {
-                        total_amount: total_amount,
-                        taxable_amount: total_amount,
-                        rate_gst: 18,
-                        gst: gst_amount,
-                        invoice_value: gst_amount + total_amount,
-                        aasra_name: getAasra.name_of_org,
-                        month: dates,
-                        type: 'Sales'
-                    };
-                    aasraResponses.push(sellDetails);
+            const ticketResponses = [];
+
+            // Iterate over all tickets and group repairs by ticket_id
+            for (const ticket of ticketDetails) {
+                const ticketId = ticket.ticket_id;
+
+                // Fetch associated repairs
+                let repairs;
+                if (warranty == null) {
+                    repairs = await repair.findAll({
+                        where: {
+                            ticket_id: ticketId,
+                            createdAt: {
+                                [Op.between]: [startDate, endDate]
+                            },
+                        },
+                    });
+                } else {
+                    repairs = await repair.findAll({
+                        where: {
+                            ticket_id: ticketId,
+                            warranty: warranty,
+                            createdAt: {
+                                [Op.between]: [startDate, endDate]
+                            },
+                        },
+                    });
+                }
+
+                if (repairs.length > 0) {
+                    let aasra_name = 'N/A';
+                    let getAasra = null;
+                    if (ticket.aasra_id) {
+                        getAasra = await aasras.findByPk(ticket.aasra_id);
+                        aasra_name = getAasra ? getAasra.name_of_org : 'N/A';
+                    }
+
+                    const dates = `${start} - ${end}`;
+                    const itemDetails = await items.findOne({
+                        where: {
+                            user_id: ticket.user_id
+                        }
+                    });
+
+                    const repairDataDiscount = await repair.findOne({
+                        where: {
+                            ticket_id: ticket.ticket_id
+                        },
+                        order: [['id', 'DESC']]
+                    });
+
+                    let subtotal = 0;
+                    let serviceCharge = 0;
+                    let gst = 0;
+                    let discountAmt = 0;
+                    let subtotalPurchase = 0;
+                    let serviceChargePurchase = 0;
+
+                    // Iterate over repairs to aggregate the amounts
+                    repairs.forEach(record => {
+                        console.log(record)
+                        if (record.repairCheckValue === "Repair/Replace" ) {
+                            subtotal += record.productPrice * record.qty;
+                            serviceCharge += record.repairServiceCharge;
+                            gst += subtotal * 18 / 100;
+                        } 
+                        if (record.repairCheckValue === "Purchase") {
+                            subtotalPurchase += record.productPrice * record.qty;
+                            serviceChargePurchase += record.repairServiceCharge;
+                        }
+                    });
+                   console.log(subtotalPurchase,'subtotalPurchase')
+                    const warranty = Helper.compareDate(itemDetails?.expire_date);
+                    if (warranty === 1) {
+                        discountAmt = subtotal + serviceCharge;
+                    } else {
+                        discountAmt = 0;
+                    }
+
+                    let amtgst = 0;
+                    if (getAasra && getAasra.gst != null) {
+                        amtgst = ((subtotal + serviceCharge + subtotalPurchase - discountAmt) * 18) / 100;
+                    }
+                   let gstAmtCal 
+                   let invoiceVal 
+                  
+                    if(warranty === true){
+                        gstAmtCal = 0 + ((subtotalPurchase) * 18) / 100
+                        invoiceVal = 0 + subtotalPurchase + ((subtotalPurchase) * 18) / 100
+                    }else{
+                        gstAmtCal = amtgst
+                        invoiceVal = (subtotal + serviceCharge + subtotalPurchase + amtgst) - discountAmt - (repairDataDiscount?.dataValues?.discountRec || 0)
+                    }
+
+                    // Prepare the response for each type
+                    if (req.body.type == 2) {
+                        const labourDetails = {
+                            ticket_id: ticket.ticket_id,
+                            total_amount: serviceCharge  ,
+                            taxable_amount: serviceCharge ,
+                            aasra_name: aasra_name,
+                            month: dates,
+                            type: 'Labour',
+                            type_value: 2,
+                            rate_gst: 18,
+                            gst: gstAmtCal ,
+                            invoice_value: invoiceVal ,
+                        };
+                        ticketResponses.push(labourDetails);
+                    } else if (req.body.type == 1) {
+                        const sellDetails = {
+                            ticket_id: ticket.ticket_id,
+                            total_amount: subtotal + subtotalPurchase ,
+                            taxable_amount: subtotal + subtotalPurchase,
+                            rate_gst: 18,
+                            gst: gstAmtCal ,
+                            invoice_value: invoiceVal,
+                            aasra_name: aasra_name,
+                            month: dates,
+                            type_value: 1,
+                            type: 'Sales'
+                        };
+                        ticketResponses.push(sellDetails);
+                    }
                 }
             }
-        }
 
-        if (aasraResponses.length === 0) {
+            if (ticketResponses.length === 0) {
+                Helper.response(
+                    "failed",
+                    "Record Not Found!",
+                    {},
+                    res,
+                    200
+                );
+                return;
+            }
+
+            // Send response with all ticket and repair details
             Helper.response(
-                "failed",
-                "Record Not Found!",
-                {},
+                "success",
+                "Record Found Successfully",
+                ticketResponses,
                 res,
                 200
             );
-            return;
+            
         }
 
-        Helper.response(
-            "success",
-            "Record Found Successfully",
-            aasraResponses,
-            res,
-            200
-        );
 
     } catch (error) {
         console.log(error);
         Helper.response(
             "failed",
-            "Something went wrong!",
+            "Something went wrong!",    
             { error },
             res,
             200
         );
     }
 };
+
+
 
 
 
@@ -387,6 +552,7 @@ exports.paymentReport = async (req, res) => {
                     order_status: order.order_status,
                     order_amount: order.grand_total,
                     paid_amount: order.paid_amount,
+
                     balance: order.grand_total - order.paid_amount,
                     payment_date: Helper.formatISODateTime(order.createdAt),
                     payment_method: order.payment_method,
@@ -596,111 +762,12 @@ exports.partReplacementReport = async (req, res) => {
     }
 }
 
-// exports.inventoryWholeFormat = async (req, res) => {
-//     try {
-//         const aasra = req.body.aasra_id !== undefined && req.body.aasra_id !== null
-//             ? req.body.aasra_id
-//             : await Helper.getAasraId(req);
-
-//         const startDatesplit = await Helper.formatDate(new Date(req.body.startDate));
-//         const splitDate = await Helper.formatDate(new Date(req.body.endDate));
-//         const startDate = startDatesplit.split(" ")[0] + " " + "00:00:00";
-//         const endDate = splitDate.split(" ")[0] + " " + "23:59:59";
-//         const dateCondition = {
-//             createdAt: {
-//                 [Op.between]: [startDate, endDate]
-//             }
-//         };
-
-
-//         let stocks;
-//         if (aasra == null) {
-//             stocks = await stock.findAll({
-//                 where: {
-//                     ...dateCondition 
-//                 }
-//             });
-//         } else {
-//             stocks = await stock.findAll({
-//                 where: {
-//                     aasra_id: aasra,
-//                     ...dateCondition 
-//                 }
-//             });
-//         }
 
 
 
-//         if (stocks.length === 0) {
-//             Helper.response(
-//                 "failed",
-//                 "Record Not Found!",
-//                 {},
-//                 res,
-//                 200
-//             );
-//             return;
-//         }
-
-//         // const getAasra = await aasras.findByPk(aasra)
-//         const aasrasDetails = await aasras.findAll({
-//             where: { id: { [Op.in]: stocks.map(t => t.aasra_id) } }
-//         });
-//         const repairAll = await repair.findAll({
-//             where: { productValue: { [Op.in]: stocks.map(t => t.item_id) } }
-//         });
-//         var labour_amount = 0;
-//         const wholeFormat = [];
-//         await Promise.all(stocks.map(async (f) => {
-
-//             const getAasra = aasrasDetails.find(a => a.id === f.aasra_id);
-
-//             // repairDetails = await repair.findOne({
-//             //     where: { : f. }
-//             // });
-//             const repairDetails = await repair.find(a => a.productValue === f.item_id);
-
-//             // console.log(repairDetails)
-
-//             const partReplacement = {
-//                 aasra_name: getAasra.name_of_org || '-',
-//                 old_material_code: repairDetails ? repairDetails.old_serial_number : '-',
-//                 sap_material_code_code: repairDetails ? repairDetails.new_serial_number : '-',
-//                 material_description: '-',
-//                 unit_of_measurement: '-',
-//                 date: Helper.formatISODateTime((f.createdAt)) || '-',
-//                 opening_stock: labour_amount || '-',
-//                 stock_in: f.stock_in || '-',
-//                 stock_out: f.stock_out || '-',
-//                 closing_stock: f.stock_in - f.stock_out || '-',
-//                 shortage_excess: '-',
-//                 physical_stock: f.stock_in + f.stock_out || '-',
-//                 item_name: f.item_name
-
-//             };
-
-//             wholeFormat.push(partReplacement);
-//         }))
 
 
-//         Helper.response(
-//             "success",
-//             "Record Found Successfully",
-//             wholeFormat,
-//             res,
-//             200
-//         );
-//     } catch (error) {
-//         console.log(error)
-//         Helper.response(
-//             "failed",
-//             "Something went wrong!",
-//             { error },
-//             res,
-//             200
-//         );
-//     }
-// }
+
 exports.inventoryWholeFormat = async (req, res) => {
     try {
         const aasra = req.body.aasra_id !== undefined && req.body.aasra_id !== null
@@ -718,14 +785,24 @@ exports.inventoryWholeFormat = async (req, res) => {
                 [Op.between]: [startDate, endDate]
             }
         };
-
+        
         let stocks;
-
+        
+        if (req.body.spare_id == null) {
+            Helper.response(
+                "failed",
+                "Please Select Spare Part",
+                {},
+                res,
+                200
+            );
+            return;
+        }
 
         if (aasra == null && req.body.spare_id == null) {
             stocks = await stock.findAll({
                 where: {
-                    ...dateCondition
+                    // ...dateCondition
                 }
             });
         } else if (aasra != null && req.body.spare_id != null) {
@@ -733,7 +810,7 @@ exports.inventoryWholeFormat = async (req, res) => {
                 where: {
                     aasra_id: aasra,
                     item_id: req.body.spare_id,
-                    ...dateCondition
+                    // ...dateCondition
                 }
             });
         }
@@ -741,7 +818,7 @@ exports.inventoryWholeFormat = async (req, res) => {
             stocks = await stock.findAll({
                 where: {
                     item_id: req.body.spare_id,
-                    ...dateCondition
+                    // ...dateCondition
                 }
             });
         }
@@ -749,7 +826,7 @@ exports.inventoryWholeFormat = async (req, res) => {
             stocks = await stock.findAll({
                 where: {
                     aasra_id: aasra,
-                    ...dateCondition
+                    // ...dateCondition
                 }
             });
         }
@@ -780,8 +857,26 @@ exports.inventoryWholeFormat = async (req, res) => {
 
         const wholeFormat = [];
         var labour_amount = 0;
-        await Promise.all(stocks.map(async (f) => {
-
+        let availableStock = 0;
+        await Promise.all(stocks.map(async (f, index) => {
+                    const checkItem = await stock.findOne({
+                        attributes: [
+                            [sequelize.fn('SUM', sequelize.col('stock_in')), 'total_stock_in']
+                        ],
+                        where: {
+                            item_id: f.item_id,
+                            aasra_id: aasra
+                        }
+                    })
+                    
+                    if (index === 0) {
+                        availableStock = checkItem
+                            ? parseInt(checkItem.dataValues.total_stock_in || 0)
+                            : 0;
+                    }
+                    availableStock = availableStock - (f.stock_out || 0);
+                  
+                    
             const getAasra = aasrasDetails.find(a => a.id === f.aasra_id);
 
 
@@ -789,9 +884,8 @@ exports.inventoryWholeFormat = async (req, res) => {
 
             const spareDetails = spareAll.find(r => r.id === f.item_id);
 
-            const closingStock = (f.stock_in || 0) - (f.stock_out || 0);
-            const physicalStock = (f.stock_in || 0) + (f.stock_out || 0);
-
+          
+           
             const partReplacement = {
                 aasra_name: getAasra ? getAasra.name_of_org : '-',
                 old_material_code: repairDetails ? repairDetails.old_serial_number : '-',
@@ -802,9 +896,9 @@ exports.inventoryWholeFormat = async (req, res) => {
                 opening_stock: labour_amount || '-',
                 stock_in: f.stock_in || '-',
                 stock_out: f.stock_out || '-',
-                closing_stock: closingStock || '-',
+                closing_stock: availableStock || '-',
                 shortage_excess: '-',
-                physical_stock: physicalStock || '-',
+                physical_stock: availableStock || '-',
                 item_name: f.item_name || '-',
                 spare_part: spareDetails.part_name,
             };
@@ -833,23 +927,56 @@ exports.inventoryWholeFormat = async (req, res) => {
 };
 
 exports.updateLabourCharges = async (req, res) => {
-
-    try {
-        const labourCharge = await labour_charges.update(
-            req.body, {
-            where: {
-                id: req.body.id
-            }
-        }
-        )
-        Helper.response(
-            "success",
-            "Record Update Successfully",
+    const schema = Joi.object({
+        ids: Joi.required(), 
+        codeNo: Joi.string().pattern(/^[a-zA-Z0-9\s\/\+]+$/).required(),
+        natureOfWork: Joi.string().pattern(/^[a-zA-Z0-9\s()/\-]+$/).required(),
+        repairTime: Joi.number().integer().min(1).max(100000).required(),
+        labourCharges: Joi.number().integer().min(1).max(100000).required(),
+        finalLabourCharges: Joi.number().integer().min(1).max(100000).required(),
+    });
+    
+    
+    const { error } = schema.validate(req.body);    
+    if (error) {
+        return Helper.response(
+            "failed",
+            error.details[0].message,
             {},
             res,
             200
         );
+    }
+    try {
+
+        const a = CryptoJS.AES.decrypt(req.body.ids, process.env.SECRET_KEY);
+        const b = JSON.parse(a.toString(CryptoJS.enc.Utf8));
+   
+          const requestData = {
+            id: b.id,
+            key:b.key,
+          };
+        
+        const key = requestData.key ;
+       
+        const labourCharge = await labour_charges.update(
+            req.body, {
+            where: {
+                id: requestData.id
+            }
+        }
+        )
+       
+      
+        Helper.response(
+            "success",
+            "Record Update Successfully",
+            {key},
+            res,
+            200
+        );
     } catch (error) {
+        console.log(error)
         Helper.response(
             "failed",
             "Something went wrong!",
@@ -862,6 +989,26 @@ exports.updateLabourCharges = async (req, res) => {
 
 exports.createLabourCharges = async (req, res) => {
 
+    const schema = Joi.object({
+   
+        codeNo: Joi.string().pattern(/^[a-zA-Z0-9\s\+]+$/).required(),
+        natureOfWork: Joi.string().pattern(/^[a-zA-Z0-9\s\/\+]+$/).required(),
+        repairTime: Joi.number().integer().min(1).max(100000).required(),
+        labourCharges: Joi.number().integer().min(1).max(100000).required(),
+        finalLabourCharges: Joi.number().integer().min(1).max(100000).required(),
+    });
+    
+    
+    const { error } = schema.validate(req.body);    
+    if (error) {
+        return Helper.response(
+            "failed",
+            error.details[0].message,
+            {},
+            res,
+            200
+        );
+    }
     try {
         const labourCharge = await labour_charges.create(
             req.body
@@ -916,7 +1063,7 @@ exports.generateNotes = async (req, res) => {
         // const startDate = Helper.formatDate(new Date(req.body.start_date))
 
 
-        
+
         // const splitDate = Helper.formatDate(new Date(req.body.end_date))
         // const endDate = splitDate.split(" ")[0] + " " + "23:59:59";
 
@@ -927,16 +1074,17 @@ exports.generateNotes = async (req, res) => {
 
         const getRepairs = await ticket.findAll({
             where: {
-                status:2,
-                aasra_id:req.body.aasra_id,
+                status: 2,
                 createdAt: {
                     [Op.between]: [startDate, endDate]
                 }
             }
         })
 
-        
+
         const totalData = []
+        let recordFound = false;
+
         await Promise.all(getRepairs.map(async (t) => {
             const ticketData = await repair.findOne({
                 where: {
@@ -944,16 +1092,8 @@ exports.generateNotes = async (req, res) => {
                     warranty: req.body.warranty
                 }
             })
-           
+
             if (ticketData == null) {
-                
-                Helper.response(
-                    "failed",
-                    "Record Not Found!",
-                    {},
-                    res,
-                    200
-                );
                 return;
             } else {
                 const tickets = await ticket.findOne({ where: { ticket_id: t.ticket_id } })
@@ -986,7 +1126,17 @@ exports.generateNotes = async (req, res) => {
                 totalData.push(values)
             }
         }))
-
+        if (!recordFound) {
+            // Send response only if no records were found
+            Helper.response(
+                "failed",
+                "Records Not Found!",
+                {},
+                res,
+                200
+            );
+            return;
+        }
         if (totalData.length === 0) {
             Helper.response(
                 "failed",

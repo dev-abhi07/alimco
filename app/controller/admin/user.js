@@ -1,5 +1,5 @@
 const UserModel = require("../../model/users");
-const validator = require('validator');
+const validator = require("validator");
 const CryptoJS = require("crypto-js");
 const Helper = require("../../helper/helper");
 const jwt = require("jsonwebtoken");
@@ -9,12 +9,8 @@ const Menu = require("../../model/menu");
 const subMenu = require("../../model/submenu");
 const role_permission = require("../../model/role_permission");
 const user_permission = require("../../model/user_permission");
-
-
-
-
+const { Op } = require("sequelize");
 exports.getUserList = async (req, res) => {
-
   try {
     const users = await UserModel.findAll({
       order: [["id", "DESC"]],
@@ -24,30 +20,31 @@ exports.getUserList = async (req, res) => {
     function getData() {
       return Promise.all(
         users.map(async (user) => {
-
-          var role = await Role.findOne({ where: { user_type: user.user_type } });
+          var role = await Role.findOne({
+            where: { user_type: user.user_type },
+          });
 
           // console.log(district.rows[0])
           return {
             role: role?.user_type,
             id: user.id,
             name: user.name,
-            password: user?.pass_code,
+            // password: user?.pass_code,
             mobile: user?.mobile,
+            password: "--",
+            // mobile: '--',
             user_type: user.user_type,
             email: user?.email,
-            password: user?.pass_code,
+            // email: '--',
             status: user?.status,
-            unique_code:user?.unique_code
+            unique_code: user?.unique_code,
+            // unique_code: '--'
           };
         })
       );
     }
     getData().then((values) => {
-
       values.forEach((e) => {
-
-       
         data.push({
           name: e.name ? e.name : "",
           userTypeName: e.role ? e.role : "",
@@ -57,59 +54,56 @@ exports.getUserList = async (req, res) => {
           password: e.password ? e.password : "-",
           status: e.status,
           email: e.email,
-          unique_code:e.unique_code
+          unique_code: e.unique_code,
         });
       });
 
       Helper.response("success", "Record Found Successfully", data, res, 200);
     });
   } catch (error) {
-    console.log(error)
+    console.log(error);
     Helper.response("failed", "No Record Found", { error }, res, 200);
   }
 };
 
 exports.userCreate = async (req, res) => {
   try {
-    const { email, user_type, name, mobile, status, password } = req.body
+    const { email, user_type, name, mobile, status, password } = req.body;
 
     if (!email || !user_type || !name || !mobile || !status || !password) {
       return Helper.response("failed", "All fields are required", {}, res, 200);
     }
-    if (user_type != 'S' && user_type != 'A') {
+    if (user_type != "S" && user_type != "A") {
       return Helper.response("failed", "Enter correct user type", {}, res, 200);
     }
 
     const userEmail = await UserModel.findOne({ where: { email: email } });
 
     if (userEmail) {
-      Helper.response(
-        "failed",
-        "Email Already Exist!",
-        {},
-        res,
-        200
-      );
+      Helper.response("failed", "Email Already Exist!", {}, res, 200);
       return;
     }
     const userPhone = await UserModel.findOne({ where: { mobile: mobile } });
 
     if (userPhone) {
-      Helper.response(
-        "failed",
-        "Mobile Already Exist!",
-        {},
-        res,
-        200
-      );
+      Helper.response("failed", "Mobile Already Exist!", {}, res, 200);
       return;
     }
 
+    const encryptPassword = await Helper.encryptPassword(password);
 
-    const encryptPassword = await Helper.encryptPassword(password)
-
-    const user = await UserModel.create({ email, user_type, name, mobile, status, pass_code: password, password: encryptPassword })
-    const user_id = await UserModel.findOne({ where: { email: req.body.email } });
+    const user = await UserModel.create({
+      email,
+      user_type,
+      name,
+      mobile,
+      status,
+      pass_code: password,
+      password: encryptPassword,
+    });
+    const user_id = await UserModel.findOne({
+      where: { email: req.body.email },
+    });
     const getRolePermission = await role_permission.findAll({
       where: { roleId: req.body.user_type },
     });
@@ -131,10 +125,10 @@ exports.userCreate = async (req, res) => {
     });
     Helper.response("success", "Record Created Successfully", user, res, 200);
   } catch (error) {
-    console.log(error)
-    Helper.response("failed", "Unable to create User", error, res, 200)
+    console.log(error);
+    Helper.response("failed", "Unable to create User", error, res, 200);
   }
-}
+};
 
 exports.getUserPermission = async (req, res) => {
   try {
@@ -166,7 +160,10 @@ exports.getUserPermission = async (req, res) => {
             submenu_id: f.dataValues.id,
           };
 
-          const permissionData = data.find((d) => d.menu_id === e.dataValues.id && d.submenu_id === f.dataValues.id);
+          const permissionData = data.find(
+            (d) =>
+              d.menu_id === e.dataValues.id && d.submenu_id === f.dataValues.id
+          );
 
           if (permissionData) {
             subMenuObject.isCreate = permissionData.isCreate || isCreate;
@@ -207,9 +204,15 @@ exports.getUserPermission = async (req, res) => {
       }
     }
 
-    Helper.response("success", "Record Found Successfully", totaldata, res, 200);
+    Helper.response(
+      "success",
+      "Record Found Successfully",
+      totaldata,
+      res,
+      200
+    );
   } catch (error) {
-    console.log(error)
+    console.log(error);
     Helper.response("failed", "Record Not Found", { error }, res, 200);
   }
 };
@@ -287,8 +290,8 @@ exports.RoleList = async (req, res) => {
         user_type: element.dataValues.user_type,
         value: element.dataValues.id,
         label: element.dataValues.role,
-      }
-      data.push(value)
+      };
+      data.push(value);
     });
 
     Helper.response(
@@ -298,9 +301,7 @@ exports.RoleList = async (req, res) => {
       res,
       200
     );
-
   } catch (error) {
-
     Helper.response("failed", "Record Not Found", { error }, res, 200);
   }
 };
@@ -335,7 +336,10 @@ exports.getRolePermission = async (req, res) => {
             submenu_id: f.dataValues.id,
           };
 
-          const permissionData = data.find((d) => d.menu_id === e.dataValues.id && d.submenu_id === f.dataValues.id);
+          const permissionData = data.find(
+            (d) =>
+              d.menu_id === e.dataValues.id && d.submenu_id === f.dataValues.id
+          );
 
           if (permissionData) {
             subMenuObject.isCreate = permissionData.isCreate || isCreate;
@@ -376,9 +380,15 @@ exports.getRolePermission = async (req, res) => {
       }
     }
 
-    Helper.response("success", "Record Updated Successfully", totaldata, res, 200);
+    Helper.response(
+      "success",
+      "Record Updated Successfully",
+      totaldata,
+      res,
+      200
+    );
   } catch (error) {
-    console.log(error)
+    console.log(error);
     Helper.response("failed", "Record Not Found", { error }, res, 200);
   }
 };
@@ -397,15 +407,15 @@ exports.userPermission = async (req, res) => {
     // console.log(role_id,'')
     const role_id = await UserModel.findOne({
       where: {
-        id: user_id
-      }
-    })
+        id: user_id,
+      },
+    });
 
     const roleId = await Role.findOne({
       where: {
-        user_type: role_id.user_type
-      }
-    })
+        user_type: role_id.user_type,
+      },
+    });
     const userdata = await user_permission.destroy({
       where: { userid: user_id },
     });
@@ -437,7 +447,6 @@ exports.userPermission = async (req, res) => {
       }
     } else {
       for (const element of reqData) {
-
         try {
           const menu_id = element.menu_id;
           const submenu_id = element.submenu_id || null;
@@ -470,57 +479,197 @@ exports.userPermission = async (req, res) => {
   }
 };
 
-
 exports.userStatusUpdate = async (req, res) => {
   try {
-
     const userStatus = await UserModel.findOne({
       where: {
-        id: req.body.id
-      }
-    })
+        id: req.body.id,
+      },
+    });
     if (!userStatus) {
+      return Helper.response("failed", "user not found!", {}, res, 200);
+    }
+    if (userStatus.status === true) {
+      const update = await UserModel.update(
+        {
+          status: false,
+        },
+        {
+          where: {
+            id: req.body.id,
+          },
+        }
+      );
+    } else {
+      const update = await UserModel.update(
+        {
+          status: true,
+        },
+        {
+          where: {
+            id: req.body.id,
+          },
+        }
+      );
+    }
+
+    Helper.response("success", "status Update Successfully", {}, res, 200);
+  } catch (error) {
+    Helper.response("failed", "Something went wrong!", { error }, res, 200);
+  }
+};
+
+exports.UpdatePassAndMOBNO = async (req, res) => {
+  try {
+    const encryptedData = req.body.zero;
+
+    const decryptedBytes = CryptoJS.AES.decrypt(
+      encryptedData,
+      process.env.SECRET_KEY
+    );
+
+    const decryptedbodydt = JSON.parse(
+      decryptedBytes.toString(CryptoJS.enc.Utf8)
+    );
+    console.log(req.body.zero, decryptedBytes, decryptedbodydt, "okkkk");
+    const userStatus = await UserModel.findOne({
+      where: {
+        id: decryptedbodydt.id,
+      },
+    });
+    if (!userStatus) {
+      return Helper.response("failed", "user not found!", {}, res, 200);
+    }
+
+    let checkmobileno = 0;
+    let checkemail = 0;
+    if (decryptedbodydt.email) {
+      checkemail = await UserModel.findOne({
+        where: {
+          email: decryptedbodydt.email,
+        },
+      });
+    }
+    if (decryptedbodydt.mobile) {
+      checkmobileno = await UserModel.findOne({
+        where: { mobile: decryptedbodydt.mobile },
+      });
+    }
+
+    if (checkmobileno) {
       return Helper.response(
         "failed",
-        "user not found!",
+        "Mobile Number already exists.",
         {},
         res,
         200
       );
     }
-    if (userStatus.status === true) {
-      const update = await UserModel.update({
-        status: false
-
-      }, {
-        where: {
-          id: req.body.id,
-        }
-      })
-    } else {
-      const update = await UserModel.update({
-        status: true
-      }, {
-        where: {
-          id: req.body.id,
-        }
-      })
+    if (checkemail) {
+      return Helper.response("failed", "Email already exists.", {}, res, 200);
     }
 
-    Helper.response(
-      "success",
-      "status Update Successfully",
-      {},
-      res,
-      200
-    );
+    if (userStatus.user_type === "AC" || userStatus.user_type === "CC") {
+      let dublicatedt = 0;
+      if (decryptedbodydt.unique_code) {
+        dublicatedt = await UserModel.findOne({
+          where: {
+            unique_code: decryptedbodydt.unique_code,
+          },
+        });
+      }
+
+      if (dublicatedt) {
+        return Helper.response(
+          "failed",
+          "User Name already exists.",
+          {},
+          res,
+          200
+        );
+      } else {
+        const updateData = {};
+
+        if (decryptedbodydt.password) {
+          updateData.password = Helper.encryptPassword(
+            decryptedbodydt.password
+          );
+          updateData.pass_code = decryptedbodydt.password;
+        }
+
+        if (decryptedbodydt.unique_code) {
+          updateData.unique_code = decryptedbodydt.unique_code;
+        }
+
+        if (decryptedbodydt.email) {
+          updateData.email = decryptedbodydt.email;
+        }
+
+        if (decryptedbodydt.mobile) {
+          updateData.mobile = decryptedbodydt.mobile;
+        }
+
+        if (Object.keys(updateData).length > 0) {
+          await UserModel.update(updateData, {
+            where: {
+              id: decryptedbodydt.id,
+            },
+          });
+        }
+      }
+    } else if (userStatus.user_type === "C") {
+      //  else {
+      const updateData = {};
+
+      if (decryptedbodydt.uniqueCode) {
+        updateData.unique_code = decryptedbodydt.uniqueCode;
+        let uniqueid = await UserModel.findOne({
+          where: { unique_code: decryptedbodydt.uniqueCode },
+        });
+        if (uniqueid) {
+          return Helper.response(
+            "failed",
+            "User Name already exists.",
+            {},
+            res,
+            200
+          );
+        }
+      }
+
+      if (decryptedbodydt.email) {
+        updateData.email = decryptedbodydt.email;
+      }
+
+      if (decryptedbodydt.mobile) {
+        updateData.mobile = decryptedbodydt.mobile;
+      }
+
+      if (Object.keys(updateData).length > 0) {
+        await UserModel.update(updateData, {
+          where: {
+            id: decryptedbodydt.id,
+          },
+        });
+      }
+
+      // const update = await UserModel.update(
+      //   {
+      //     mobile: decryptedbodydt.mobile,
+      //   },
+      //   {
+      //     where: {
+      //       id: decryptedbodydt.id,
+      //     },
+      //   }
+      // );
+      // }
+    }
+
+    Helper.response("success", "Status Update Successfully", {}, res, 200);
   } catch (error) {
-    Helper.response(
-      "failed",
-      "Something went wrong!",
-      { error },
-      res,
-      200
-    );
+    console.log(error);
+
+    Helper.response("failed", "Something went wrong!", { error }, res, 200);
   }
-}
+};

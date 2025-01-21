@@ -67,7 +67,15 @@ const spareParts = sequelize.define('spare_part', {
     uom_id: {
         type: DataTypes.INTEGER,
         allowNull:true
-    }
+    },
+    type: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    type_label: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
 })
 spareParts.belongsTo(category, { foreignKey: 'category', as: 'categories' })
 // sequelize.sync()

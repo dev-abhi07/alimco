@@ -35,24 +35,39 @@ exports.Login = async (req, res) => {
                 200
             );
         }
+        
         if (user.status == 1) {
             if (Helper.decryptPassword(requestData.password) === Helper.decryptPassword(user.password)) {
 
                 let token = jwt.sign({ id: user.id }, process.env.SECRET_KEY, {
-                    expiresIn: "365d",
+                    expiresIn: "2h",
                 });
                 await user.update(
                     { token: token },
                     { where: { email: requestData.email } }
                 )
+                const data = {
+                      name: user.name,
+                      user_type: user.user_type,
+                      email: user.email,
+                      mobile : user.mobile,
+                      token : user.token,
+                      udid : user.udid,
+                      unique_code : user.unique_code
+                }
+
+                const response = {
+                    name: user.user_type == 'A' ? 'Admin' : user.name.match(/\b(\w)/g).join(''),
+                    user: data,
+                    base_url: process.env.BASE_URL
+                };
+                const responseString = JSON.stringify(response);
+                const encryptedResponse = Helper.encryptPassword(responseString);
+                
                 Helper.response(
                     "success",
                     "Login Successful",
-                    {
-                        name: user.user_type == 'A' ? 'Admin' : (user.name).match(/\b(\w)/g).join(''),
-                        user: user,
-                        base_url: process.env.BASE_URL
-                    },
+                    encryptedResponse,
                     res,
                     200
                 );

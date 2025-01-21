@@ -47,6 +47,10 @@ const transaction = sequelize.define('transaction',{
         type: DataTypes.STRING,
         allowNull:true,
     },
+    flag: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+    },
 
 })
 // sequelize.sync()

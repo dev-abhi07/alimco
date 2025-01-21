@@ -17,6 +17,11 @@ const ticket = sequelize.define('ticket', {
         allowNull: true,
         
     },
+    serialNo: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        
+    },
     aasra_id:{
         type: DataTypes.STRING,
         allowNull: true,

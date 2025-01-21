@@ -32,7 +32,21 @@ const orderDetails = sequelize.define("orderDetail",{
     image:{
         type: DataTypes.TEXT,
         allowNull: true
-    }
+    },
+    unit_price:{
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: true
+    },
+    type: {
+        type: DataTypes.STRING,
+        allowNull: true,
+
+    },
+    gst: {
+        type: DataTypes.STRING,
+        allowNull: true,
+
+    },
    
 
 

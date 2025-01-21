@@ -32,7 +32,7 @@ const repair = sequelize.define('repair', {
     },
     repairServiceCharge: {
         type: DataTypes.FLOAT,
-        allowNull: false,
+        allowNull: true,
     },
     repairTime: {
         type: DataTypes.INTEGER,
@@ -89,7 +89,7 @@ const repair = sequelize.define('repair', {
     productPrice:{
         type:DataTypes.DECIMAL(10,2),
         allowNull:false
-    }   ,
+    },
     repairCheckValue: {
         type: DataTypes.INTEGER,
         allowNull: true,
@@ -97,6 +97,16 @@ const repair = sequelize.define('repair', {
     repairCheckLabel: {
         type: DataTypes.INTEGER,
         allowNull: true,
+    },
+    discountRsn:{
+        type:DataTypes.STRING,
+        allowNull:true
+    
+    },
+    discountRec:{
+        type:DataTypes.STRING,
+        allowNull:true,
+        defaultValue:0,
     },
 })
 

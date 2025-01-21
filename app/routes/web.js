@@ -5,14 +5,14 @@ const router = express.Router();
 
 const { create,list,update ,destroy, uomCreate, listUom, updateUom, problemCreate, updateProblem, listProblem, manufacturerCreate, updateManufacturer, listManufacturer} = require('../controller/admin/category')
 const { createParts , sparePartsList , deleteSpareParts, updateSpareParts , labourCharges} = require('../controller/admin/spareParts')
-const { getUserList, userCreate, rolePermission, RoleList, getRolePermission, userPermission, getUserPermission, userStatusUpdate } = require("../controller/admin/user");
+const { getUserList, userCreate, rolePermission, RoleList, getRolePermission, userPermission, getUserPermission, userStatusUpdate,UpdatePassAndMOBNO } = require("../controller/admin/user");
 const { Login, logout, validateToken } = require('../controller/admin/login');
 const {   states , cities , repair , revenueReport, paymentReport, partReplacementReport, inventoryWholeFormat,updateLabourCharges, createLabourCharges, destroyLabourCharges, generateNotes} = require("../controller/admin/dashboard");
 const {Admin,menuListUserPermission, aasra} = require("../middleware/middleware");
-const { registerAasraCentre, aasraList, updateAasraCenter, aasraType, aasraTypecreate, aasraTypelist, aasraTypeupdate, stocktransferupdate, importUser, uniqueOrderId, orderSucess, orderSucess1, orderSucess2, orderSucess3 } = require("../controller/admin/aasra");
-const { Dashboard , ticketList,getAasraRevenue, servicehistorylist } = require("../controller/aasra/dashboard");
+const { registerAasraCentre, aasraList, updateAasraCenter, aasraType, aasraTypecreate, aasraTypelist, aasraTypeupdate, stocktransferupdate, importUser, uniqueOrderId, orderSucess, orderSucess1, orderSucess2, orderSucess3, importpartSerial, listpartSerialno, categoryRtoWiseProduct, rtuCategory, checkOpenPage, importStock, deleteAccount } = require("../controller/admin/aasra");
+const { Dashboard , ticketList,getAasraRevenue, servicehistorylist, aasraGroupListCallCenter } = require("../controller/aasra/dashboard");
 const { categoryWiseProduct, productRepairList , AarsaDropDown } = require("../controller/admin/aasra");
-const { OtpVerifyAasra,createRepair , ticketOtpVerify , ticketSendOtp ,aasraChatList ,aasraMessage,openTicket,sentOtpWeb,getUser , getRegisteredData, createCustomerTicketAasraAndSaveUser,ticketDetails} = require("../controller/aasra/ticket");
+const { OtpVerifyAasra,createRepair , ticketOtpVerify , ticketSendOtp ,aasraChatList ,aasraMessage,openTicket,sentOtpWeb,getUser , getRegisteredData, createCustomerTicketAasraAndSaveUser,ticketDetails, createRtoSell, rtoList, createCustomerTicketAasraAndSaveUserCallCenter} = require("../controller/aasra/ticket");
 
 const { arjunApi } = require("../controller/api/arjunApi");
 const { route } = require("./customer");
@@ -31,7 +31,7 @@ router.post('/delete-category',destroy)
 
 //Spare Parts
 router.post('/create-spare-part',Admin,createParts)
-router.post('/spare-part-list',Admin,sparePartsList)
+router.post('/spare-part-list',sparePartsList)
 router.post('/delete-spare-part',Admin,deleteSpareParts)
 router.post('/update-spare-part',Admin,updateSpareParts)
 
@@ -82,11 +82,11 @@ router.post('/getRegisteredData',aasra,getRegisteredData)
 router.post('/getAasraRevenue',aasra,getAasraRevenue)
 router.post('/create-customer-ticket',aasra,createCustomerTicketAasraAndSaveUser)
 router.post('/payment-report',Admin,paymentReport)
-router.post('/part-repalacement',partReplacementReport)
+router.post('/part-repalacement',Admin,partReplacementReport)
 router.post('/create-uom',Admin,uomCreate)
 router.post('/uom-list',Admin,listUom)
 router.post('/update-uom',Admin,updateUom)
-router.post('/inventory-Whole-Format',inventoryWholeFormat)
+router.post('/inventory-Whole-Format',Admin,inventoryWholeFormat)
 router.post('/create-problem' ,Admin , problemCreate)
 router.post('/update-problem' ,Admin , updateProblem)
 router.post('/problem-list' ,Admin , listProblem)
@@ -100,12 +100,12 @@ router.post('/aasratype-create', Admin , aasraTypecreate)
 router.post('/aasratype-list',Admin, aasraTypelist)
 router.post('/aasratype-update',Admin,aasraTypeupdate)
 router.post('/stock-transfer-update',Admin,stocktransferupdate)
-router.post('/update-labour-charges',updateLabourCharges)
-router.post('/create-labour-charges',createLabourCharges)
-router.post('/delete-labour-charges',destroyLabourCharges)
-router.post('/generate-service-note',generateNotes)
+router.post('/update-labour-charges',Admin,updateLabourCharges)
+router.post('/create-labour-charges',Admin,createLabourCharges)
+router.post('/delete-labour-charges',Admin,destroyLabourCharges)
+router.post('/generate-service-note',Admin,generateNotes)
 router.post('/user-status-update',Admin,userStatusUpdate)
-
+router.post('/user-change-pass',Admin,UpdatePassAndMOBNO)
 //payment gateway
 router.post('/generate-order-number', uniqueOrderId)
 
@@ -113,4 +113,19 @@ router.post('/razorpay/callback', orderSucess)
 router.post('/razorpay/callback-1', orderSucess1)
 router.post('/razorpay/callback-2', orderSucess2)
 router.post('/razorpay/callback-3', orderSucess3)
+
+router.get("/razorpay/callback", (req, res) => {
+    return res.redirect("https://octopod.co.in/payment/success");
+});
+
+router.post('/file-upload-part-serial',Admin, upload.single('file'), importpartSerial)
+router.post('/list-part-serial',listpartSerialno)
+router.post('/category-rto-product-list',Admin,categoryRtoWiseProduct)
+router.post('/create-rto-sale',Admin, createRtoSell)
+router.post('/rto-list',Admin, rtoList)
+router.post('/verify-order',Admin, checkOpenPage)
+router.post('/aasraList-callCenter',aasraGroupListCallCenter)
+router.post('/callCenter-ticketcreate',Admin,createCustomerTicketAasraAndSaveUserCallCenter)
+router.post('/file-upload-stock', Admin,upload.single('file'), importStock)
+router.post('/delete-account',deleteAccount)
 module.exports = router;

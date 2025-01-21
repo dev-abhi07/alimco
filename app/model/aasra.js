@@ -177,7 +177,15 @@ const aasra = sequelize.define('aasra', {
     aasra_type:{
         type:DataTypes.STRING,
         allowNull:true
-    }
+    },
+    callCenterValue:{
+        type:DataTypes.STRING,
+        allowNull:true
+    },
+    callCenterLabel:{
+        type:DataTypes.STRING,
+        allowNull:true
+    },
    
    
     

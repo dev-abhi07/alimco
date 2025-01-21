@@ -81,7 +81,7 @@ const order = sequelize.define('order', {
     },
     dps_no: {
         type: DataTypes.STRING,
-        defaultValue: 0
+        allowNull: true
     },
     image: {
         type: DataTypes.TEXT,
@@ -120,7 +120,31 @@ const order = sequelize.define('order', {
         allowNull: true,
 
     },
+    startDate: {
+        type: DataTypes.STRING,
+        allowNull: true,
 
+    },
+    endDate: {
+        type: DataTypes.STRING,
+        allowNull: true,
+
+    },
+    type: {
+        type: DataTypes.STRING,
+        allowNull: true,
+
+    },
+    type_label: {
+        type: DataTypes.STRING,
+        allowNull: true,
+
+    },
+    gstAmount: {
+        type: DataTypes.STRING,
+        allowNull: true,
+
+    },
 
    
 })
