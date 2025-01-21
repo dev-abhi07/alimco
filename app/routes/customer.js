@@ -36,6 +36,10 @@ router.post('/customer/chat-list', customer, chatList)
 router.post('/customer/save-token', customer, saveToken)
 router.post('/customer/chat-history', customer, chatHistory)
 
+
+/// dashboard///
+
+router.post('/customer/chat-history', customer, chatHistory)
 // router.post('/update-spare-part',updateSpareParts)
 //Complaint
 

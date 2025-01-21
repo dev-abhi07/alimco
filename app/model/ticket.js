@@ -17,15 +17,20 @@ const ticket = sequelize.define('ticket', {
         allowNull: true,
         
     },
+    serialNo: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        
+    },
     aasra_id:{
         type: DataTypes.STRING,
         allowNull: true,
     },
-    item_name: {
+    itemName: {
         type: DataTypes.STRING,
         allowNull: true,
     },
-    item_id:{
+    itemId:{
         type: DataTypes.STRING,
         allowNull: true,
     },
@@ -50,14 +55,22 @@ const ticket = sequelize.define('ticket', {
         type: DataTypes.STRING,
         allowNull:true
     },  
+    problem: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
+    job_description:{
+        type:DataTypes.TEXT,
+        allowNull:true
+    }
     
     
 },{
-    timestamps:false
+    timestamps:true
 });
 
 
-aasra.hasMany(ticket,{foreignKey:'aasra_id',as:'aasra_ticket'})
+// aasra.hasMany(ticket,{foreignKey:'aasra_id',as:'aasra_ticket'})
 // sequelize.sync()
 
 //     .then(() => {
